@@ -1,0 +1,1679 @@
+{
+    "annotations":  {
+                        "list":  [
+                                     {
+                                         "builtIn":  1,
+                                         "datasource":  {
+                                                            "type":  "grafana",
+                                                            "uid":  "-- Grafana --"
+                                                        },
+                                         "enable":  true,
+                                         "hide":  true,
+                                         "iconColor":  "rgba(0, 211, 255, 1)",
+                                         "name":  "Annotations \u0026 Alerts",
+                                         "type":  "dashboard"
+                                     }
+                                 ]
+                    },
+    "editable":  true,
+    "fiscalYearStartMonth":  0,
+    "graphTooltip":  0,
+    "id":  null,
+    "links":  [
+
+              ],
+    "panels":  [
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  6,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "id":  1,
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpCompleted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Password Sign-Ups Completed",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  6,
+                                       "x":  6,
+                                       "y":  0
+                                   },
+                       "id":  2,
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationCompleted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Email Confirmations Completed",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  6,
+                                       "x":  12,
+                                       "y":  0
+                                   },
+                       "id":  3,
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignInCompleted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Password Sign-Ins Completed",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  6,
+                                       "x":  18,
+                                       "y":  0
+                                   },
+                       "id":  4,
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetCompleted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Password Resets Completed",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisLabel":  "",
+                                                                           "axisPlacement":  "auto",
+                                                                           "barAlignment":  0,
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  18,
+                                                                           "gradientMode":  "none",
+                                                                           "hideFrom":  {
+                                                                                            "legend":  false,
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false
+                                                                                        },
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  2,
+                                                                           "pointSize":  4,
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "group":  "A",
+                                                                                            "mode":  "normal"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  8
+                                   },
+                       "id":  5,
+                       "options":  {
+                                       "legend":  {
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc"
+                                                   }
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpStarted\" [$__interval]))",
+                                           "legendFormat":  "Started",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpCompleted\" [$__interval]))",
+                                           "legendFormat":  "Completed",
+                                           "queryType":  "range",
+                                           "refId":  "B"
+                                       }
+                                   ],
+                       "title":  "Password Sign-Up Flow",
+                       "type":  "timeseries"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisLabel":  "",
+                                                                           "axisPlacement":  "auto",
+                                                                           "barAlignment":  0,
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  18,
+                                                                           "gradientMode":  "none",
+                                                                           "hideFrom":  {
+                                                                                            "legend":  false,
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false
+                                                                                        },
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  2,
+                                                                           "pointSize":  4,
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "group":  "A",
+                                                                                            "mode":  "normal"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  8
+                                   },
+                       "id":  6,
+                       "options":  {
+                                       "legend":  {
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc"
+                                                   }
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Consumer\"} | json | custom_event_name=\"EmailConfirmationOtpSent\" [$__interval]))",
+                                           "legendFormat":  "OTP Sent",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationStarted\" [$__interval]))",
+                                           "legendFormat":  "Started",
+                                           "queryType":  "range",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationCompleted\" [$__interval]))",
+                                           "legendFormat":  "Completed",
+                                           "queryType":  "range",
+                                           "refId":  "C"
+                                       }
+                                   ],
+                       "title":  "Email Confirmation Flow",
+                       "type":  "timeseries"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisLabel":  "",
+                                                                           "axisPlacement":  "auto",
+                                                                           "barAlignment":  0,
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  18,
+                                                                           "gradientMode":  "none",
+                                                                           "hideFrom":  {
+                                                                                            "legend":  false,
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false
+                                                                                        },
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  2,
+                                                                           "pointSize":  4,
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "group":  "A",
+                                                                                            "mode":  "normal"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  17
+                                   },
+                       "id":  7,
+                       "options":  {
+                                       "legend":  {
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc"
+                                                   }
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignInStarted\" [$__interval]))",
+                                           "legendFormat":  "Started",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignInCompleted\" [$__interval]))",
+                                           "legendFormat":  "Completed",
+                                           "queryType":  "range",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Consumer\"} | json | custom_event_name=\"SignInFailureProcessed\" [$__interval]))",
+                                           "legendFormat":  "Failure Processed",
+                                           "queryType":  "range",
+                                           "refId":  "C"
+                                       }
+                                   ],
+                       "title":  "Password Sign-In Flow",
+                       "type":  "timeseries"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisLabel":  "",
+                                                                           "axisPlacement":  "auto",
+                                                                           "barAlignment":  0,
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  18,
+                                                                           "gradientMode":  "none",
+                                                                           "hideFrom":  {
+                                                                                            "legend":  false,
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false
+                                                                                        },
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  2,
+                                                                           "pointSize":  4,
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "group":  "A",
+                                                                                            "mode":  "normal"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  17
+                                   },
+                       "id":  8,
+                       "options":  {
+                                       "legend":  {
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc"
+                                                   }
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetRequested\" [$__interval]))",
+                                           "legendFormat":  "Requested",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Consumer\"} | json | custom_event_name=\"PasswordResetOtpSent\" [$__interval]))",
+                                           "legendFormat":  "OTP Sent",
+                                           "queryType":  "range",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetCompleted\" [$__interval]))",
+                                           "legendFormat":  "Completed",
+                                           "queryType":  "range",
+                                           "refId":  "C"
+                                       }
+                                   ],
+                       "title":  "Password Reset Flow",
+                       "type":  "timeseries"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "Prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  8,
+                                       "x":  0,
+                                       "y":  26
+                                   },
+                       "id":  9,
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "Prometheus"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(rate(http_server_request_duration_seconds_count{job=\"blvk-pickly-logistics-webapi\",http_route=~\".*(registrations|email-confirmations|sessions|password-resets).*\"}[$__rate_interval]))",
+                                           "legendFormat":  "",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Auth Request Rate",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "Prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "decimals":  3,
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  0.5
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  1
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  8,
+                                       "x":  8,
+                                       "y":  26
+                                   },
+                       "id":  10,
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "Prometheus"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"blvk-pickly-logistics-webapi\",http_route=~\".*(registrations|email-confirmations|sessions|password-resets).*\"}[$__rate_interval])))",
+                                           "legendFormat":  "",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Auth Endpoint p95 Latency",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "Prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  0.01
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  8,
+                                       "x":  16,
+                                       "y":  26
+                                   },
+                       "id":  11,
+                       "options":  {
+                                       "colorMode":  "background",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "Prometheus"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum(rate(http_server_request_duration_seconds_count{job=\"blvk-pickly-logistics-webapi\",http_route=~\".*(registrations|email-confirmations|sessions|password-resets).*\",http_response_status_code=~\"5..\"}[$__rate_interval]))",
+                                           "legendFormat":  "",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Auth 5xx Rate",
+                       "type":  "stat"
+                   },
+                   {
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "Prometheus"
+                                      },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisLabel":  "",
+                                                                           "axisPlacement":  "auto",
+                                                                           "barAlignment":  0,
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  18,
+                                                                           "gradientMode":  "none",
+                                                                           "hideFrom":  {
+                                                                                            "legend":  false,
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false
+                                                                                        },
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  2,
+                                                                           "pointSize":  4,
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "group":  "A",
+                                                                                            "mode":  "normal"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  24,
+                                       "x":  0,
+                                       "y":  34
+                                   },
+                       "id":  12,
+                       "options":  {
+                                       "legend":  {
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc"
+                                                   }
+                                   },
+                       "pluginVersion":  "12.0.0",
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "Prometheus"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "sum by (route) (label_replace(rate(http_server_request_duration_seconds_count{job=\"blvk-pickly-logistics-webapi\",http_route=~\".*(registrations|email-confirmations|sessions|password-resets).*\"}[$__rate_interval]), \"route\", \"$1v1$2\", \"http_route\", \"(.*)v\\\\{version:apiVersion\\\\}(.*)\"))",
+                                           "legendFormat":  "{{route}}",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Requests By Auth Route",
+                       "type":  "timeseries"
+                   },
+                   {
+                       "id":  13,
+                       "title":  "Auth SLO Targets",
+                       "type":  "text",
+                       "pluginVersion":  "12.0.0",
+                       "gridPos":  {
+                                       "x":  0,
+                                       "y":  42,
+                                       "w":  24,
+                                       "h":  5
+                                   },
+                       "options":  {
+                                       "mode":  "markdown",
+                                       "content":  "## Auth SLO Targets\n- Password sign-up completion rate: \u003e= 95% over 30 minutes.\n- Email confirmation completion rate: \u003e= 90% over 1 hour.\n- Password sign-in completion rate: \u003e= 95% over 15 minutes.\n- Password reset completion rate: \u003e= 90% over 30 minutes.\n- Session refresh post-processing completion rate: \u003e= 99% over 15 minutes."
+                                   }
+                   },
+                   {
+                       "id":  14,
+                       "title":  "Password Sign-Up Completion Rate",
+                       "type":  "stat",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  0,
+                                       "y":  47,
+                                       "w":  6,
+                                       "h":  8
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  90
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  95
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent",
+                                                            "decimals":  2
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpCompleted\" [$__range])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpStarted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  15,
+                       "title":  "Email Confirmation Completion Rate",
+                       "type":  "stat",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  6,
+                                       "y":  47,
+                                       "w":  6,
+                                       "h":  8
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  85
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  90
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent",
+                                                            "decimals":  2
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationCompleted\" [$__range])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationStarted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  16,
+                       "title":  "Password Sign-In Completion Rate",
+                       "type":  "stat",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  12,
+                                       "y":  47,
+                                       "w":  6,
+                                       "h":  8
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  90
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  95
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent",
+                                                            "decimals":  2
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignInCompleted\" [$__range])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignInStarted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  17,
+                       "title":  "Password Reset Completion Rate",
+                       "type":  "stat",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  18,
+                                       "y":  47,
+                                       "w":  6,
+                                       "h":  8
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  85
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  90
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent",
+                                                            "decimals":  2
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetCompleted\" [$__range])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetRequested\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  18,
+                       "title":  "Google Sign-In Completion Rate",
+                       "type":  "stat",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  0,
+                                       "y":  55,
+                                       "w":  8,
+                                       "h":  8
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  90
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  95
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent",
+                                                            "decimals":  2
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"GoogleSignInCompleted\" [$__range])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"GoogleSignInStarted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  19,
+                       "title":  "Session Refresh Post-Processing Rate",
+                       "type":  "stat",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  8,
+                                       "y":  55,
+                                       "w":  8,
+                                       "h":  8
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "thresholds"
+                                                                      },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "red",
+                                                                                                 "value":  null
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "orange",
+                                                                                                 "value":  95
+                                                                                             },
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  99
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent",
+                                                            "decimals":  2
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "colorMode":  "value",
+                                       "graphMode":  "area",
+                                       "justifyMode":  "auto",
+                                       "orientation":  "auto",
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "textMode":  "auto"
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Consumer\"} | json | custom_event_name=\"SessionRefreshPostProcessingCompleted\" [$__range])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"SessionRefreshCompleted\" [$__range]))",
+                                           "legendFormat":  "",
+                                           "queryType":  "range",
+                                           "range":  true,
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  20,
+                       "title":  "Derived Auth Completion Rates Over Time",
+                       "type":  "timeseries",
+                       "pluginVersion":  "12.0.0",
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "Loki"
+                                      },
+                       "gridPos":  {
+                                       "x":  0,
+                                       "y":  63,
+                                       "w":  24,
+                                       "h":  9
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisLabel":  "",
+                                                                           "axisPlacement":  "auto",
+                                                                           "barAlignment":  0,
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  10,
+                                                                           "gradientMode":  "none",
+                                                                           "hideFrom":  {
+                                                                                            "legend":  false,
+                                                                                            "tooltip":  false,
+                                                                                            "viz":  false
+                                                                                        },
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  2,
+                                                                           "pointSize":  4,
+                                                                           "scaleDistribution":  {
+                                                                                                     "type":  "linear"
+                                                                                                 },
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "group":  "A",
+                                                                                            "mode":  "none"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       },
+                                                            "mappings":  [
+
+                                                                         ],
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "unit":  "percent"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "calcs":  [
+
+                                                                ],
+                                                      "displayMode":  "list",
+                                                      "placement":  "bottom",
+                                                      "showLegend":  true
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "single",
+                                                       "sort":  "none"
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpCompleted\" [$__rate_interval])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordSignUpStarted\" [$__rate_interval]))",
+                                           "legendFormat":  "password sign-up",
+                                           "queryType":  "range",
+                                           "refId":  "A"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationCompleted\" [$__rate_interval])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"EmailConfirmationStarted\" [$__rate_interval]))",
+                                           "legendFormat":  "email confirmation",
+                                           "queryType":  "range",
+                                           "refId":  "B"
+                                       },
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "Loki"
+                                                          },
+                                           "editorMode":  "code",
+                                           "expr":  "100 * sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetCompleted\" [$__rate_interval])) / sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"PasswordResetRequested\" [$__rate_interval]))",
+                                           "legendFormat":  "password reset",
+                                           "queryType":  "range",
+                                           "refId":  "C"
+                                       }
+                                   ]
+                   }
+               ],
+    "refresh":  "10s",
+    "schemaVersion":  41,
+    "tags":  [
+                 "backend-template",
+                 "auth",
+                 "observability"
+             ],
+    "templating":  {
+                       "list":  [
+
+                                ]
+                   },
+    "time":  {
+                 "from":  "now-6h",
+                 "to":  "now"
+             },
+    "timepicker":  {
+
+                   },
+    "timezone":  "browser",
+    "title":  "Authentication Overview",
+    "uid":  "authentication-overview",
+    "version":  2,
+    "weekStart":  ""
+}

@@ -1,0 +1,28 @@
+namespace BLVK.Pickly.Logistics.Infrastructure.Payments.SafeHaven;
+
+public sealed record SafeHavenProviderResponse(
+    string Bvn,
+    string FullName,
+    string FirstName,
+    string MiddleName,
+    string LastName,
+    string DateOfBirth,
+    string PhoneNumber1,
+    string PhoneNumber2,
+    string Gender,
+    string EnrollmentBank,
+    string EnrollmentBranch,
+    string Email,
+    string LgaOfOrigin,
+    string LgaOfResidence,
+    string MaritalStatus,
+    string Nin,
+    string Nationality,
+    string ResidentialAddress,
+    string StateOfOrigin,
+    string StateOfResidence,
+    string Title,
+    string WatchListed,
+    string LevelOfAccount,
+    string? RegistrationDate,
+    string? ImageBase64);

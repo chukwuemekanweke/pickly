@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>BLVK.Pickly.Logistics.Jobs.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Chidelu.Integration.Messaging.RabbitMQ.Consumer" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="WireMock.Net" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.Jobs\\BLVK.Pickly.Logistics.Jobs.csproj" />
+    <ProjectReference Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.Contracts\\BLVK.Pickly.Logistics.Contracts.csproj" />
+    <ProjectReference Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.Domain\\BLVK.Pickly.Logistics.Domain.csproj" />
+    <ProjectReference Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.Infrastructure\\BLVK.Pickly.Logistics.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

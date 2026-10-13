@@ -1,0 +1,36 @@
+@BLVK.Pickly.Logistics.WebAPI_HostAddress = http://localhost:5140
+
+POST {{BLVK.Pickly.Logistics.WebAPI_HostAddress}}/api/v1/authentication/registrations
+Content-Type: application/json
+
+{
+  "email": "ada@example.com",
+  "password": "P@ssw0rd123!",
+  "confirmPassword": "P@ssw0rd123!",
+  "firstName": "Ada",
+  "lastName": "Lovelace"
+}
+
+###
+
+POST {{BLVK.Pickly.Logistics.WebAPI_HostAddress}}/api/v1/authentication/email-confirmations
+Content-Type: application/json
+
+{
+  "email": "ada@example.com",
+  "otp": "123456"
+}
+
+###
+
+POST {{BLVK.Pickly.Logistics.WebAPI_HostAddress}}/api/v1/authentication/sessions
+Content-Type: application/json
+
+{
+  "email": "ada@example.com",
+  "password": "P@ssw0rd123!"
+}
+
+###
+
+GET {{BLVK.Pickly.Logistics.WebAPI_HostAddress}}/api/v1/reference-data/countries

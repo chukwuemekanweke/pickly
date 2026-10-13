@@ -1,0 +1,997 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Authentication SLOs
+    folder: BLVK.Pickly.Logistics Alerts
+    interval: 1m
+    rules:
+      - uid: auth-password-signup-completion-rate-low
+        title: Password sign-up completion rate below 95%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordSignUpCompleted" [30m])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordSignUpStarted" [30m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 95
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        annotations:
+          summary: Password sign-up completion rate is below 95%.
+          description: Password sign-up completions divided by starts has been below the SLO target for 30 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+      - uid: auth-email-confirm-completion-rate-low
+        title: Email confirmation completion rate below 90%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="EmailConfirmationCompleted" [1h])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="EmailConfirmationStarted" [1h]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        annotations:
+          summary: Email confirmation completion rate is below 90%.
+          description: Email confirmation completions divided by starts has been below the SLO target for 1 hour.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+      - uid: auth-password-signin-completion-rate-low
+        title: Password sign-in completion rate below 95%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordSignInCompleted" [15m])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordSignInStarted" [15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 95
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Password sign-in completion rate is below 95%.
+          description: Password sign-in completions divided by starts has been below the SLO target for 15 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+      - uid: auth-password-reset-completion-rate-low
+        title: Password reset completion rate below 90%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordResetCompleted" [30m])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordResetRequested" [30m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        annotations:
+          summary: Password reset completion rate is below 90%.
+          description: Password reset completions divided by requests has been below the SLO target for 30 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+      - uid: auth-session-refresh-post-proc-rate-low
+        title: Session refresh post-processing rate below 99%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.Consumer"} | json | custom_event_name="SessionRefreshPostProcessingCompleted" [15m])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="SessionRefreshCompleted" [15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 99
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Session refresh post-processing rate is below 99%.
+          description: Consumer post-processing completions divided by WebAPI session refresh completions has been below the SLO target for 15 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+  - orgId: 1
+    name: Authentication Failures
+    folder: BLVK.Pickly.Logistics Alerts
+    interval: 1m
+    rules:
+      - uid: auth-5xx-rate-high
+        title: Auth 5xx rate above 1%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: Prometheus
+              editorMode: code
+              expr: 100 * sum(rate(http_server_request_duration_seconds_count{job="blvk-pickly-logistics-webapi",http_route=~".*(registrations|email-confirmations|sessions|password-resets).*",http_response_status_code=~"5.."}[10m])) / sum(rate(http_server_request_duration_seconds_count{job="blvk-pickly-logistics-webapi",http_route=~".*(registrations|email-confirmations|sessions|password-resets).*"}[10m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: Auth endpoint 5xx rate is above 1%.
+          description: 5xx responses across authentication endpoints have exceeded 1% for 10 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: http_health
+          severity: critical
+        isPaused: false
+
+      - uid: auth-429-rate-high
+        title: Auth 429 rate above starter threshold
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: Prometheus
+              editorMode: code
+              expr: sum(rate(http_server_request_duration_seconds_count{job="blvk-pickly-logistics-webapi",http_route=~".*(registrations|email-confirmations|sessions|password-resets).*",http_response_status_code="429"}[15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.05
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Auth 429 rate is above the starter threshold.
+          description: Rate-limited authentication requests have exceeded 0.05 requests per second for 15 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: http_health
+          severity: warning
+        isPaused: false
+
+      - uid: auth-pwd-reset-completion-failures-high
+        title: Password reset completion failures exceed 5 in 15m
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="PasswordResetCompletionFailed" [15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Password reset completion failures exceed 5 events.
+          description: Password reset completion failures have exceeded 5 events in the last 15 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_failure
+          severity: warning
+        isPaused: false
+
+      - uid: auth-email-confirmation-failures-high
+        title: Email confirmation failures exceed 10 in 15m
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="EmailConfirmationFailed" [15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Email confirmation failures exceed 10 events.
+          description: Email confirmation failures have exceeded 10 events in the last 15 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_failure
+          severity: warning
+        isPaused: false
+
+      - uid: auth-signin-failure-processed-high
+        title: Sign-in failure processed count exceeds starter threshold
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: sum(count_over_time({service_name="BLVK.Pickly.Logistics.Consumer"} | json | custom_event_name="SignInFailureProcessed" [15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 20
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Sign-in failure processing count is above the starter threshold.
+          description: Sign-in failure processing events have exceeded 20 events in the last 15 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: authentication
+          signal: business_failure
+          severity: warning
+        isPaused: false
+
+  - orgId: 1
+    name: Profile SLOs
+    folder: BLVK.Pickly.Logistics Alerts
+    interval: 1m
+    rules:
+      - uid: profile-update-success-rate-low
+        title: Profile update success rate below 99%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="ProfileUpdateCompleted" [30m])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name=~"ProfileUpdateCompleted|ProfileUpdateFailed" [30m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 99
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        annotations:
+          summary: Profile update success rate is below 99%.
+          description: Profile update completions divided by profile update attempts has been below the SLO target for 30 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: profile
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+      - uid: profile-avatar-upload-success-rate-low
+        title: Avatar upload success rate below 98%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Loki
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: loki
+                uid: Loki
+              editorMode: code
+              expr: 100 * sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name="AvatarUploadCompleted" [30m])) / sum(count_over_time({service_name="BLVK.Pickly.Logistics.WebAPI"} | json | custom_event_name=~"AvatarUploadCompleted|AvatarUploadFailed" [30m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 98
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        annotations:
+          summary: Avatar upload success rate is below 98%.
+          description: Avatar upload completions divided by avatar upload attempts has been below the SLO target for 30 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: profile
+          signal: business_slo
+          severity: warning
+        isPaused: false
+
+      - uid: profile-5xx-rate-high
+        title: Profile endpoint 5xx rate above 1%
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: Prometheus
+              editorMode: code
+              expr: 100 * sum(rate(http_server_request_duration_seconds_count{job="blvk-pickly-logistics-webapi",http_route=~".*stakeholders/me/profile.*",http_response_status_code=~"5.."}[10m])) / sum(rate(http_server_request_duration_seconds_count{job="blvk-pickly-logistics-webapi",http_route=~".*stakeholders/me/profile.*"}[10m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: Profile endpoint 5xx rate is above 1%.
+          description: Profile endpoint 5xx responses have exceeded 1% for 10 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: profile
+          signal: http_health
+          severity: critical
+        isPaused: false
+
+      - uid: profile-p95-latency-high
+        title: Profile endpoint p95 latency above 500ms
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: Prometheus
+              editorMode: code
+              expr: histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{job="blvk-pickly-logistics-webapi",http_route=~".*stakeholders/me/profile.*"}[10m])))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: Profile endpoint p95 latency is above 500ms.
+          description: Profile endpoint p95 latency has exceeded 500ms for 10 minutes.
+          runbook_url: docs/observability/authentication-events.md
+        labels:
+          area: profile
+          signal: http_health
+          severity: warning
+        isPaused: false

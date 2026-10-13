@@ -1,0 +1,6 @@
+root = true
+
+[*.cs]
+dotnet_sort_system_directives_first = false
+dotnet_separate_import_directive_groups = false
+dotnet_diagnostic.IDE0005.severity = error

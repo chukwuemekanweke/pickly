@@ -1,0 +1,306 @@
+name: CI/CD (.NET 10)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  SOLUTION: BLVK.Pickly.Logistics.slnx
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_USERNAME: ${{ secrets.GH_PKG_USERNAME }}
+      GITHUB_PAT: ${{ secrets.GH_PKG_PAT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore solution
+        run: dotnet restore "${{ env.SOLUTION }}"
+
+      - name: Check using directives
+        run: dotnet format "${{ env.SOLUTION }}" style --no-restore --verify-no-changes --diagnostics IDE0005
+
+      - name: Build solution (Release)
+        run: dotnet build "${{ env.SOLUTION }}" --configuration Release --no-restore
+
+      - name: Upload build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          if-no-files-found: warn
+          path: |
+            src/**/bin/Release/**
+            tests/**/bin/Release/**
+
+  test-unit:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_USERNAME: ${{ secrets.GH_PKG_USERNAME }}
+      GITHUB_PAT: ${{ secrets.GH_PKG_PAT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Download build outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .
+
+      - name: Restore solution
+        run: dotnet restore "${{ env.SOLUTION }}"
+
+      - name: Run Unit Tests with Coverage
+        id: unit_tests
+        shell: bash
+        run: |
+          RESULTS_ROOT="TestResultsUnit"
+          rm -rf "$RESULTS_ROOT"
+          mkdir -p "$RESULTS_ROOT"
+
+          mapfile -t TEST_PROJECTS < <(find tests/unit -type f -iname "*.UnitTests.csproj")
+          if [ ${#TEST_PROJECTS[@]} -eq 0 ]; then
+            echo "❌ No unit test projects found matching '*.UnitTests.csproj'."
+            exit 1
+          fi
+
+          echo "🧪 Found ${#TEST_PROJECTS[@]} project(s):"
+          printf '%s\n' "${TEST_PROJECTS[@]}"
+
+          for proj in "${TEST_PROJECTS[@]}"; do
+            NAME=$(basename "$proj" .csproj)
+            OUTDIR="$RESULTS_ROOT/$NAME"
+            mkdir -p "$OUTDIR"
+            echo "▶️ dotnet test $proj → $OUTDIR"
+            dotnet test "$proj" \
+              --configuration Release \
+              --no-build \
+              --results-directory "$OUTDIR" \
+              --logger "trx;LogFileName=$NAME-results.trx" \
+              --collect "XPlat Code Coverage"
+          done
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: "**/*.trx"
+
+      - name: Upload Unit Coverage (Cobertura XML)
+        if: ${{ steps.unit_tests.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit-raw
+          path: "TestResultsUnit/**/coverage.cobertura.xml"
+
+  test-integration:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_USERNAME: ${{ secrets.GH_PKG_USERNAME }}
+      GITHUB_PAT: ${{ secrets.GH_PKG_PAT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Packages.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Download build outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .
+
+      - name: Restore solution
+        run: dotnet restore "${{ env.SOLUTION }}"
+
+      - name: Run Integration Tests with Coverage
+        id: integration_tests
+        shell: bash
+        run: |
+          RESULTS_ROOT="TestResultsIntegration"
+          rm -rf "$RESULTS_ROOT"
+          mkdir -p "$RESULTS_ROOT"
+
+          mapfile -t TEST_PROJECTS < <(find tests/integration -type f -iname "*.IntegrationTests.csproj")
+          if [ ${#TEST_PROJECTS[@]} -eq 0 ]; then
+            echo "❌ No integration test projects found matching '*.IntegrationTests.csproj'."
+            exit 1
+          fi
+
+          echo "🧪 Found ${#TEST_PROJECTS[@]} project(s):"
+          printf '%s\n' "${TEST_PROJECTS[@]}"
+
+          for proj in "${TEST_PROJECTS[@]}"; do
+            NAME=$(basename "$proj" .csproj)
+            OUTDIR="$RESULTS_ROOT/$NAME"
+            mkdir -p "$OUTDIR"
+            echo "▶️ dotnet test $proj → $OUTDIR"
+            dotnet test "$proj" \
+              --configuration Release \
+              --no-build \
+              --results-directory "$OUTDIR" \
+              --logger "trx;LogFileName=$NAME-results.trx" \
+              --collect "XPlat Code Coverage"
+          done
+
+      - name: Upload Integration Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: "TestResultsIntegration/**/*.trx"
+
+      - name: Upload Integration Coverage (Cobertura XML)
+        if: ${{ steps.integration_tests.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-raw
+          path: "TestResultsIntegration/**/coverage.cobertura.xml"
+
+  coverage-report:
+    needs: [test-unit, test-integration]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Unit Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit-raw
+          path: CoverageRaw/unit
+
+      - name: Download Integration Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-integration-raw
+          path: CoverageRaw/integration
+
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate Coverage Report
+        shell: bash
+        run: |
+          COVERAGE_FILES=$(find CoverageRaw -type f -name "coverage.cobertura.xml")
+          if [ -z "$COVERAGE_FILES" ]; then
+            echo "No coverage files found under CoverageRaw."
+            find CoverageRaw -type f -print || true
+            exit 1
+          fi
+
+          echo "Generating combined HTML + Cobertura coverage report..."
+          REPORTS=$(echo "$COVERAGE_FILES" | tr '\n' ';' | sed 's/;\+$//')
+          ~/.dotnet/tools/reportgenerator \
+            -reports:"$REPORTS" \
+            -targetdir:"CoverageReport" \
+            -reporttypes:"HtmlSummary;Cobertura"
+
+      - name: Upload Coverage (HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: CoverageReport
+
+      - name: Upload Coverage (Cobertura XML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cobertura
+          path: CoverageReport/Cobertura.xml
+
+  docker-build-push:
+    needs: [test-unit, test-integration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - service: webapi
+            dockerfile: ./src/BLVK.Pickly.Logistics.WebAPI/Dockerfile
+            image: blvkpicklylogistics-webapi
+          - service: consumer
+            dockerfile: ./src/BLVK.Pickly.Logistics.Consumer/Dockerfile
+            image: blvkpicklylogistics-consumer
+          - service: jobs
+            dockerfile: ./src/BLVK.Pickly.Logistics.Jobs/Dockerfile
+            image: blvkpicklylogistics-jobs
+          - service: migrator
+            dockerfile: ./src/BLVK.Pickly.Logistics.DatabaseMigrator/Dockerfile
+            image: blvkpicklylogistics-migrator
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
+          secrets: |
+            GITHUB_USERNAME=${{ secrets.GH_PKG_USERNAME }}
+            GITHUB_PAT=${{ secrets.GH_PKG_PAT }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

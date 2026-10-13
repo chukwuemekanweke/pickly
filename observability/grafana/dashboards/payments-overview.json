@@ -1,0 +1,837 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "## Payments Overview\nBusiness-event panels in this dashboard are backed by the payment custom telemetry already emitted by the payment initiation, webhook, reconciliation, and fulfillment flows.\n\n### Queryable payment events today\n- `payment.initiated`\n- `payment.webhook.received`\n- `payment.webhook.persisted`\n- `payment.webhook.persistence_failed`\n- `payment.reconciliation.confirmed`\n- `payment.reconciliation.failed`\n- `payment.credit_wallet`\n- `payment.wallet.created`\n- `payment.wallet.credited`\n- `payment.activate_subscription`\n- `payment.subscription.activated`",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.0.0",
+      "title": "Current Payment Event Scope",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 5
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"payment.initiated\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Payments Initiated",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 4,
+        "y": 5
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"payment.webhook.persisted\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Webhooks Persisted",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 8,
+        "y": 5
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Jobs\"} | json | custom_event_name=\"payment.reconciliation.confirmed\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Reconciliations Confirmed",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 12,
+        "y": 5
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Consumer\"} | json | custom_event_name=\"payment.wallet.credited\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Wallet Top-Ups Fulfilled",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 16,
+        "y": 5
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Consumer\"} | json | custom_event_name=\"payment.subscription.activated\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Subscriptions Fulfilled",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 5
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"blvk-pickly-logistics-webapi\",http_route=~\".*(payments|payment-providers).*\"}[$__rate_interval]))",
+          "legendFormat": "",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Payment Request Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (payment_intent) (count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"payment.initiated\" | payment_intent=~\".+\" [$__interval]))",
+          "legendFormat": "{{payment_intent}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Payments Initiated By Intent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"payment.webhook.received\" [$__interval]))",
+          "legendFormat": "Webhook Received",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"payment.webhook.persisted\" [$__interval]))",
+          "legendFormat": "Webhook Persisted",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.WebAPI\"} | json | custom_event_name=\"payment.webhook.persistence_failed\" [$__interval]))",
+          "legendFormat": "Webhook Persist Failure",
+          "queryType": "range",
+          "refId": "C"
+        }
+      ],
+      "title": "Webhook Intake Pipeline",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Jobs\"} | json | custom_event_name=\"payment.reconciliation.confirmed\" [$__interval]))",
+          "legendFormat": "Confirmed",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"BLVK.Pickly.Logistics.Jobs\"} | json | custom_event_name=\"payment.reconciliation.failed\" [$__interval]))",
+          "legendFormat": "Failed",
+          "queryType": "range",
+          "refId": "B"
+        }
+      ],
+      "title": "Reconciliation Outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"blvk-pickly-logistics-webapi\",http_route=~\".*(payments|payment-providers).*\"}[$__rate_interval])))",
+          "legendFormat": "Payment Route p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Payment Route p95 Latency",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": [
+    "payments",
+    "observability"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Payments Overview",
+  "uid": "payments-overview",
+  "version": 1,
+  "weekStart": ""
+}

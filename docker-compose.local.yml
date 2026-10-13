@@ -1,0 +1,69 @@
+services:
+  database-migrator:
+    environment:
+      ConnectionStrings__PostgresWrite: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  webapi:
+    environment:
+      ConnectionStrings__PostgresWrite: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+      ConnectionStrings__PostgresRead: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+      ConnectionStrings__Redis: redis:6379
+      OpenTelemetry__OtlpEndpoint: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_HEADERS: ""
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+      PYROSCOPE_BASIC_AUTH_USER: ""
+      PYROSCOPE_BASIC_AUTH_PASSWORD: ""
+    depends_on:
+      redis:
+        condition: service_started
+
+  consumer:
+    environment:
+      ConnectionStrings__PostgresWrite: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+      ConnectionStrings__PostgresRead: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+      ConnectionStrings__Redis: redis:6379
+      OpenTelemetry__OtlpEndpoint: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_HEADERS: ""
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+      PYROSCOPE_BASIC_AUTH_USER: ""
+      PYROSCOPE_BASIC_AUTH_PASSWORD: ""
+      Messaging__RabbitMq__HostName: rabbitmq
+      Messaging__RabbitMq__Port: 5672
+      Messaging__RabbitMq__UserName: guest
+      Messaging__RabbitMq__Password: guest
+      Messaging__RabbitMq__VirtualHost: /
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  jobs:
+    environment:
+      ConnectionStrings__PostgresWrite: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+      ConnectionStrings__PostgresRead: Host=postgres;Port=5432;Database=BLVK.Pickly.LogisticsDb;Username=postgres;Password=postgres;
+      ConnectionStrings__Redis: redis:6379
+      OpenTelemetry__OtlpEndpoint: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_HEADERS: ""
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+      PYROSCOPE_BASIC_AUTH_USER: ""
+      PYROSCOPE_BASIC_AUTH_PASSWORD: ""
+      Messaging__RabbitMq__HostName: rabbitmq
+      Messaging__RabbitMq__Port: 5672
+      Messaging__RabbitMq__UserName: guest
+      Messaging__RabbitMq__Password: guest
+      Messaging__RabbitMq__VirtualHost: /
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy

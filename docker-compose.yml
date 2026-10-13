@@ -1,0 +1,333 @@
+services:
+  database-migrator:
+    build:
+      context: .
+      dockerfile: src/BLVK.Pickly.Logistics.DatabaseMigrator/Dockerfile
+      secrets:
+        - GITHUB_USERNAME
+        - GITHUB_PAT
+    environment:
+      GITHUB_USERNAME: ${GITHUB_USERNAME}
+      GITHUB_PAT: ${GITHUB_PAT}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgresWrite: ${DATABASE_URL:-}
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health/readiness || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 5s
+    restart: "no"
+
+  webapi:
+    build:
+      context: .
+      dockerfile: src/BLVK.Pickly.Logistics.WebAPI/Dockerfile
+      secrets:
+        - GITHUB_USERNAME
+        - GITHUB_PAT
+    environment:
+      GITHUB_USERNAME: ${GITHUB_USERNAME}
+      GITHUB_PAT: ${GITHUB_PAT}
+      ASPNETCORE_ENVIRONMENT: Container
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgresWrite: ${DATABASE_URL:-}
+      ConnectionStrings__PostgresRead: ${DATABASE_URL_POOLED:-${DATABASE_URL:-}}
+      ConnectionStrings__Redis: ${REDIS_CONNECTION_STRING:-}
+      Authentication__Google__Enabled: ${GOOGLE_AUTHENTICATION_ENABLED:-false}
+      Authentication__Google__ClientIds__0: ${GOOGLE_CLIENT_ID:-}
+      Authentication__Google__FlowLifetime: 00:10:00
+      ObjectStorage__CloudflareR2__Endpoint: ${CLOUDFLARE_R2_ENDPOINT:-}
+      ObjectStorage__CloudflareR2__ApplicationFolder: ${CLOUDFLARE_R2_APPLICATION_FOLDER:-}
+      ObjectStorage__CloudflareR2__PublicBucketName: ${CLOUDFLARE_R2_PUBLIC_BUCKET_NAME:-}
+      ObjectStorage__CloudflareR2__PrivateBucketName: ${CLOUDFLARE_R2_PRIVATE_BUCKET_NAME:-}
+      ObjectStorage__CloudflareR2__AccessKeyId: ${CLOUDFLARE_R2_ACCESS_KEY_ID:-}
+      ObjectStorage__CloudflareR2__SecretAccessKey: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}
+      ObjectStorage__CloudflareR2__PublicBaseUrl: ${CLOUDFLARE_R2_PUBLIC_BASE_URL:-}
+      Jwt__Issuer: BLVK.Pickly.Logistics
+      Jwt__Audience: BLVK.Pickly.Logistics.Clients
+      Jwt__SigningKey: super-secret-template-signing-key-change-me
+      Notifications__Email__Mailtrap__WebhookSigningSecret: ${MAILTRAP_WEBHOOK_SIGNING_SECRET}
+      OpenTelemetry__ServiceName: BLVK.Pickly.Logistics.WebAPI
+      OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      PYROSCOPE_APPLICATION_NAME: blvkpicklylogistics.webapi
+      PYROSCOPE_SERVER_ADDRESS: ${PYROSCOPE_SERVER_ADDRESS:-}
+      PYROSCOPE_BASIC_AUTH_USER: ${PYROSCOPE_BASIC_AUTH_USER:-}
+      PYROSCOPE_BASIC_AUTH_PASSWORD: ${PYROSCOPE_BASIC_AUTH_PASSWORD:-}
+      PYROSCOPE_PROFILING_ENABLED: "1"
+      PYROSCOPE_PROFILING_WALLTIME_ENABLED: "1"
+      CORECLR_ENABLE_PROFILING: "1"
+      CORECLR_PROFILER: "{BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}"
+      CORECLR_PROFILER_PATH: /dotnet/Pyroscope.Profiler.Native.so
+      LD_PRELOAD: /dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+      LD_LIBRARY_PATH: /dotnet
+      DOTNET_EnableDiagnostics: "1"
+      DOTNET_EnableDiagnostics_IPC: "0"
+      DOTNET_EnableDiagnostics_Debugger: "0"
+      DOTNET_EnableDiagnostics_Profiler: "1"
+      Database__InitializeOnStartup: "false"
+    depends_on:
+      database-migrator:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  consumer:
+    build:
+      context: .
+      dockerfile: src/BLVK.Pickly.Logistics.Consumer/Dockerfile
+      secrets:
+        - GITHUB_USERNAME
+        - GITHUB_PAT
+    environment:
+      GITHUB_USERNAME: ${GITHUB_USERNAME}
+      GITHUB_PAT: ${GITHUB_PAT}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgresWrite: ${DATABASE_URL:-}
+      ConnectionStrings__PostgresRead: ${DATABASE_URL_POOLED:-${DATABASE_URL:-}}
+      ConnectionStrings__Redis: ${REDIS_CONNECTION_STRING:-}
+      ObjectStorage__CloudflareR2__Endpoint: ${CLOUDFLARE_R2_ENDPOINT:-}
+      ObjectStorage__CloudflareR2__ApplicationFolder: ${CLOUDFLARE_R2_APPLICATION_FOLDER:-}
+      ObjectStorage__CloudflareR2__PublicBucketName: ${CLOUDFLARE_R2_PUBLIC_BUCKET_NAME:-}
+      ObjectStorage__CloudflareR2__PrivateBucketName: ${CLOUDFLARE_R2_PRIVATE_BUCKET_NAME:-}
+      ObjectStorage__CloudflareR2__AccessKeyId: ${CLOUDFLARE_R2_ACCESS_KEY_ID:-}
+      ObjectStorage__CloudflareR2__SecretAccessKey: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}
+      ObjectStorage__CloudflareR2__PublicBaseUrl: ${CLOUDFLARE_R2_PUBLIC_BASE_URL:-}
+      Messaging__RabbitMq__ServiceName: BLVK.Pickly.Logistics.Consumer
+      Messaging__RabbitMq__HostName: ${RABBITMQ_HOSTNAME:-}
+      Messaging__RabbitMq__Port: ${RABBITMQ_PORT:-5672}
+      Messaging__RabbitMq__UserName: ${RABBITMQ_USERNAME:-}
+      Messaging__RabbitMq__Password: ${RABBITMQ_PASSWORD:-}
+      Messaging__RabbitMq__VirtualHost: ${RABBITMQ_VIRTUAL_HOST:-/}
+      Messaging__RabbitMq__EventsExchange: x.events.blvkpicklylogistics
+      Messaging__RabbitMq__CommandsExchange: x.commands.blvkpicklylogistics
+      Notifications__Email__Mailtrap__ApiToken: ${MAILTRAP_TOKEN}
+      OpenTelemetry__ServiceName: BLVK.Pickly.Logistics.Consumer
+      OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      PYROSCOPE_APPLICATION_NAME: blvkpicklylogistics.consumer
+      PYROSCOPE_SERVER_ADDRESS: ${PYROSCOPE_SERVER_ADDRESS:-}
+      PYROSCOPE_BASIC_AUTH_USER: ${PYROSCOPE_BASIC_AUTH_USER:-}
+      PYROSCOPE_BASIC_AUTH_PASSWORD: ${PYROSCOPE_BASIC_AUTH_PASSWORD:-}
+      PYROSCOPE_PROFILING_ENABLED: "1"
+      PYROSCOPE_PROFILING_WALLTIME_ENABLED: "1"
+      CORECLR_ENABLE_PROFILING: "1"
+      CORECLR_PROFILER: "{BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}"
+      CORECLR_PROFILER_PATH: /dotnet/Pyroscope.Profiler.Native.so
+      LD_PRELOAD: /dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+      LD_LIBRARY_PATH: /dotnet
+      DOTNET_EnableDiagnostics: "1"
+      DOTNET_EnableDiagnostics_IPC: "0"
+      DOTNET_EnableDiagnostics_Debugger: "0"
+      DOTNET_EnableDiagnostics_Profiler: "1"
+    depends_on:
+      database-migrator:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  jobs:
+    build:
+      context: .
+      dockerfile: src/BLVK.Pickly.Logistics.Jobs/Dockerfile
+      secrets:
+        - GITHUB_USERNAME
+        - GITHUB_PAT
+    environment:
+      GITHUB_USERNAME: ${GITHUB_USERNAME}
+      GITHUB_PAT: ${GITHUB_PAT}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgresWrite: ${DATABASE_URL:-}
+      ConnectionStrings__PostgresRead: ${DATABASE_URL_POOLED:-${DATABASE_URL:-}}
+      ConnectionStrings__Redis: ${REDIS_CONNECTION_STRING:-}
+      ObjectStorage__CloudflareR2__Endpoint: ${CLOUDFLARE_R2_ENDPOINT:-}
+      ObjectStorage__CloudflareR2__ApplicationFolder: ${CLOUDFLARE_R2_APPLICATION_FOLDER:-}
+      ObjectStorage__CloudflareR2__PublicBucketName: ${CLOUDFLARE_R2_PUBLIC_BUCKET_NAME:-}
+      ObjectStorage__CloudflareR2__PrivateBucketName: ${CLOUDFLARE_R2_PRIVATE_BUCKET_NAME:-}
+      ObjectStorage__CloudflareR2__AccessKeyId: ${CLOUDFLARE_R2_ACCESS_KEY_ID:-}
+      ObjectStorage__CloudflareR2__SecretAccessKey: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}
+      ObjectStorage__CloudflareR2__PublicBaseUrl: ${CLOUDFLARE_R2_PUBLIC_BASE_URL:-}
+      Messaging__RabbitMq__ServiceName: BLVK.Pickly.Logistics.Jobs
+      Messaging__RabbitMq__HostName: ${RABBITMQ_HOSTNAME:-}
+      Messaging__RabbitMq__Port: ${RABBITMQ_PORT:-5672}
+      Messaging__RabbitMq__UserName: ${RABBITMQ_USERNAME:-}
+      Messaging__RabbitMq__Password: ${RABBITMQ_PASSWORD:-}
+      Messaging__RabbitMq__VirtualHost: ${RABBITMQ_VIRTUAL_HOST:-/}
+      Messaging__RabbitMq__EventsExchange: x.events.blvkpicklylogistics
+      Messaging__RabbitMq__CommandsExchange: x.commands.blvkpicklylogistics
+      OpenTelemetry__ServiceName: BLVK.Pickly.Logistics.Jobs
+      OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      PYROSCOPE_APPLICATION_NAME: blvkpicklylogistics.jobs
+      PYROSCOPE_SERVER_ADDRESS: ${PYROSCOPE_SERVER_ADDRESS:-}
+      PYROSCOPE_BASIC_AUTH_USER: ${PYROSCOPE_BASIC_AUTH_USER:-}
+      PYROSCOPE_BASIC_AUTH_PASSWORD: ${PYROSCOPE_BASIC_AUTH_PASSWORD:-}
+      PYROSCOPE_PROFILING_ENABLED: "1"
+      PYROSCOPE_PROFILING_WALLTIME_ENABLED: "1"
+      CORECLR_ENABLE_PROFILING: "1"
+      CORECLR_PROFILER: "{BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}"
+      CORECLR_PROFILER_PATH: /dotnet/Pyroscope.Profiler.Native.so
+      LD_PRELOAD: /dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+      LD_LIBRARY_PATH: /dotnet
+      DOTNET_EnableDiagnostics: "1"
+      DOTNET_EnableDiagnostics_IPC: "0"
+      DOTNET_EnableDiagnostics_Debugger: "0"
+      DOTNET_EnableDiagnostics_Profiler: "1"
+    depends_on:
+      database-migrator:
+        condition: service_healthy
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  postgres:
+    profiles: [local]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: BLVK.Pickly.LogisticsDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d BLVK.Pickly.LogisticsDb"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    profiles: [local]
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    profiles: [local]
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  rabbitscout:
+    profiles: [local]
+    image: ghcr.io/ralve-org/rabbitscout:latest
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 15672
+      RABBITMQ_PROTOCOL: http
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+
+  prometheus:
+    profiles: [local]
+    image: prom/prometheus:v3.4.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  tempo:
+    profiles: [local]
+    image: grafana/tempo:2.8.1
+    command:
+      - -config.file=/etc/tempo.yml
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo.yml:ro
+    ports:
+      - "3200:3200"
+
+  loki:
+    profiles: [local]
+    image: grafana/loki:3.5.0
+    command:
+      - -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./observability/loki/loki.yml:/etc/loki/loki.yml:ro
+    ports:
+      - "3100:3100"
+
+  pyroscope:
+    profiles: [local]
+    image: grafana/pyroscope:latest
+    ports:
+      - "4040:4040"
+
+  otel-collector:
+    profiles: [local]
+    image: otel/opentelemetry-collector-contrib:latest
+    command:
+      - --config=/etc/otel-collector/config.yml
+    environment:
+      OTEL_TAIL_SAMPLING_LATENCY_MS: ${OTEL_TAIL_SAMPLING_LATENCY_MS:-1000}
+      OTEL_TAIL_SAMPLING_PERCENTAGE: ${OTEL_TAIL_SAMPLING_PERCENTAGE:-10}
+    volumes:
+      - ./observability/otel-collector/otel-collector.yml:/etc/otel-collector/config.yml:ro
+    depends_on:
+      - tempo
+      - loki
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  grafana:
+    profiles: [local]
+    image: grafana/grafana:12.0.0
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+      - pyroscope
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_PLUGINS_PREINSTALL_SYNC: grafana-pyroscope-app
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+secrets:
+  GITHUB_USERNAME:
+    environment: GITHUB_USERNAME
+  GITHUB_PAT:
+    environment: GITHUB_PAT

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>BLVK.Pickly.Logistics.WebAPI</RootNamespace>
+    <UserSecretsId>2c18b738-fdf5-40e6-9c9e-2710444498a6</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Application\\BLVK.Pickly.Logistics.Application.csproj" />
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Infrastructure\\BLVK.Pickly.Logistics.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

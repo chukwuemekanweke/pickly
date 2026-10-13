@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <RootNamespace>BLVK.Pickly.Logistics.Jobs</RootNamespace>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Application\\BLVK.Pickly.Logistics.Application.csproj" />
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Domain\\BLVK.Pickly.Logistics.Domain.csproj" />
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Infrastructure\\BLVK.Pickly.Logistics.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

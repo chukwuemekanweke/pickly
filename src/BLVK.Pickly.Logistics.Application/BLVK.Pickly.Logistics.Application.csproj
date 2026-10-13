@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BLVK.Pickly.Logistics.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Contracts\\BLVK.Pickly.Logistics.Contracts.csproj" />
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Domain\\BLVK.Pickly.Logistics.Domain.csproj" />
+  </ItemGroup>
+</Project>

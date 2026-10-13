@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>BLVK.Pickly.Logistics.Consumer.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.Consumer\\BLVK.Pickly.Logistics.Consumer.csproj" />
+  </ItemGroup>
+</Project>

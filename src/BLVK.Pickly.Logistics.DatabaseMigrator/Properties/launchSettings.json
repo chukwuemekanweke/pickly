@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "BLVK.Pickly.Logistics.DatabaseMigrator": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

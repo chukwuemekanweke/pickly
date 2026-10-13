@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BLVK.Pickly.Logistics.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Humanizer.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\BLVK.Pickly.Logistics.Contracts\\BLVK.Pickly.Logistics.Contracts.csproj" />
+  </ItemGroup>
+</Project>

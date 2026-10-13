@@ -1,0 +1,27 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BLVK.Pickly.Logistics.Application/BLVK.Pickly.Logistics.Application.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.Consumer/BLVK.Pickly.Logistics.Consumer.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.Contracts/BLVK.Pickly.Logistics.Contracts.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.DatabaseMigrator/BLVK.Pickly.Logistics.DatabaseMigrator.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.Domain/BLVK.Pickly.Logistics.Domain.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.Infrastructure/BLVK.Pickly.Logistics.Infrastructure.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.Jobs/BLVK.Pickly.Logistics.Jobs.csproj" />
+    <Project Path="src/BLVK.Pickly.Logistics.WebAPI/BLVK.Pickly.Logistics.WebAPI.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/integration/">
+    <Project Path="tests/integration/BLVK.Pickly.Logistics.Consumer.IntegrationTests/BLVK.Pickly.Logistics.Consumer.IntegrationTests.csproj" />
+    <Project Path="tests/integration/BLVK.Pickly.Logistics.Jobs.IntegrationTests/BLVK.Pickly.Logistics.Jobs.IntegrationTests.csproj" />
+    <Project Path="tests/integration/BLVK.Pickly.Logistics.Observability.IntegrationTests/BLVK.Pickly.Logistics.Observability.IntegrationTests.csproj" />
+    <Project Path="tests/integration/BLVK.Pickly.Logistics.WebAPI.IntegrationTests/BLVK.Pickly.Logistics.WebAPI.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/unit/">
+    <Project Path="tests/unit/BLVK.Pickly.Logistics.Application.UnitTests/BLVK.Pickly.Logistics.Application.UnitTests.csproj" />
+    <Project Path="tests/unit/BLVK.Pickly.Logistics.Consumer.UnitTests/BLVK.Pickly.Logistics.Consumer.UnitTests.csproj" />
+    <Project Path="tests/unit/BLVK.Pickly.Logistics.Domain.UnitTests/BLVK.Pickly.Logistics.Domain.UnitTests.csproj" />
+    <Project Path="tests/unit/BLVK.Pickly.Logistics.Infrastructure.UnitTests/BLVK.Pickly.Logistics.Infrastructure.UnitTests.csproj" />
+    <Project Path="tests/unit/BLVK.Pickly.Logistics.Jobs.UnitTests/BLVK.Pickly.Logistics.Jobs.UnitTests.csproj" />
+    <Project Path="tests/unit/BLVK.Pickly.Logistics.WebAPI.UnitTests/BLVK.Pickly.Logistics.WebAPI.UnitTests.csproj" />
+  </Folder>
+</Solution>

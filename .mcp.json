@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "okf": {
+      "command": "okf",
+      "args": ["mcp", "-dir", ".okf/knowledge", "-repo", "."]
+    }
+  }
+}
