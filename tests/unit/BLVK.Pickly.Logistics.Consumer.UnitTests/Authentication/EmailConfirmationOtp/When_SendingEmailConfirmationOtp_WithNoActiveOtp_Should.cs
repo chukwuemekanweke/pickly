@@ -12,8 +12,10 @@ namespace BLVK.Pickly.Logistics.Consumer.UnitTests.Authentication.EmailConfirmat
 
 public sealed class When_SendingEmailConfirmationOtp_WithNoActiveOtp_Should
 {
-    [Fact]
-    public async Task GenerateAndQueueCode()
+    [Theory]
+    [InlineData(false, 6)]
+    [InlineData(true, 5)]
+    public async Task GenerateAndQueueCode(bool isMvp, int expectedLength)
     {
         var identityService = Substitute.For<IAuthenticationIdentityService>();
         var twoFactorOtpService = Substitute.For<ITwoFactorOtpService>();
@@ -40,15 +42,19 @@ public sealed class When_SendingEmailConfirmationOtp_WithNoActiveOtp_Should
                 user.Id,
                 OtpIntent.EmailConfirmation,
                 Arg.Any<CancellationToken>(),
-                6,
+                expectedLength,
                 false,
                 expiresAtUtc)
-            .Returns(new TwoFactorOtp("123456", expiresAtUtc));
+            .Returns(new TwoFactorOtp(new string('1', expectedLength), expiresAtUtc));
         identityService.FindByIdAsync(user.Id).Returns(user);
         messageContext.CorrelationId.Returns(Guid.CreateVersion7().ToString("N"));
         stakeholderRepository.GetByStakeholderIdAsync(stakeholderId, Arg.Any<CancellationToken>())
             .Returns(stakeholder);
-        var sender = new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, clock);
+        var sender = new EmailConfirmationOtpSender(
+            twoFactorOtpService,
+            commandSender,
+            ConsumerTestData.RegistrationPolicyProvider(isMvp),
+            clock);
         var unitOfWork = Substitute.For<IUnitOfWork>();
 
         await new SendEmailConfirmationOtpHandler(
@@ -75,7 +81,7 @@ public sealed class When_SendingEmailConfirmationOtp_WithNoActiveOtp_Should
             user.Id,
             OtpIntent.EmailConfirmation,
             Arg.Any<CancellationToken>(),
-            6,
+            expectedLength,
             false,
             expiresAtUtc);
         await commandSender.Received(1).SendAsync(

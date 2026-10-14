@@ -52,6 +52,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<StakeholderResolver>();
         services.AddScoped<RegistrationCountryValidator>();
+        services.AddScoped<RegistrationProfileResolver>();
         services.AddScoped<AuthenticationSessionIssuer>();
         services.AddScoped<PasswordCredentialVerifier>();
         services.AddScoped<TwoFactorActorResolver>();

@@ -46,7 +46,7 @@ public sealed class When_SendingEmailConfirmationOtp_WithConfirmedEmail_Should
             messageContext,
             identityService,
             stakeholderRepository,
-            new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, clock),
+            new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, ConsumerTestData.RegistrationPolicyProvider(), clock),
             Substitute.For<IUnitOfWork>(),
             clock,
             Substitute.For<ILogger<SendEmailConfirmationOtpHandler>>(),

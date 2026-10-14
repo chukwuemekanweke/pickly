@@ -55,7 +55,11 @@ public sealed class WhenHandlingUserCreated_Should
                 false,
                 expiresAtUtc)
             .Returns(otp);
-        var otpSender = new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, timeProvider);
+        var otpSender = new EmailConfirmationOtpSender(
+            twoFactorOtpService,
+            commandSender,
+            ConsumerTestData.RegistrationPolicyProvider(),
+            timeProvider);
 
         await new UserCreatedHandler(
             customTelemetryContext,

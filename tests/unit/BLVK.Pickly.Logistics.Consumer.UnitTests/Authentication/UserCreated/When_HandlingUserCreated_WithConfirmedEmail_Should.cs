@@ -46,7 +46,11 @@ public sealed class When_HandlingUserCreated_WithConfirmedEmail_Should
             messageContext,
             identityService,
             stakeholderRepository,
-            new EmailConfirmationOtpSender(twoFactorOtpService, Substitute.For<ICommandSender>(), clock),
+            new EmailConfirmationOtpSender(
+                twoFactorOtpService,
+                Substitute.For<ICommandSender>(),
+                ConsumerTestData.RegistrationPolicyProvider(),
+                clock),
             Substitute.For<IUnitOfWork>(),
             clock,
             Substitute.For<ILogger<UserCreatedHandler>>(),

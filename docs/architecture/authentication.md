@@ -2,6 +2,24 @@
 
 The backend uses ASP.NET Core Identity for users, passwords, lockout, email confirmation, external-login associations, authenticator-app TOTP, and recovery codes. Successful authentication creates an `AuthenticationSession`, then issues the normal JWT access token and rotating refresh token. Google authentication and MFA extend this lifecycle; neither creates a separate user or session model.
 
+## MVP registration policy
+
+`Microsoft.FeatureManagement` controls the shared `IsMVP` registration policy. Both WebAPI and Consumer must use the same flag value:
+
+```json
+{
+  "FeatureManagement": {
+    "IsMVP": true
+  }
+}
+```
+
+When enabled, password registration requires only email, password, and password confirmation; Google registration requires only its server-issued flow token. Missing first and last names receive separate GUID-based values prefixed with `pikly-`, and missing language uses `SupportedLanguages.Default`. The prefix is a convention for recognizing generated values, not proof that a value is synthetic; a user can legitimately choose the same prefix.
+
+MVP registration always resolves Nigeria from the existing country record with ISO short code `NG`, ignores a submitted country id, and does not apply the IP-geolocation mismatch restriction. Startup is not blocked when the record is absent, but an attempted MVP registration fails with a clear configuration exception. Standard mode preserves the required profile fields, submitted-country lookup, and IP-country validation.
+
+MVP email confirmation codes contain five numeric digits; standard codes contain six. The HTTP validator uses the active policy when no code exists and the cached OTP's actual length when a code is active. Consequently, a still-active five- or six-digit code remains verifiable after `IsMVP` changes. Expiry, five-attempt enforcement, successful consumption, resend behavior, and session issuance are unchanged.
+
 ## First factor and authenticated-session boundary
 
 Password or Google verification is only the first factor for an MFA-enabled user. After the existing account, tenant, lockout, and email-confirmation checks succeed, the backend returns `outcome: "two_factor_required"`, an opaque challenge, and its expiry. It does not create an `AuthenticationSession`, issue access or refresh tokens, or publish `UserSignInSuccessful` at that point. Users without MFA continue to receive `outcome: "authenticated"` and the normal token fields.
@@ -36,6 +54,8 @@ Continuation and terminal operations use the Redis-backed cache take-and-remove 
 ## Google registration and email authority
 
 `POST /api/v1/authentication/registrations/google` accepts the `registration_required` flow token plus the remaining profile fields. Email and Google `sub` always come from the server-side flow. Gmail/Googlemail identities and Workspace identities with an `hd` claim are treated as authoritative when `email_verified` is true, so registration confirms the email and returns a normal session immediately. A verified Google account backed by an external mailbox is not treated as authoritative: the account is created, the existing email-confirmation process continues, and the API returns `email_verification_required` without tokens. That 403 Problem Details response includes the backend-authoritative `email` and the email-confirmation expiry as `retryAtUtc`, allowing the confirmation screen to continue without asking for the address again.
+
+In MVP mode the additional Google profile fields are optional and use the same placeholder-name, Nigeria-country, and default-language resolution as password registration. Google token validation, email-authority decisions, account linking, and session creation remain unchanged.
 
 ## Configuration
 

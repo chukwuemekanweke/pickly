@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.FeatureManagement;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Authentication;
 
@@ -67,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.Configure<GoogleAuthenticationOptions>(configuration.GetSection(GoogleAuthenticationOptions.SectionName));
         services.Configure<TwoFactorAuthenticationOptions>(configuration.GetSection(TwoFactorAuthenticationOptions.SectionName));
         services.Configure<RefreshTokenOptions>(configuration.GetSection(RefreshTokenOptions.SectionName));
+        services.AddScopedFeatureManagement();
         services.AddSingleton<IUserAgentParserService, UserAgentParserService>();
         services.AddScoped<IIpAddressResolver, IpAddressResolver>();
         services.AddScoped<IAuthenticationSessionService, AuthenticationSessionService>();
@@ -79,6 +81,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITwoFactorChallengeService, TwoFactorChallengeService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<ITwoFactorOtpService, TwoFactorOtpService>();
+        services.AddScoped<IRegistrationPolicyProvider, RegistrationPolicyProvider>();
 
         return services;
     }

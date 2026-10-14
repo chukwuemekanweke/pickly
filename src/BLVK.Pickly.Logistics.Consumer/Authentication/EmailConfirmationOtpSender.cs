@@ -9,6 +9,7 @@ namespace BLVK.Pickly.Logistics.Consumer.Authentication;
 public sealed class EmailConfirmationOtpSender(
     ITwoFactorOtpService twoFactorOtpService,
     ICommandSender commandSender,
+    IRegistrationPolicyProvider registrationPolicyProvider,
     TimeProvider timeProvider)
 {
     public async Task<EmailConfirmationOtpSendStatus> SendAsync(
@@ -30,11 +31,12 @@ public sealed class EmailConfirmationOtpSender(
             return EmailConfirmationOtpSendStatus.InsufficientLifetime;
         }
 
+        var registrationPolicy = await registrationPolicyProvider.GetAsync();
         var otp = await twoFactorOtpService.GenerateOtpAsync(
             stakeholder.AppUserId,
             OtpIntent.EmailConfirmation,
             cancellationToken,
-            characterLength: 6,
+            characterLength: registrationPolicy.EmailConfirmationOtpLength,
             isAlphaNumeric: false,
             expiresAtUtc: expiresAtUtc);
 

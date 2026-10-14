@@ -4,10 +4,10 @@ using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 
 public sealed record GoogleSignUpCommand(
     string FlowToken,
-    Guid CountryId,
-    string FirstName,
-    string LastName,
+    Guid? CountryId,
+    string? FirstName,
+    string? LastName,
     string IpAddress,
     ActorContext ActorContext,
-    string Language,
+    string? Language,
     string UserAgent = "");
