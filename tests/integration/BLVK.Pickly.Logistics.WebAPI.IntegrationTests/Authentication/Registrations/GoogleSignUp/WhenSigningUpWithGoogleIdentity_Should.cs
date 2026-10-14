@@ -2,9 +2,11 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.GoogleSignUp;
 using BLVK.Pickly.Logistics.Contracts.Events;
 using BLVK.Pickly.Logistics.Domain.Authentication.Persistence;
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
+using BLVK.Pickly.Logistics.Domain.Common.Localization;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.ReferenceData.Entities;
+using BLVK.Pickly.Logistics.Domain.ReferenceData.Specifications;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using BLVK.Pickly.Logistics.WebAPI.Features.Authentication.GoogleFlows;
 using BLVK.Pickly.Logistics.WebAPI.Features.Authentication.Registrations;
@@ -74,11 +76,7 @@ public sealed class WhenSigningUpWithGoogleIdentity_Should(ContainersFixture fix
                 new GoogleSignInRequest(_flowToken, _idToken));
             continuationResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-            _request = new GoogleSignUpRequest(
-                _flowToken,
-                _countryId,
-                WebApiIntegrationTestData.FirstName(),
-                WebApiIntegrationTestData.LastName());
+            _request = new GoogleSignUpRequest(_flowToken);
 
             await Task.CompletedTask;
         }
@@ -101,12 +99,20 @@ public sealed class WhenSigningUpWithGoogleIdentity_Should(ContainersFixture fix
             using var scope = CreateScope();
             var userRepository = scope.ServiceProvider.GetRequiredService<IAppUserRepository>();
             var outboxRepository = scope.ServiceProvider.GetRequiredService<IRepository<OutboxMessage>>();
+            var stakeholderRepository = scope.ServiceProvider.GetRequiredService<IRepository<Stakeholder>>();
             var user = await userRepository.GetByEmailAsync(_email);
             var outboxMessages = await outboxRepository.ListAsync(new UserCreatedOutboxMessagesSpecification());
 
             user.ShouldNotBeNull();
             user.EmailConfirmed.ShouldBeTrue();
             outboxMessages.Count.ShouldBe(1);
+            var stakeholders = await stakeholderRepository.ListAsync(
+                new StakeholderByAppUserIdCleanupSpecification(user.Id));
+            stakeholders.Count.ShouldBe(1);
+            stakeholders[0].CountryId.ShouldBe(_countryId);
+            stakeholders[0].FirstName.ShouldStartWith("pikly-");
+            stakeholders[0].LastName.ShouldStartWith("pikly-");
+            stakeholders[0].Language.ShouldBe(SupportedLanguages.Default);
         }
     }
 
@@ -173,14 +179,14 @@ public sealed class WhenSigningUpWithGoogleIdentity_Should(ContainersFixture fix
         var countryReadRepository = scope.ServiceProvider.GetRequiredService<IReadRepository<Country>>();
         var countryWriteRepository = scope.ServiceProvider.GetRequiredService<IRepository<Country>>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var countries = await countryReadRepository.ListAsync(new FirstCountrySpecification());
-        if (countries.Count > 0)
+        var country = await countryReadRepository.FirstOrDefaultAsync(
+            new CountryByShortCodeSpecification("NG"));
+        if (country is not null)
         {
-            return countries[0].Id;
+            return country.Id;
         }
 
-        var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
-        var country = Country.Create("Default Country", "DF", "+0", "https://example.com/flag.svg");
+        country = Country.Create("Nigeria", "NG", "+234", "https://example.com/ng.svg");
         await countryWriteRepository.AddAsync(country);
         await unitOfWork.SaveChangesAsync();
         _createdCountryForTest = true;
@@ -207,14 +213,6 @@ public sealed class WhenSigningUpWithGoogleIdentity_Should(ContainersFixture fix
             Where(message =>
                 message.Kind == OutboxMessageKind.Event &&
                 message.Type == typeof(UserCreated).FullName!);
-        }
-    }
-
-    private sealed class FirstCountrySpecification : Specification<Country>
-    {
-        public FirstCountrySpecification()
-        {
-            ApplyPaging(0, 1);
         }
     }
 

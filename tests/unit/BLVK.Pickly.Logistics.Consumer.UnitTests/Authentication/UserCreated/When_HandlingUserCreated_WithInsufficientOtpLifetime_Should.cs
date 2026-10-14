@@ -49,7 +49,7 @@ public sealed class When_HandlingUserCreated_WithInsufficientOtpLifetime_Should
             messageContext,
             identityService,
             stakeholderRepository,
-            new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, clock),
+            new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, ConsumerTestData.RegistrationPolicyProvider(), clock),
             Substitute.For<IUnitOfWork>(),
             clock,
             Substitute.For<ILogger<UserCreatedHandler>>(),

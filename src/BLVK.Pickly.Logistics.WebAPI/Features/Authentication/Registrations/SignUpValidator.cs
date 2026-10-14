@@ -1,3 +1,4 @@
+using BLVK.Pickly.Logistics.Domain.Common.Authentication;
 using BLVK.Pickly.Logistics.Domain.Common.Localization;
 using FluentValidation;
 
@@ -5,7 +6,7 @@ namespace BLVK.Pickly.Logistics.WebAPI.Features.Authentication.Registrations;
 
 public sealed class SignUpValidator : AbstractValidator<SignUpRequest>
 {
-    public SignUpValidator()
+    public SignUpValidator(IRegistrationPolicyProvider registrationPolicyProvider)
     {
         RuleFor(request => request.Email)
             .NotEmpty()
@@ -24,19 +25,31 @@ public sealed class SignUpValidator : AbstractValidator<SignUpRequest>
             .Equal(request => request.Password)
             .WithMessage("Password and ConfirmPassword must match.");
 
-        RuleFor(request => request.CountryId)
-            .NotEmpty();
-
         RuleFor(request => request.FirstName)
-            .NotEmpty()
             .MaximumLength(100);
 
         RuleFor(request => request.LastName)
-            .NotEmpty()
             .MaximumLength(100);
 
         RuleFor(request => request.Language)
-            .Must(SupportedLanguages.IsSupported)
+            .Must(language => string.IsNullOrWhiteSpace(language) || SupportedLanguages.IsSupported(language.Trim()))
             .WithMessage("Language is not supported.");
+
+        WhenAsync(
+            async (_, _) => (await registrationPolicyProvider.GetAsync()).RequireProfileDetails,
+            () =>
+            {
+                RuleFor(request => request.CountryId)
+                    .NotEmpty();
+
+                RuleFor(request => request.FirstName)
+                    .NotEmpty();
+
+                RuleFor(request => request.LastName)
+                    .NotEmpty();
+
+                RuleFor(request => request.Language)
+                    .NotEmpty();
+            });
     }
 }

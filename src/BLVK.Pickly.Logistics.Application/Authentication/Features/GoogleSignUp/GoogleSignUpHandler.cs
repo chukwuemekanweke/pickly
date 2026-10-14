@@ -18,7 +18,7 @@ public sealed class GoogleSignUpHandler(
     IEventPublisher eventPublisher,
     IRepository<StakeholderType> stakeholderTypeRepository,
     IRepository<Stakeholder> stakeholderRepository,
-    RegistrationCountryValidator registrationCountryValidator,
+    RegistrationProfileResolver registrationProfileResolver,
     ICustomTelemetryContext customTelemetryContext,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
@@ -47,11 +47,14 @@ public sealed class GoogleSignUpHandler(
             return new GoogleSignUpResult(GoogleSignUpStatus.GoogleFlowInvalid);
         }
 
-        var countryValidation = await registrationCountryValidator.ValidateAsync(
+        var profileResolution = await registrationProfileResolver.ResolveAsync(
+            request.FirstName,
+            request.LastName,
             request.CountryId,
+            request.Language,
             request.IpAddress,
             cancellationToken);
-        if (countryValidation == RegistrationCountryValidationResult.CountryNotFound)
+        if (profileResolution.Status == RegistrationProfileResolutionStatus.ValidationFailed)
         {
             await googleAuthenticationFlowService.RestoreAsync(flow, cancellationToken);
             customTelemetryContext.SetProperty(Observability.PropertyNames.Common.FailureReason, ObservabilityFailureReasons.ValidationFailed);
@@ -60,13 +63,10 @@ public sealed class GoogleSignUpHandler(
                 ObservabilityEventProperties.Create(request.ActorContext, failureReason: ObservabilityFailureReasons.ValidationFailed));
             return new GoogleSignUpResult(
                 GoogleSignUpStatus.ValidationFailed,
-                ValidationErrors: new Dictionary<string, string[]>
-                {
-                    [nameof(GoogleSignUpCommand.CountryId)] = ["The selected country is invalid."]
-                });
+                ValidationErrors: profileResolution.ValidationErrors);
         }
 
-        if (countryValidation == RegistrationCountryValidationResult.Mismatch)
+        if (profileResolution.Status == RegistrationProfileResolutionStatus.CountryMismatch)
         {
             await googleAuthenticationFlowService.RestoreAsync(flow, cancellationToken);
             customTelemetryContext.SetProperty(Observability.PropertyNames.Common.FailureReason, ObservabilityFailureReasons.CountryMismatch);
@@ -75,6 +75,9 @@ public sealed class GoogleSignUpHandler(
                 ObservabilityEventProperties.Create(request.ActorContext, failureReason: ObservabilityFailureReasons.CountryMismatch));
             return new GoogleSignUpResult(GoogleSignUpStatus.CountryMismatch);
         }
+
+        var profile = profileResolution.Profile
+            ?? throw new InvalidOperationException("A successful registration profile resolution must return a profile.");
 
         if (await identityService.FindByEmailAsync(flow.Email) is not null)
         {
@@ -159,7 +162,14 @@ public sealed class GoogleSignUpHandler(
                 $"Stakeholder type '{StakeholderDefaults.TypeKey}' is not configured for tenant '{tenantId}'.");
         }
 
-        var stakeholder = Stakeholder.Create(user.Id, tenantId, request.CountryId, stakeholderType.Id, request.FirstName, request.LastName, request.Language);
+        var stakeholder = Stakeholder.Create(
+            user.Id,
+            tenantId,
+            profile.CountryId,
+            stakeholderType.Id,
+            profile.FirstName,
+            profile.LastName,
+            profile.Language);
         await stakeholderRepository.AddAsync(stakeholder);
 
         await eventPublisher.PublishAsync(new UserCreated

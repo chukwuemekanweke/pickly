@@ -16,7 +16,7 @@ public sealed class SignUpHandler(
     IEventPublisher eventPublisher,
     IRepository<StakeholderType> stakeholderTypeRepository,
     IRepository<Stakeholder> stakeholderRepository,
-    RegistrationCountryValidator registrationCountryValidator,
+    RegistrationProfileResolver registrationProfileResolver,
     ICustomTelemetryContext customTelemetryContext,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
@@ -29,11 +29,14 @@ public sealed class SignUpHandler(
             Observability.EventNames.Authentication.PasswordSignUpStarted,
             ObservabilityEventProperties.Create(request.ActorContext));
 
-        var countryValidation = await registrationCountryValidator.ValidateAsync(
+        var profileResolution = await registrationProfileResolver.ResolveAsync(
+            request.FirstName,
+            request.LastName,
             request.CountryId,
+            request.Language,
             request.IpAddress,
             cancellationToken);
-        if (countryValidation == RegistrationCountryValidationResult.CountryNotFound)
+        if (profileResolution.Status == RegistrationProfileResolutionStatus.ValidationFailed)
         {
             customTelemetryContext.SetProperty(Observability.PropertyNames.Common.FailureReason, ObservabilityFailureReasons.ValidationFailed);
             customTelemetryContext.AddCustomEvent(
@@ -41,13 +44,10 @@ public sealed class SignUpHandler(
                 ObservabilityEventProperties.Create(request.ActorContext, failureReason: ObservabilityFailureReasons.ValidationFailed));
             return new SignUpResult(
                 SignUpStatus.ValidationFailed,
-                new Dictionary<string, string[]>
-                {
-                    [nameof(SignUpCommand.CountryId)] = ["The selected country is invalid."]
-                });
+                profileResolution.ValidationErrors);
         }
 
-        if (countryValidation == RegistrationCountryValidationResult.Mismatch)
+        if (profileResolution.Status == RegistrationProfileResolutionStatus.CountryMismatch)
         {
             customTelemetryContext.SetProperty(Observability.PropertyNames.Common.FailureReason, ObservabilityFailureReasons.CountryMismatch);
             customTelemetryContext.AddCustomEvent(
@@ -55,6 +55,9 @@ public sealed class SignUpHandler(
                 ObservabilityEventProperties.Create(request.ActorContext, failureReason: ObservabilityFailureReasons.CountryMismatch));
             return new SignUpResult(SignUpStatus.CountryMismatch);
         }
+
+        var profile = profileResolution.Profile
+            ?? throw new InvalidOperationException("A successful registration profile resolution must return a profile.");
 
         if (await identityService.FindByEmailAsync(request.Email) is not null)
         {
@@ -99,7 +102,14 @@ public sealed class SignUpHandler(
                 $"Stakeholder type '{StakeholderDefaults.TypeKey}' is not configured for tenant '{tenantId}'.");
         }
 
-        var stakeholder = Stakeholder.Create(user.Id, tenantId, request.CountryId, stakeholderType.Id, request.FirstName, request.LastName, request.Language);
+        var stakeholder = Stakeholder.Create(
+            user.Id,
+            tenantId,
+            profile.CountryId,
+            stakeholderType.Id,
+            profile.FirstName,
+            profile.LastName,
+            profile.Language);
         await stakeholderRepository.AddAsync(stakeholder);
 
         await eventPublisher.PublishAsync(new UserCreated

@@ -2,9 +2,11 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.SignUp;
 using BLVK.Pickly.Logistics.Contracts.Events;
 using BLVK.Pickly.Logistics.Domain.Authentication.Persistence;
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
+using BLVK.Pickly.Logistics.Domain.Common.Localization;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.ReferenceData.Entities;
+using BLVK.Pickly.Logistics.Domain.ReferenceData.Specifications;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using BLVK.Pickly.Logistics.WebAPI.Features.Authentication.Registrations;
 using BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Infrastructure;
@@ -58,11 +60,7 @@ public sealed class WhenSigningUp_Should(ContainersFixture fixture)
             _request = new SignUpRequest(
                 _email,
                 Password,
-                Password,
-                _countryId,
-                WebApiIntegrationTestData.FirstName(),
-                WebApiIntegrationTestData.LastName(),
-                "fr");
+                Password);
         }
 
         async Task WhenSigningUp()
@@ -97,7 +95,10 @@ public sealed class WhenSigningUp_Should(ContainersFixture fixture)
             var stakeholderRepository = scope.ServiceProvider.GetRequiredService<IRepository<Stakeholder>>();
             var stakeholder = await stakeholderRepository.GetByIdAsync(userCreated.StakeholderId!.Value);
             stakeholder.ShouldNotBeNull();
-            stakeholder.Language.ShouldBe("fr");
+            stakeholder.CountryId.ShouldBe(_countryId);
+            stakeholder.FirstName.ShouldStartWith("pikly-");
+            stakeholder.LastName.ShouldStartWith("pikly-");
+            stakeholder.Language.ShouldBe(SupportedLanguages.Default);
         }
     }
 
@@ -164,14 +165,14 @@ public sealed class WhenSigningUp_Should(ContainersFixture fixture)
         var countryReadRepository = scope.ServiceProvider.GetRequiredService<IReadRepository<Country>>();
         var countryWriteRepository = scope.ServiceProvider.GetRequiredService<IRepository<Country>>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var countries = await countryReadRepository.ListAsync(new FirstCountrySpecification());
-        if (countries.Count > 0)
+        var country = await countryReadRepository.FirstOrDefaultAsync(
+            new CountryByShortCodeSpecification("NG"));
+        if (country is not null)
         {
-            return countries[0].Id;
+            return country.Id;
         }
 
-        var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
-        var country = Country.Create("Default Country", "DF", "+0", "https://example.com/flag.svg");
+        country = Country.Create("Nigeria", "NG", "+234", "https://example.com/ng.svg");
         await countryWriteRepository.AddAsync(country);
         await unitOfWork.SaveChangesAsync();
         _createdCountryForTest = true;
@@ -198,14 +199,6 @@ public sealed class WhenSigningUp_Should(ContainersFixture fixture)
             Where(message =>
                 message.Kind == OutboxMessageKind.Event &&
                 message.Type == typeof(UserCreated).FullName!);
-        }
-    }
-
-    private sealed class FirstCountrySpecification : Specification<Country>
-    {
-        public FirstCountrySpecification()
-        {
-            ApplyPaging(0, 1);
         }
     }
 

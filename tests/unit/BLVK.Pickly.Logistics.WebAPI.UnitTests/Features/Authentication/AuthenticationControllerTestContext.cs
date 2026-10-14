@@ -52,6 +52,7 @@ internal sealed class AuthenticationControllerTestContext
     public IEventPublisher EventPublisher { get; } = Substitute.For<IEventPublisher>();
     public ICommandSender CommandSender { get; } = Substitute.For<ICommandSender>();
     public ICustomTelemetryContext CustomTelemetryContext { get; } = Substitute.For<ICustomTelemetryContext>();
+    public IRegistrationPolicyProvider RegistrationPolicyProvider { get; } = Substitute.For<IRegistrationPolicyProvider>();
     public ICurrentActor CurrentActor { get; } = Substitute.For<ICurrentActor>();
     public IIpGeolocationService IpGeolocationService { get; } = Substitute.For<IIpGeolocationService>();
     public IRepository<Country> CountryRepository { get; } = Substitute.For<IRepository<Country>>();
@@ -62,6 +63,8 @@ internal sealed class AuthenticationControllerTestContext
     public IUnitOfWorkTransaction Transaction { get; } = Substitute.For<IUnitOfWorkTransaction>();
     public StakeholderResolver StakeholderResolver => new(StakeholderRepository);
     public RegistrationCountryValidator RegistrationCountryValidator => new(CountryRepository, IpGeolocationService);
+    public RegistrationProfileResolver RegistrationProfileResolver =>
+        new(RegistrationPolicyProvider, CountryRepository, RegistrationCountryValidator);
     public AuthenticationSessionIssuer SessionIssuer => new(AccessTokenService, RefreshTokenService, SessionService);
     public PasswordCredentialVerifier PasswordCredentialVerifier => new(IdentityService);
 
@@ -81,6 +84,9 @@ internal sealed class AuthenticationControllerTestContext
         IdentityService.ResetAccessFailedCountAsync(Arg.Any<AppUser>()).Returns(IdentityResult.Success);
         CountryRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Country.Create("Nigeria", "NG", "+234", "https://example.com/ng.svg"));
+        CountryRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Country>>(), Arg.Any<CancellationToken>())
+            .Returns(Country.Create("Nigeria", "NG", "+234", "https://example.com/ng.svg"));
+        RegistrationPolicyProvider.GetAsync().Returns(RegistrationPolicy.Create(isMvp: false));
     }
 
     public SignUpHandler CreateSignUpHandler() => new(
@@ -88,7 +94,7 @@ internal sealed class AuthenticationControllerTestContext
         EventPublisher,
         StakeholderTypeRepository,
         StakeholderRepository,
-        RegistrationCountryValidator,
+        RegistrationProfileResolver,
         CustomTelemetryContext,
         UnitOfWork,
         Clock);
@@ -102,7 +108,7 @@ internal sealed class AuthenticationControllerTestContext
         EventPublisher,
         StakeholderTypeRepository,
         StakeholderRepository,
-        RegistrationCountryValidator,
+        RegistrationProfileResolver,
         CustomTelemetryContext,
         UnitOfWork,
         Clock);

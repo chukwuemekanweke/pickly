@@ -125,3 +125,18 @@ filters it before ordering and cursor pagination.
 - Sign-up, email confirmation, and access-token refresh publish `Contracts` events (`UserCreated`, `UserEmailConfirmed`, `UserAccessTokenRefreshed`, `UserSignInSuccessful`, `UserSignInFailed`) through
   the outbox — see [[async-processing]]. `Consumer` handlers react to these (e.g. IP-location enrichment, welcome email).
 - Follows the standard [[vertical-slices]] feature-folder shape and the [[unit-testing]]/[[integration-testing]] conventions.
+
+## Feature-flagged MVP registration
+
+`Microsoft.FeatureManagement` exposes the scoped `IsMVP` policy to both WebAPI registration flows
+and the Consumer email-OTP sender. `RegistrationProfileResolver` is the shared application boundary
+for password and Google registration. MVP mode allows missing profile fields, generates separate
+`pikly-` GUID-based names, uses `SupportedLanguages.Default`, resolves Nigeria through the persisted
+`Country.ShortCode == "NG"` record, and skips the normal IP-country mismatch check. Standard mode
+retains required profile fields and existing country validation.
+
+Email confirmation generation uses five numeric digits in MVP mode and six in standard mode.
+Verification compares against the cached issued code. The HTTP validator uses the current policy when
+no code is active and the cached code's actual length when one exists, so an active code survives a
+feature-flag change without weakening expiry, attempt, consumption, or resend controls. No
+registration schema or domain-invariant changes are required.

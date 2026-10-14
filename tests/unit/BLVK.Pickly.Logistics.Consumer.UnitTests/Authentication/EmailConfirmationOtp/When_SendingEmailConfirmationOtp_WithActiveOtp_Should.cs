@@ -44,7 +44,11 @@ public sealed class When_SendingEmailConfirmationOtp_WithActiveOtp_Should
             .Returns(true);
         messageContext.CorrelationId.Returns(Guid.CreateVersion7().ToString("N"));
         var clock = TimeProvider.System;
-        var sender = new EmailConfirmationOtpSender(twoFactorOtpService, commandSender, clock);
+        var sender = new EmailConfirmationOtpSender(
+            twoFactorOtpService,
+            commandSender,
+            ConsumerTestData.RegistrationPolicyProvider(),
+            clock);
 
         await new SendEmailConfirmationOtpHandler(
             customTelemetryContext,

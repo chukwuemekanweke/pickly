@@ -46,6 +46,7 @@ internal sealed class AuthenticationFlowTestContext
     public IEventPublisher EventPublisher { get; } = Substitute.For<IEventPublisher>();
     public ICommandSender CommandSender { get; } = Substitute.For<ICommandSender>();
     public ICustomTelemetryContext CustomTelemetryContext { get; } = Substitute.For<ICustomTelemetryContext>();
+    public IRegistrationPolicyProvider RegistrationPolicyProvider { get; } = Substitute.For<IRegistrationPolicyProvider>();
     public IIpGeolocationService IpGeolocationService { get; } = Substitute.For<IIpGeolocationService>();
     public IRepository<Country> CountryRepository { get; } = Substitute.For<IRepository<Country>>();
     public IStakeholderReadModelRepository StakeholderReadModelRepository { get; } = Substitute.For<IStakeholderReadModelRepository>();
@@ -53,6 +54,8 @@ internal sealed class AuthenticationFlowTestContext
     public IRepository<Stakeholder> StakeholderRepository { get; } = Substitute.For<IRepository<Stakeholder>>();
     public StakeholderResolver StakeholderResolver => new(StakeholderRepository);
     public RegistrationCountryValidator RegistrationCountryValidator => new(CountryRepository, IpGeolocationService);
+    public RegistrationProfileResolver RegistrationProfileResolver =>
+        new(RegistrationPolicyProvider, CountryRepository, RegistrationCountryValidator);
     public AuthenticationSessionIssuer SessionIssuer => new(AccessTokenService, RefreshTokenService, SessionService);
     public PasswordCredentialVerifier PasswordCredentialVerifier => new(IdentityService);
     public IUnitOfWork UnitOfWork { get; } = Substitute.For<IUnitOfWork>();
@@ -74,6 +77,9 @@ internal sealed class AuthenticationFlowTestContext
         IdentityService.ResetAccessFailedCountAsync(Arg.Any<AppUser>()).Returns(IdentityResult.Success);
         CountryRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Country.Create("Nigeria", "NG", "+234", "https://example.com/ng.svg"));
+        CountryRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Country>>(), Arg.Any<CancellationToken>())
+            .Returns(Country.Create("Nigeria", "NG", "+234", "https://example.com/ng.svg"));
+        RegistrationPolicyProvider.GetAsync().Returns(RegistrationPolicy.Create(isMvp: false));
     }
 
     public SignUpHandler CreateSignUpHandler() => new(
@@ -81,7 +87,7 @@ internal sealed class AuthenticationFlowTestContext
         EventPublisher,
         StakeholderTypeRepository,
         StakeholderRepository,
-        RegistrationCountryValidator,
+        RegistrationProfileResolver,
         CustomTelemetryContext,
         UnitOfWork,
         Clock);
@@ -95,7 +101,7 @@ internal sealed class AuthenticationFlowTestContext
             EventPublisher,
             StakeholderTypeRepository,
             StakeholderRepository,
-            RegistrationCountryValidator,
+            RegistrationProfileResolver,
             CustomTelemetryContext,
             UnitOfWork,
             Clock);

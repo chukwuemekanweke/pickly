@@ -6,9 +6,9 @@ public sealed record SignUpCommand(
     string Email,
     string Password,
     string ConfirmPassword,
-    Guid CountryId,
-    string FirstName,
-    string LastName,
+    Guid? CountryId,
+    string? FirstName,
+    string? LastName,
     string IpAddress,
     ActorContext ActorContext,
-    string Language);
+    string? Language);
