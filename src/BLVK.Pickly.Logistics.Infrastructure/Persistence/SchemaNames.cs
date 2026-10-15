@@ -9,4 +9,5 @@ public static class SchemaNames
     public const string Notifications = "notifications";
     public const string Integration = "integration";
     public const string Payments = "payments";
+    public const string Deliveries = "deliveries";
 }

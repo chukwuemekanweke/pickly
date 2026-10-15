@@ -1,0 +1,72 @@
+using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
+using BLVK.Pickly.Logistics.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Shouldly;
+
+namespace BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries;
+
+[Collection(nameof(ContainersCollection))]
+public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fixture)
+    : DeliveryPersistenceIntegrationTestBase(fixture)
+{
+    [Fact]
+    public async Task RehydrateCompleteAggregateAndAuditFields()
+    {
+        var trackingId = $"PKY-{Guid.NewGuid():N}";
+        var (persisted, currencyId) = await PersistDeliveryAsync(trackingId);
+
+        using var scope = CreateScope();
+        var readRepository = scope.ServiceProvider.GetRequiredService<IReadRepository<Delivery>>();
+        var rehydrated = await readRepository.FirstOrDefaultAsync(new DeliveryByTrackingIdSpecification(trackingId));
+
+        rehydrated.ShouldNotBeNull();
+        rehydrated.Id.ShouldBe(persisted.Id);
+        rehydrated.Status.ShouldBe(DeliveryStatus.PendingAssignment);
+        rehydrated.Items.Count.ShouldBe(2);
+        rehydrated.StatusHistory.Count.ShouldBe(2);
+        rehydrated.PickupAddress.AddressLine.ShouldBe("1 Persistence Road");
+        rehydrated.DropOffAddress.AddressLine.ShouldBe("2 Rehydration Road");
+        rehydrated.Recipient.PhoneNumber.ShouldBe("+2348012345678");
+        rehydrated.Charge.Amount.ShouldBe(1234.56m);
+        rehydrated.Charge.CurrencyId.ShouldBe(currencyId);
+        rehydrated.ScheduledPickupAtUtc.ShouldBe(Now.AddHours(3));
+        rehydrated.CreatedAtUtc.ShouldNotBe(default);
+        rehydrated.Items.ShouldAllBe(item => item.CreatedAtUtc != default);
+        rehydrated.StatusHistory.ShouldAllBe(history => history.CreatedAtUtc != default);
+    }
+
+    [Fact]
+    public async Task EnforceUniqueTrackingIdInPostgres()
+    {
+        var trackingId = $"PKY-{Guid.NewGuid():N}";
+        var (persisted, _) = await PersistDeliveryAsync(trackingId);
+
+        using var scope = CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IRepository<Delivery>>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        await repository.AddAsync(CreateDuplicate(persisted));
+
+        await Should.ThrowAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
+    }
+
+    [Fact]
+    public void ConfigureExpectedSchemaIndexesAndRelationships()
+    {
+        using var scope = CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var deliveryType = dbContext.Model.FindEntityType(typeof(Delivery));
+
+        deliveryType.ShouldNotBeNull();
+        deliveryType.GetSchema().ShouldBe("deliveries");
+        deliveryType.GetTableName().ShouldBe("Deliveries");
+        deliveryType.GetIndexes().ShouldContain(index =>
+            index.IsUnique && index.Properties.Single().Name == nameof(Delivery.TrackingId));
+        deliveryType.GetIndexes().ShouldContain(index =>
+            index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { nameof(Delivery.TenantId), nameof(Delivery.SenderId), nameof(Delivery.CreatedAtUtc) }));
+    }
+}
