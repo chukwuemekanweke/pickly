@@ -25,6 +25,13 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.StartGoogleAuthe
 using BLVK.Pickly.Logistics.Application.Authentication.Features.VerifyTwoFactorEnrollment;
 using BLVK.Pickly.Logistics.Application.Authentication.Stakeholders;
 using BLVK.Pickly.Logistics.Application.Common.FileUploads;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.DeletePickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDefaultPickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetPickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.ListPickupLocations;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.SetDefaultPickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.UpdatePickupLocation;
 using BLVK.Pickly.Logistics.Application.Notifications.Features.ProcessMailtrapDeliveryWebhook;
 using BLVK.Pickly.Logistics.Application.Payments.Features.ActivatePaymentProvider;
 using BLVK.Pickly.Logistics.Application.Payments.Features.GetStakeholderWalletTopUpTransactionDetail;
@@ -101,6 +108,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ProcessSafeHavenVirtualAccountTransferWebhookHandler>();
         services.AddScoped<ProcessCredoWebhookHandler>();
         services.AddScoped<PaymentReconciliationService>();
+        services.AddScoped<CreatePickupLocationHandler>();
+        services.AddScoped<ListPickupLocationsHandler>();
+        services.AddScoped<GetDefaultPickupLocationHandler>();
+        services.AddScoped<GetPickupLocationHandler>();
+        services.AddScoped<UpdatePickupLocationHandler>();
+        services.AddScoped<SetDefaultPickupLocationHandler>();
+        services.AddScoped<DeletePickupLocationHandler>();
 
         return services;
     }

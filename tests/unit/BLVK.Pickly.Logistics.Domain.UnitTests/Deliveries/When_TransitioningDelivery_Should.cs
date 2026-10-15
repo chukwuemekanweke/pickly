@@ -97,17 +97,14 @@ public sealed class When_TransitioningDelivery_Should
     [Fact]
     public void KeepTrackingAndOwnershipStableAcrossTransitions()
     {
-        var tenantId = Guid.CreateVersion7();
         var senderId = Guid.CreateVersion7();
         var delivery = DeliveryTestFactory.Create(
             orderType: DeliveryOrderType.PayOnDelivery,
-            tenantId: tenantId,
             senderId: senderId);
 
         delivery.AssignRider(Guid.CreateVersion7(), DeliveryTestFactory.Now, "matching", "rider_matching");
 
         delivery.TrackingId.ShouldBe("PKY-2026-0001");
-        delivery.TenantId.ShouldBe(tenantId);
         delivery.SenderId.ShouldBe(senderId);
     }
 

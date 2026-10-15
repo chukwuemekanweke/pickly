@@ -23,7 +23,7 @@ public sealed class When_ConfiguringDeliveryPersistence_Should
             index.IsUnique && index.Properties.Single().Name == nameof(Delivery.TrackingId));
         deliveryType.GetIndexes().ShouldContain(index =>
             index.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(Delivery.TenantId), nameof(Delivery.SenderId), nameof(Delivery.CreatedAtUtc) }));
+                .SequenceEqual(new[] { nameof(Delivery.SenderId), nameof(Delivery.CreatedAtUtc) }));
         deliveryType.FindNavigation(nameof(Delivery.Items)).ShouldNotBeNull();
         deliveryType.FindNavigation(nameof(Delivery.StatusHistory)).ShouldNotBeNull();
         deliveryType.FindNavigation(nameof(Delivery.PickupAddress)).ShouldNotBeNull();

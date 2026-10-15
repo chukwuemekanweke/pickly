@@ -1,3 +1,6 @@
 namespace BLVK.Pickly.Logistics.Application.Common.Pagination;
 
-public sealed record CursorPaginationPayload(DateTimeOffset CreatedAtUtc, Guid EntityId);
+public sealed record CursorPaginationPayload(
+    DateTimeOffset CreatedAtUtc,
+    Guid EntityId,
+    string? Scope = null);

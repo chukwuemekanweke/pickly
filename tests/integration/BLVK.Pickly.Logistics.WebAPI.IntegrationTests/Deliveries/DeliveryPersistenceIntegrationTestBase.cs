@@ -54,7 +54,6 @@ public abstract class DeliveryPersistenceIntegrationTestBase(ContainersFixture f
         await unitOfWork.SaveChangesAsync();
 
         var delivery = Delivery.Create(
-            tenant.Id,
             sender.Id,
             trackingId,
             DeliveryType.Scheduled,
@@ -80,7 +79,6 @@ public abstract class DeliveryPersistenceIntegrationTestBase(ContainersFixture f
 
     protected static Delivery CreateDuplicate(Delivery source) =>
         Delivery.Create(
-            source.TenantId,
             source.SenderId,
             source.TrackingId,
             DeliveryType.Instant,

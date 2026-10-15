@@ -14,7 +14,6 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
         builder.ToTable("Deliveries", SchemaNames.Deliveries);
         builder.HasKey(delivery => delivery.Id);
 
-        builder.Property(delivery => delivery.TenantId).IsRequired();
         builder.Property(delivery => delivery.SenderId).IsRequired();
         builder.Property(delivery => delivery.TrackingId).HasMaxLength(40).IsRequired();
         builder.Property(delivery => delivery.DeliveryType).HasConversion<int>().IsRequired();
@@ -32,15 +31,10 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
         builder.HasIndex(delivery => delivery.ProofOfDeliveryId)
             .IsUnique()
             .HasFilter("\"ProofOfDeliveryId\" IS NOT NULL");
-        builder.HasIndex(delivery => new { delivery.TenantId, delivery.SenderId, delivery.CreatedAtUtc })
+        builder.HasIndex(delivery => new { delivery.SenderId, delivery.CreatedAtUtc })
             .HasFilter("\"IsDeleted\" = FALSE");
         builder.HasIndex(delivery => new { delivery.Status, delivery.DispatchEligibleAtUtc })
             .HasFilter("\"IsDeleted\" = FALSE");
-
-        builder.HasOne<Tenant>()
-            .WithMany()
-            .HasForeignKey(delivery => delivery.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne<Stakeholder>()
             .WithMany()
