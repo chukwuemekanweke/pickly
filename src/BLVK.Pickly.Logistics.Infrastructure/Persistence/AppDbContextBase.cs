@@ -3,6 +3,7 @@ using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.FileUploads.Entities;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
+using BLVK.Pickly.Logistics.Domain.Locations.Entities;
 using BLVK.Pickly.Logistics.Domain.Notifications.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Providers.Entities;
@@ -49,10 +50,15 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<DeliveryItem> DeliveryItems => Set<DeliveryItem>();
     public DbSet<DeliveryStatusHistory> DeliveryStatusHistory => Set<DeliveryStatusHistory>();
     public DbSet<SavedPickupLocation> SavedPickupLocations => Set<SavedPickupLocation>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<LocationProviderReference> LocationProviderReferences => Set<LocationProviderReference>();
+    public DbSet<LocationResolutionKey> LocationResolutionKeys => Set<LocationResolutionKey>();
+    public DbSet<LocationResolutionLeaseRecord> LocationResolutionLeases => Set<LocationResolutionLeaseRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasPostgresExtension("postgis");
 
         modelBuilder.Entity<IdentityRole<Guid>>().ToTable("Roles", SchemaNames.Authentication);
         modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims", SchemaNames.Authentication);

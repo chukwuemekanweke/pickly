@@ -26,7 +26,7 @@ public sealed class SetDefaultPickupLocationHandler(
         var target = await repository.FirstOrDefaultAsync(
             new SavedPickupLocationByOwnerAndIdSpecification(
                 senderId.Value,
-                command.LocationId,
+                command.PickupLocationId,
                 enableTracking: true),
             cancellationToken);
 

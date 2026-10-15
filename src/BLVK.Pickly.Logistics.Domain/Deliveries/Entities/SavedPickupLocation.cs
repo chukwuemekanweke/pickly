@@ -1,12 +1,16 @@
 using BLVK.Pickly.Logistics.Domain.Common.Entities;
 using BLVK.Pickly.Logistics.Domain.Common.Exceptions;
-using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 
 namespace BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 
+/// <summary>
+/// A sender-owned association with a shared registry location. The canonical address and coordinates live only on
+/// the referenced location; this record holds sender-private metadata (label, directions, default flag).
+/// </summary>
 public sealed class SavedPickupLocation : Entity, IAggregateRoot
 {
     public const int MaxLabelLength = 100;
+    public const int MaxAdditionalDirectionsLength = 500;
 
     private SavedPickupLocation()
     {
@@ -15,41 +19,47 @@ public sealed class SavedPickupLocation : Entity, IAggregateRoot
     private SavedPickupLocation(
         Guid senderId,
         string label,
-        DeliveryAddress address,
+        Guid locationId,
+        string? additionalDirections,
         bool isDefault)
     {
         SenderId = senderId;
         Label = label;
-        Address = address;
+        LocationId = locationId;
+        AdditionalDirections = NormalizeAdditionalDirections(additionalDirections);
         IsDefault = isDefault;
     }
 
     public Guid SenderId { get; private set; }
+    public Guid LocationId { get; private set; }
     public string Label { get; private set; } = string.Empty;
-    public DeliveryAddress Address { get; private set; } = null!;
+    public string? AdditionalDirections { get; private set; }
     public bool IsDefault { get; private set; }
 
     public static SavedPickupLocation Create(
         Guid senderId,
         string label,
-        DeliveryAddress address,
+        Guid locationId,
+        string? additionalDirections,
         bool isDefault = false)
     {
         EnsureRequiredId(senderId, nameof(senderId));
-        ArgumentNullException.ThrowIfNull(address);
+        EnsureRequiredId(locationId, nameof(locationId));
 
         return new SavedPickupLocation(
             senderId,
             NormalizeLabel(label),
-            address,
+            locationId,
+            additionalDirections,
             isDefault);
     }
 
-    public void Update(string label, DeliveryAddress address)
+    public void Update(string label, Guid locationId, string? additionalDirections)
     {
-        ArgumentNullException.ThrowIfNull(address);
+        EnsureRequiredId(locationId, nameof(locationId));
         Label = NormalizeLabel(label);
-        Address = address;
+        LocationId = locationId;
+        AdditionalDirections = NormalizeAdditionalDirections(additionalDirections);
     }
 
     public void SetAsDefault()
@@ -77,6 +87,24 @@ public sealed class SavedPickupLocation : Entity, IAggregateRoot
             throw new ArgumentException(
                 $"Pickup location label must not exceed {MaxLabelLength} characters.",
                 nameof(label));
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeAdditionalDirections(string? additionalDirections)
+    {
+        var normalized = additionalDirections?.Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return null;
+        }
+
+        if (normalized.Length > MaxAdditionalDirectionsLength)
+        {
+            throw new ArgumentException(
+                $"Additional directions must not exceed {MaxAdditionalDirectionsLength} characters.",
+                nameof(additionalDirections));
         }
 
         return normalized;

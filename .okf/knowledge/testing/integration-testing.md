@@ -39,6 +39,14 @@ endpoint/handler/background-service covering the most meaningful end-to-end path
 
 ## Current conventions
 
+- Container fixtures use `postgis/postgis:16-3.5-alpine` so migrations can enable PostGIS.
+- `CustomWebApplicationFactory` replaces `ILocationGeocodingProvider` with `FakeLocationGeocodingProvider`; with no
+  responder configured any geocoding call fails, so scenarios prove that flows such as pickup creation never geocode.
+  Never call live paid providers from tests.
+- `IntegrationSenderSeeder` creates and removes verified sender stakeholders for scenarios that need several senders.
+- Location scenarios tag provider feature ids and address text with a per-run token so registry search, unique
+  provider references and resolution keys never collide with other test classes sharing the container.
+
 - Testcontainers back integration dependencies; shared container setup lives in the project fixture, per-test data setup/cleanup lives in the test class.
 - WebAPI auth integration tests delete the authentication records for the email used by the scenario.
 - Consumer and Jobs integration tests currently validate health endpoints and don't create application records, so cleanup there is normally limited to response/host disposal.

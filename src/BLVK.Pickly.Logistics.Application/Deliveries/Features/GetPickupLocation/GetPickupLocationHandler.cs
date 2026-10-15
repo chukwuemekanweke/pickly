@@ -14,7 +14,7 @@ public sealed class GetPickupLocationHandler(ISavedPickupLocationReadModelReposi
             return new GetPickupLocationResult(GetPickupLocationStatus.NotAuthenticated);
         }
 
-        var location = await repository.GetByIdAsync(senderId.Value, query.LocationId, cancellationToken);
+        var location = await repository.GetByIdAsync(senderId.Value, query.PickupLocationId, cancellationToken);
         return location is null
             ? new GetPickupLocationResult(GetPickupLocationStatus.NotFound)
             : new GetPickupLocationResult(

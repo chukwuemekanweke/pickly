@@ -11,7 +11,9 @@ public sealed class When_ConfiguringDeliveryPersistence_Should
     public void ExposeExpectedSchemaIndexesOwnedValuesAndRelationships()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql("Host=localhost;Database=model_test;Username=postgres;Password=postgres")
+            .UseNpgsql(
+                "Host=localhost;Database=model_test;Username=postgres;Password=postgres",
+                npgsql => npgsql.UseNetTopologySuite())
             .Options;
         using var dbContext = new AppDbContext(options);
         var deliveryType = dbContext.Model.FindEntityType(typeof(Delivery));

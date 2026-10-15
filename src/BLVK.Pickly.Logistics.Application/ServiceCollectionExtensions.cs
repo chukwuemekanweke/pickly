@@ -32,6 +32,12 @@ using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetPickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.ListPickupLocations;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.SetDefaultPickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.UpdatePickupLocation;
+using BLVK.Pickly.Logistics.Application.Locations;
+using BLVK.Pickly.Logistics.Application.Locations.Features.GetLocation;
+using BLVK.Pickly.Logistics.Application.Locations.Features.GetNearbyLocations;
+using BLVK.Pickly.Logistics.Application.Locations.Features.ResolveLocation;
+using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
+using BLVK.Pickly.Logistics.Application.Locations.Features.SelectLocationCandidate;
 using BLVK.Pickly.Logistics.Application.Notifications.Features.ProcessMailtrapDeliveryWebhook;
 using BLVK.Pickly.Logistics.Application.Payments.Features.ActivatePaymentProvider;
 using BLVK.Pickly.Logistics.Application.Payments.Features.GetStakeholderWalletTopUpTransactionDetail;
@@ -115,6 +121,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UpdatePickupLocationHandler>();
         services.AddScoped<SetDefaultPickupLocationHandler>();
         services.AddScoped<DeletePickupLocationHandler>();
+        services.AddScoped<LocationCandidateRegistrar>();
+        services.AddScoped<LocationRegistryMatcher>();
+        services.AddScoped<ProviderLocationResolver>();
+        services.AddScoped<ResolveLocationTelemetry>();
+        services.AddScoped<SearchLocationsHandler>();
+        services.AddScoped<ResolveLocationHandler>();
+        services.AddScoped<SelectLocationCandidateHandler>();
+        services.AddScoped<GetLocationHandler>();
+        services.AddScoped<GetNearbyLocationsHandler>();
 
         return services;
     }

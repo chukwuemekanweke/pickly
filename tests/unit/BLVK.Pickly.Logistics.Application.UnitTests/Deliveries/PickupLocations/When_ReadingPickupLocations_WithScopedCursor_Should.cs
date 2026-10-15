@@ -1,14 +1,13 @@
-using BLVK.Pickly.Logistics.Application.Common.Pagination;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDefaultPickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetPickupLocation;
-using BLVK.Pickly.Logistics.Application.Deliveries.Features.ListPickupLocations;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
+using BLVK.Pickly.Logistics.Domain.Locations.Enums;
 using Shouldly;
 
 namespace BLVK.Pickly.Logistics.Application.UnitTests.Deliveries.PickupLocations;
 
-public sealed class When_ReadingPickupLocations_WithScopedCursor_Should
+public sealed partial class When_ReadingPickupLocations_WithScopedCursor_Should
 {
     [Fact]
     public async Task ReturnOwnedLocationAndDefault()
@@ -30,57 +29,27 @@ public sealed class When_ReadingPickupLocations_WithScopedCursor_Should
 
         byId.Status.ShouldBe(GetPickupLocationStatus.Success);
         byId.Location!.Id.ShouldBe(location.Id);
+        byId.Location.LocationId.ShouldBe(location.LocationId);
+        byId.Location.AdditionalDirections.ShouldBe("Near the gate");
+        byId.Location.Address.DisplayAddress.ShouldBe("36 Garden Avenue, Enugu");
+        byId.Location.Address.Latitude.ShouldBe(6.4474m);
         defaultResult.Status.ShouldBe(GetDefaultPickupLocationStatus.Success);
-    }
-
-    [Fact]
-    public async Task ReturnStableCursorPage()
-    {
-        var repository = Substitute.For<ISavedPickupLocationReadModelRepository>();
-        var tenantId = Guid.CreateVersion7();
-        var senderId = Guid.CreateVersion7();
-        var location = Location();
-        SavedPickupLocationsCursorRequest? captured = null;
-        repository.ListAsync(
-                Arg.Do<SavedPickupLocationsCursorRequest>(request => captured = request),
-                Arg.Any<CancellationToken>())
-            .Returns(new SavedPickupLocationsCursorPage([location], true));
-
-        var result = await new ListPickupLocationsHandler(repository).HandleAsync(
-            new ListPickupLocationsQuery(
-                1,
-                null,
-                new ActorContext(senderId, tenantId, "correlation", "flow")),
-            CancellationToken.None);
-
-        captured.ShouldNotBeNull();
-        captured.SenderId.ShouldBe(senderId);
-        captured.Limit.ShouldBe(1);
-        result.HasMore.ShouldBeTrue();
-        result.NextCursor.ShouldNotBeNull();
-        CursorPagination.Decode(result.NextCursor, "pickup-locations-v1").EntityId.ShouldBe(location.Id);
-    }
-
-    [Fact]
-    public void RejectCursorFromAnotherEndpoint()
-    {
-        var cursor = CursorPagination.Encode(DateTimeOffset.UtcNow, Guid.CreateVersion7());
-
-        Should.Throw<InvalidOperationException>(() =>
-            CursorPagination.Decode(cursor, "pickup-locations-v1"));
     }
 
     private static SavedPickupLocationReadModel Location() =>
         new(
             Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             "Home",
+            "Near the gate",
+            true,
+            DateTimeOffset.UtcNow,
+            "36 Garden Avenue, Enugu",
             "36 Garden Avenue",
-            null,
             "Enugu",
             "Enugu",
             "NG",
+            LocationType.Address,
             6.4474m,
-            7.5139m,
-            true,
-            DateTimeOffset.UtcNow);
+            7.5139m);
 }

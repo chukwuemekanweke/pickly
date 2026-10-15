@@ -1,39 +1,48 @@
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
+using BLVK.Pickly.Logistics.Domain.Locations.Entities;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries;
 
 public sealed record PickupLocationResponse(
     Guid Id,
+    Guid LocationId,
     string Label,
-    PickupLocationAddress Address,
-    bool IsDefault)
+    string? AdditionalDirections,
+    bool IsDefault,
+    PickupLocationAddress Address)
 {
-    public static PickupLocationResponse FromEntity(SavedPickupLocation location) =>
+    public static PickupLocationResponse FromEntities(SavedPickupLocation savedLocation, Location location) =>
         new(
+            savedLocation.Id,
             location.Id,
-            location.Label,
+            savedLocation.Label,
+            savedLocation.AdditionalDirections,
+            savedLocation.IsDefault,
             new PickupLocationAddress(
+                location.Address.DisplayAddress,
                 location.Address.AddressLine,
-                location.Address.AdditionalInformation,
                 location.Address.City,
                 location.Address.State,
                 location.Address.CountryCode,
-                location.Address.Latitude,
-                location.Address.Longitude),
-            location.IsDefault);
+                location.LocationType,
+                location.Coordinates.Latitude,
+                location.Coordinates.Longitude));
 
-    public static PickupLocationResponse FromReadModel(SavedPickupLocationReadModel location) =>
+    public static PickupLocationResponse FromReadModel(SavedPickupLocationReadModel savedLocation) =>
         new(
-            location.Id,
-            location.Label,
+            savedLocation.Id,
+            savedLocation.LocationId,
+            savedLocation.Label,
+            savedLocation.AdditionalDirections,
+            savedLocation.IsDefault,
             new PickupLocationAddress(
-                location.AddressLine,
-                location.AdditionalInformation,
-                location.City,
-                location.State,
-                location.CountryCode,
-                location.Latitude,
-                location.Longitude),
-            location.IsDefault);
+                savedLocation.DisplayAddress,
+                savedLocation.AddressLine,
+                savedLocation.City,
+                savedLocation.State,
+                savedLocation.CountryCode,
+                savedLocation.LocationType,
+                savedLocation.Latitude,
+                savedLocation.Longitude));
 }

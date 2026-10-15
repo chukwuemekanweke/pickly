@@ -1,4 +1,3 @@
-using BLVK.Pickly.Logistics.Application.Deliveries;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.DeletePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.SetDefaultPickupLocation;
@@ -6,28 +5,41 @@ using BLVK.Pickly.Logistics.Application.Deliveries.Features.UpdatePickupLocation
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
+using BLVK.Pickly.Logistics.Domain.Locations.Entities;
+using BLVK.Pickly.Logistics.Domain.Locations.Enums;
+using BLVK.Pickly.Logistics.Domain.Locations.ValueObjects;
 
 namespace BLVK.Pickly.Logistics.Application.UnitTests.Deliveries.PickupLocations;
 
 internal sealed class PickupLocationHandlerTestContext
 {
+    private readonly Dictionary<Guid, Location> _sharedLocations = [];
+
     public PickupLocationHandlerTestContext()
     {
         Repository = new InMemoryRepository();
         UnitOfWork = new InMemoryUnitOfWork();
         ConsistencyLock = Substitute.For<IPickupLocationConsistencyLock>();
+        SharedLocations = Substitute.For<IRepository<Location>>();
+        SharedLocations.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => _sharedLocations.GetValueOrDefault(callInfo.ArgAt<Guid>(0)));
+        HomeLocation = AddSharedLocation("36 Garden Avenue");
+        OfficeLocation = AddSharedLocation("Suite C9, Elim Plaza");
     }
 
     public InMemoryRepository Repository { get; }
     public InMemoryUnitOfWork UnitOfWork { get; }
     public IPickupLocationConsistencyLock ConsistencyLock { get; }
+    public IRepository<Location> SharedLocations { get; }
+    public Location HomeLocation { get; }
+    public Location OfficeLocation { get; }
 
     public Guid TenantId { get; } = Guid.CreateVersion7();
     public Guid SenderId { get; } = Guid.CreateVersion7();
     public ActorContext Actor => new(SenderId, TenantId, "correlation", "flow");
 
     public CreatePickupLocationHandler CreateHandler() =>
-        new(Repository, ConsistencyLock, UnitOfWork);
+        new(Repository, SharedLocations, ConsistencyLock, UnitOfWork);
 
     public SetDefaultPickupLocationHandler SetDefaultHandler() =>
         new(Repository, ConsistencyLock, UnitOfWork);
@@ -35,10 +47,29 @@ internal sealed class PickupLocationHandlerTestContext
     public DeletePickupLocationHandler DeleteHandler() =>
         new(Repository, ConsistencyLock, UnitOfWork, TimeProvider.System);
 
-    public UpdatePickupLocationHandler UpdateHandler() => new(Repository, UnitOfWork);
+    public UpdatePickupLocationHandler UpdateHandler() => new(Repository, SharedLocations, UnitOfWork);
 
-    public static PickupLocationAddress Address(string line = "36 Garden Avenue") =>
-        new(line, "Near the gate", "Enugu", "Enugu", "NG", 6.4474m, 7.5139m);
+    public CreatePickupLocationCommand CreateCommand(
+        string label,
+        bool isDefault = false,
+        Location? location = null,
+        string? additionalDirections = "Near the gate") =>
+        new((location ?? HomeLocation).Id, label, additionalDirections, isDefault, Actor);
+
+    public Location AddSharedLocation(string line)
+    {
+        var location = Location.RegisterProviderResolved(
+            LocationAddress.Create(line, "Enugu", "Enugu", "NG"),
+            GeographicCoordinates.Create(6.4474m, 7.5139m),
+            LocationVisibility.Private,
+            LocationResolutionSource.Mapbox,
+            "mapbox",
+            $"feature-{Guid.CreateVersion7():N}",
+            "address",
+            DateTimeOffset.UtcNow);
+        _sharedLocations[location.Id] = location;
+        return location;
+    }
 
     internal sealed class InMemoryUnitOfWork : IUnitOfWork
     {

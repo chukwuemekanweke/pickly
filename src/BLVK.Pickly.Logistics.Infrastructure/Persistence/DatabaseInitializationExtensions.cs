@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -21,7 +22,12 @@ public static class DatabaseInitializationExtensions
         var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitialization");
 
-        await EnsureDatabaseExistsAsync(database.Database.GetConnectionString(), cancellationToken);
+        // Read the configured connection string rather than DbContext.GetConnectionString(): with Npgsql plugins such
+        // as NetTopologySuite, EF builds a data source whose reported connection string omits the password.
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        await EnsureDatabaseExistsAsync(
+            ServiceCollectionExtensions.GetRequiredConnectionString(configuration, "PostgresWrite"),
+            cancellationToken);
         await RunScriptsAsync(database, contentRootPath, "PreDeploy", logger, cancellationToken);
         await database.Database.MigrateAsync(cancellationToken);
         await RunScriptsAsync(database, contentRootPath, "PostDeploy", logger, cancellationToken);

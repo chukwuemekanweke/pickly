@@ -1,5 +1,5 @@
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
-using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
+using BLVK.Pickly.Logistics.Domain.Locations.Entities;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -14,10 +14,13 @@ public sealed class SavedPickupLocationConfiguration : IEntityTypeConfiguration<
         builder.HasKey(location => location.Id);
 
         builder.Property(location => location.SenderId).IsRequired();
+        builder.Property(location => location.LocationId).IsRequired();
         builder.Property(location => location.Label)
             .HasMaxLength(SavedPickupLocation.MaxLabelLength)
             .IsRequired();
         builder.Property(location => location.IsDefault).IsRequired();
+        builder.Property(location => location.AdditionalDirections)
+            .HasMaxLength(SavedPickupLocation.MaxAdditionalDirectionsLength);
 
         builder.HasIndex(location => new { location.SenderId, location.CreatedAtUtc, location.Id })
             .HasFilter("\"IsDeleted\" = FALSE");
@@ -30,38 +33,10 @@ public sealed class SavedPickupLocationConfiguration : IEntityTypeConfiguration<
             .HasForeignKey(location => location.SenderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.OwnsOne(location => location.Address, ConfigureAddress);
-    }
-
-    private static void ConfigureAddress(OwnedNavigationBuilder<SavedPickupLocation, DeliveryAddress> owned)
-    {
-        owned.Property(address => address.AddressLine)
-            .HasColumnName("AddressLine")
-            .HasMaxLength(300)
-            .IsRequired();
-        owned.Property(address => address.AdditionalInformation)
-            .HasColumnName("AdditionalInformation")
-            .HasMaxLength(500);
-        owned.Property(address => address.City)
-            .HasColumnName("City")
-            .HasMaxLength(100)
-            .IsRequired();
-        owned.Property(address => address.State)
-            .HasColumnName("State")
-            .HasMaxLength(100)
-            .IsRequired();
-        owned.Property(address => address.CountryCode)
-            .HasColumnName("CountryCode")
-            .HasMaxLength(2)
-            .IsFixedLength()
-            .IsRequired();
-        owned.Property(address => address.Latitude)
-            .HasColumnName("Latitude")
-            .HasPrecision(9, 6)
-            .IsRequired();
-        owned.Property(address => address.Longitude)
-            .HasColumnName("Longitude")
-            .HasPrecision(9, 6)
-            .IsRequired();
+        builder.HasIndex(location => location.LocationId);
+        builder.HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(location => location.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

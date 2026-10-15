@@ -28,6 +28,13 @@ status: stable
   Grafana/Loki/Tempo/Prometheus/OTel Collector stack used for [[observability]] tail sampling) for offline development.
 - `docker-compose.env.example.sh` documents required credentials/URLs without committing real secrets.
 
+## Database image and location provider settings
+
+- Local and Testcontainers PostgreSQL use `postgis/postgis:16-3.5-alpine` because migrations require the PostGIS
+  extension; cloud databases must have PostGIS available (see [[locations]]).
+- Mapbox is configured through `MAPBOX_ACCESS_TOKEN` and `MAPBOX_PERMANENT_STORAGE_ENABLED` (placeholders in
+  `docker-compose.env.example.sh`); leave the flag `false` unless the account permits permanent geocoding storage.
+
 ## Constraint
 
 - Do not commit real credentials, connection strings, or API keys into `docker-compose.yml`, `docker-compose.local.yml`, or any checked-in env file — only placeholders, with real values supplied via

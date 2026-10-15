@@ -17,6 +17,7 @@ code_refs:
     - src/BLVK.Pickly.Logistics.WebAPI/Infrastructure/GlobalExceptionHandler.cs
     - src/BLVK.Pickly.Logistics.Consumer/BaseMessageHandler.cs
     - src/BLVK.Pickly.Logistics.Infrastructure/Messaging/RabbitMqOutboxMessageDispatcher.cs
+    - src/BLVK.Pickly.Logistics.Infrastructure/Locations/GeocodingAttemptTelemetryHandler.cs
     - observability/otel-collector/**
 sources:
     - kind: file
@@ -41,6 +42,15 @@ only when `StakeholderId` is genuinely unavailable. See [[dotnet-style]].
 - For tail sampling to have something to key off, code paths that own an `Activity` and encounter a failure must mark it `ActivityStatusCode.Error` and record the exception — see
   `GlobalExceptionHandler` (WebAPI), `RabbitMqOutboxMessageDispatcher`, and `BaseMessageHandler` (Consumer) for the existing pattern. Any new top-level error boundary (a new global exception handler, a
   new base message-handler type) should follow the same pattern.
+
+## Domain events and metrics
+
+- Location resolution emits `Observability.EventNames.Locations.*` custom events (registry hit/miss, geocoding
+  requested/failed, ambiguous, failed, registered/reused, duplicate-resolution prevented) via `ICustomTelemetryContext`.
+- Infrastructure meters use `Observability.MeterName`, which `AddBackendTelemetry` registers (e.g.
+  `pickly.locations.geocoding.requests` / `.duration`). Geocoding request metrics are recorded by an HTTP handler
+  inside the retry policy, so they count every actual provider attempt, including retries, rather than one logical
+  resolution operation. Metric tags must stay low-cardinality — never addresses, tokens or user identifiers.
 
 ## Constraint
 

@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         telemetry.WithMetrics(metrics =>
         {
             metrics
+                .AddMeter(Domain.Common.Observability.Observability.MeterName)
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()

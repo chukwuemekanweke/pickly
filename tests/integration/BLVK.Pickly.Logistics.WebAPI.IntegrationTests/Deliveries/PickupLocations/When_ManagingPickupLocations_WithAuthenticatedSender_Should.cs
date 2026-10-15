@@ -2,16 +2,14 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.SignIn;
 using BLVK.Pickly.Logistics.Application.Deliveries;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.SetDefaultPickupLocation;
-using BLVK.Pickly.Logistics.Application.Deliveries.Features.UpdatePickupLocation;
 using BLVK.Pickly.Logistics.Domain.Authentication.Entities;
 using BLVK.Pickly.Logistics.Domain.Authentication.Persistence;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
-using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
-using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
-using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Locations.Entities;
+using BLVK.Pickly.Logistics.Domain.Locations.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.ReferenceData.Entities;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
@@ -28,7 +26,7 @@ using System.Net.Http.Json;
 namespace BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries.PickupLocations;
 
 [Collection(nameof(ContainersCollection))]
-public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(ContainersFixture fixture)
+public sealed partial class When_ManagingPickupLocations_WithAuthenticatedSender_Should(ContainersFixture fixture)
     : WebApiIntegrationTestBase(fixture), IAsyncLifetime
 {
     private const string Password = "P@ssw0rd123!";
@@ -38,8 +36,11 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
     private Guid _stakeholderTypeId;
     private Guid _countryId;
     private bool _createdCountry;
-    private Guid? _deliveryId;
-    private Guid? _currencyId;
+    private Guid? _deliveryId = null;
+    private Guid? _currencyId = null;
+    private Location _home = default!;
+    private Location _office = default!;
+    private Location _headquarters = default!;
 
     public async Task InitializeAsync()
     {
@@ -48,6 +49,7 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
         Client.DefaultRequestHeaders.Add("X-Tenant-Id", _tenantId.ToString());
         await CreateVerifiedSenderAsync();
         await AuthenticateAsync();
+        await SeedSharedLocationsAsync();
     }
 
     public async Task DisposeAsync()
@@ -67,21 +69,31 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
 
         using var invalidResponse = await Client.PostAsJsonAsync(
             EndpointUrl.PickupLocations.V1,
-            Request("", "Invalid", latitude: 91m));
+            new CreatePickupLocationRequest(Guid.Empty, ""));
         invalidResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        using var unknownLocationResponse = await Client.PostAsJsonAsync(
+            EndpointUrl.PickupLocations.V1,
+            new CreatePickupLocationRequest(Guid.CreateVersion7(), "Ghost"));
+        unknownLocationResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
         using var firstCreateResponse = await Client.PostAsJsonAsync(
             EndpointUrl.PickupLocations.V1,
-            Request("Home", "36 Garden Avenue"));
+            new CreatePickupLocationRequest(_home.Id, "Home", "Call when you arrive at the entrance"));
         firstCreateResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
         firstCreateResponse.Headers.Location.ShouldNotBeNull();
         var first = await firstCreateResponse.Content.ReadFromJsonAsync<PickupLocationResponse>();
         first.ShouldNotBeNull();
         first.IsDefault.ShouldBeTrue();
+        first.LocationId.ShouldBe(_home.Id);
+        first.AdditionalDirections.ShouldBe("Call when you arrive at the entrance");
+        first.Address.DisplayAddress.ShouldBe(_home.Address.DisplayAddress);
+        first.Address.Latitude.ShouldBe(_home.Coordinates.Latitude);
+        first.Address.Longitude.ShouldBe(_home.Coordinates.Longitude);
 
         using var secondCreateResponse = await Client.PostAsJsonAsync(
             EndpointUrl.PickupLocations.V1,
-            Request("Office", "Suite C9, Elim Plaza"));
+            new CreatePickupLocationRequest(_office.Id, "Office"));
         secondCreateResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
         var second = await secondCreateResponse.Content.ReadFromJsonAsync<PickupLocationResponse>();
         second.ShouldNotBeNull();
@@ -112,7 +124,7 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
 
         using var updateResponse = await Client.PutAsJsonAsync(
             EndpointUrl.PickupLocations.ByIdV1(second.Id),
-            new UpdatePickupLocationRequest("HQ", Address("24 Independence Layout")));
+            new UpdatePickupLocationRequest(_headquarters.Id, "HQ", "Use the side entrance"));
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         using var setDefaultResponse = await Client.PutAsync(
@@ -124,6 +136,9 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
         var updatedDefault = await updatedDefaultResponse.Content.ReadFromJsonAsync<PickupLocationResponse>();
         updatedDefault!.Id.ShouldBe(second.Id);
         updatedDefault.Label.ShouldBe("HQ");
+        updatedDefault.LocationId.ShouldBe(_headquarters.Id);
+        updatedDefault.AdditionalDirections.ShouldBe("Use the side entrance");
+        updatedDefault.Address.AddressLine.ShouldBe(_headquarters.Address.AddressLine);
 
         using var deleteDefaultResponse = await Client.DeleteAsync(EndpointUrl.PickupLocations.ByIdV1(second.Id));
         deleteDefaultResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -140,120 +155,25 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
 
         using var deletedResponse = await Client.GetAsync(EndpointUrl.PickupLocations.ByIdV1(first.Id));
         deletedResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        LocationGeocodingProvider.CallCount.ShouldBe(0);
     }
 
-    [Fact]
-    public async Task SerializeConcurrentDefaultChanges()
-    {
-        var creations = await Task.WhenAll(
-            CreateThroughHandlerAsync("Home", false),
-            CreateThroughHandlerAsync("Office", false));
-
-        using (var scope = CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var persisted = await dbContext.SavedPickupLocations
-                .Where(location => location.SenderId == _stakeholderId)
-                .ToListAsync();
-            persisted.Count.ShouldBe(2);
-            persisted.Count(location => location.IsDefault).ShouldBe(1);
-
-            var entityType = dbContext.Model.FindEntityType(typeof(SavedPickupLocation));
-            entityType.ShouldNotBeNull();
-            entityType.GetIndexes().ShouldContain(index =>
-                index.IsUnique &&
-                index.GetFilter() == "\"IsDefault\" = TRUE AND \"IsDeleted\" = FALSE");
-        }
-
-        await Task.WhenAll(
-            SetDefaultThroughHandlerAsync(creations[0].Location!.Id),
-            SetDefaultThroughHandlerAsync(creations[1].Location!.Id));
-
-        using var verificationScope = CreateScope();
-        var verificationContext = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var defaults = await verificationContext.SavedPickupLocations
-            .CountAsync(location => location.SenderId == _stakeholderId && location.IsDefault);
-        defaults.ShouldBe(1);
-    }
-
-    [Fact]
-    public async Task EnforceUniqueDefaultIndexInPostgres()
+    private async Task SeedSharedLocationsAsync()
     {
         using var scope = CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        dbContext.SavedPickupLocations.AddRange(
-            SavedPickupLocation.Create(_stakeholderId, "Home", DomainAddress("1 Road"), true),
-            SavedPickupLocation.Create(_stakeholderId, "Office", DomainAddress("2 Road"), true));
-
-        await Should.ThrowAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+        _home = SharedLocation("36 Garden Avenue", 6.4474m);
+        _office = SharedLocation("Suite C9, Elim Plaza", 6.4480m);
+        _headquarters = SharedLocation("24 Independence Layout", 6.4490m);
+        dbContext.Locations.AddRange(_home, _office, _headquarters);
+        await dbContext.SaveChangesAsync();
     }
 
-    [Fact]
-    public async Task PreserveHistoricalDeliveryAddressSnapshotAfterSavedLocationUpdate()
-    {
-        var createdLocation = await CreateThroughHandlerAsync("Home", false);
-
-        using (var scope = CreateScope())
-        {
-            var currencyRepository = scope.ServiceProvider.GetRequiredService<IRepository<Currency>>();
-            var deliveryRepository = scope.ServiceProvider.GetRequiredService<IRepository<Delivery>>();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var currency = Currency.Create($"X{Guid.NewGuid():N}"[..3].ToUpperInvariant(), "Snapshot Currency", true);
-            await currencyRepository.AddAsync(currency);
-            await unitOfWork.SaveChangesAsync();
-
-            var delivery = Delivery.Create(
-                _stakeholderId,
-                $"PKY-{Guid.NewGuid():N}",
-                DeliveryType.Instant,
-                DeliveryOrderType.PayOnDelivery,
-                DomainAddress("1 Original Road"),
-                DomainAddress("2 Destination Road"),
-                DeliveryRecipient.Create("Ada Recipient", "+2348012345678"),
-                DeliveryCharge.Create(1000m, currency.Id),
-                [DeliveryItem.Create("Parcel", 1, 1m)],
-                DateTimeOffset.UtcNow);
-            await deliveryRepository.AddAsync(delivery);
-            await unitOfWork.SaveChangesAsync();
-            _currencyId = currency.Id;
-            _deliveryId = delivery.Id;
-        }
-
-        using (var scope = CreateScope())
-        {
-            var handler = scope.ServiceProvider.GetRequiredService<UpdatePickupLocationHandler>();
-            var result = await handler.HandleAsync(
-                new UpdatePickupLocationCommand(
-                    createdLocation.Location!.Id,
-                    "Moved Home",
-                    new PickupLocationAddress("99 New Road", null, "Enugu", "Enugu", "NG", 6.45m, 7.52m),
-                    new ActorContext(_stakeholderId, _tenantId, "correlation", "flow")),
-                CancellationToken.None);
-            result.Status.ShouldBe(UpdatePickupLocationStatus.Success);
-        }
-
-        using var verificationScope = CreateScope();
-        var readRepository = verificationScope.ServiceProvider.GetRequiredService<IReadRepository<Delivery>>();
-        var persisted = await readRepository.GetByIdAsync(_deliveryId.Value);
-        persisted.ShouldNotBeNull();
-        persisted.PickupAddress.AddressLine.ShouldBe("1 Original Road");
-
-        var dbContext = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var deliveryType = dbContext.Model.FindEntityType(typeof(Delivery));
-        deliveryType!.GetForeignKeys().ShouldNotContain(foreignKey =>
-            foreignKey.PrincipalEntityType.ClrType == typeof(SavedPickupLocation));
-    }
-
-    private static CreatePickupLocationRequest Request(
-        string label,
-        string line,
-        decimal latitude = 6.4474m) =>
-        new(label, Address(line, latitude));
-
-    private static PickupLocationAddressRequest Address(
-        string line,
-        decimal latitude = 6.4474m) =>
-        new(line, "Near the gate", "Enugu", "Enugu", "NG", latitude, 7.5139m);
+    private static Location SharedLocation(string line, decimal latitude) =>
+        Location.RegisterLandmark(
+            LocationAddress.Create($"{line} {Guid.CreateVersion7():N}", "Enugu", "Enugu", "NG"),
+            GeographicCoordinates.Create(latitude, 7.5139m),
+            TimeProvider.System.GetUtcNow());
 
     private static DeliveryAddress DomainAddress(string line) =>
         DeliveryAddress.Create(line, null, "Enugu", "Enugu", "NG", 6.4474m, 7.5139m);
@@ -264,8 +184,9 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
         var handler = scope.ServiceProvider.GetRequiredService<CreatePickupLocationHandler>();
         return await handler.HandleAsync(
             new CreatePickupLocationCommand(
+                _home.Id,
                 label,
-                new PickupLocationAddress("1 Road", null, "Enugu", "Enugu", "NG", 6.4474m, 7.5139m),
+                null,
                 isDefault,
                 new ActorContext(_stakeholderId, _tenantId, "correlation", "flow")),
             CancellationToken.None);
@@ -317,8 +238,8 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
         user.MarkEmailVerified();
         (await identityService.UpdateAsync(user)).Succeeded.ShouldBeTrue();
 
-        var stakeholderType = StakeholderType.Create(_tenantId, "Sender", $"sender-{Guid.NewGuid():N}");
-        var tenant = Tenant.Create(_tenantId, "Pickup Location Test", $"pickup-{Guid.NewGuid():N}");
+        var stakeholderType = StakeholderType.Create(_tenantId, "Sender", $"sender-{Guid.CreateVersion7():N}");
+        var tenant = Tenant.Create(_tenantId, "Pickup Location Test", $"pickup-{Guid.CreateVersion7():N}");
         var stakeholder = Stakeholder.Create(
             user.Id,
             _tenantId,
@@ -347,13 +268,21 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
             .IgnoreQueryFilters()
             .Where(location => location.SenderId == _stakeholderId)
             .ExecuteDeleteAsync();
+        var sharedLocationIds = new[] { _home, _office, _headquarters }
+            .Where(location => location is not null)
+            .Select(location => location.Id)
+            .ToArray();
+        await dbContext.Locations
+            .IgnoreQueryFilters()
+            .Where(location => sharedLocationIds.Contains(location.Id))
+            .ExecuteDeleteAsync();
 
         if (_deliveryId.HasValue)
         {
             var delivery = await dbContext.Deliveries.FirstOrDefaultAsync(item => item.Id == _deliveryId.Value);
             if (delivery is not null)
             {
-                delivery.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+                delivery.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
                 dbContext.Deliveries.Update(delivery);
             }
         }
@@ -363,7 +292,7 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
             var currency = await dbContext.Currencies.FirstOrDefaultAsync(item => item.Id == _currencyId.Value);
             if (currency is not null)
             {
-                currency.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+                currency.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
                 dbContext.Currencies.Update(currency);
             }
         }
@@ -371,28 +300,28 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
         var stakeholder = await dbContext.Stakeholders.FirstOrDefaultAsync(item => item.Id == _stakeholderId);
         if (stakeholder is not null)
         {
-            stakeholder.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+            stakeholder.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
             dbContext.Stakeholders.Update(stakeholder);
         }
 
         var stakeholderType = await dbContext.StakeholderTypes.FirstOrDefaultAsync(item => item.Id == _stakeholderTypeId);
         if (stakeholderType is not null)
         {
-            stakeholderType.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+            stakeholderType.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
             dbContext.StakeholderTypes.Update(stakeholderType);
         }
 
         var user = await userRepository.GetByEmailAsync(_email);
         if (user is not null)
         {
-            user.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+            user.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
             dbContext.Users.Update(user);
         }
 
         var tenant = await dbContext.Tenants.FirstOrDefaultAsync(item => item.Id == _tenantId);
         if (tenant is not null)
         {
-            tenant.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+            tenant.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
             dbContext.Tenants.Update(tenant);
         }
 
@@ -401,7 +330,7 @@ public sealed class When_ManagingPickupLocations_WithAuthenticatedSender_Should(
             var country = await dbContext.Countries.FirstOrDefaultAsync(item => item.Id == _countryId);
             if (country is not null)
             {
-                country.SetDeletedAudit(DateTimeOffset.UtcNow, "test-cleanup");
+                country.SetDeletedAudit(TimeProvider.System.GetUtcNow(), "test-cleanup");
                 dbContext.Countries.Update(country);
             }
         }

@@ -20,7 +20,7 @@ public sealed class ContainersFixture : IAsyncLifetime
         {
             var databaseName = $"backend_template_webapi_tests_{Guid.CreateVersion7():N}";
 
-            Postgres = new PostgreSqlBuilder("postgres:15.1")
+            Postgres = new PostgreSqlBuilder("postgis/postgis:16-3.5-alpine")
                 .WithDatabase(databaseName)
                 .WithUsername("postgres")
                 .WithPassword("postgres")

@@ -4,6 +4,8 @@ using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
+using BLVK.Pickly.Logistics.Domain.Locations.Persistence;
+using BLVK.Pickly.Logistics.Domain.Locations.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Payments.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Interceptors;
@@ -23,7 +25,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ObservabilityCommandInterceptor>();
 
         services.AddDbContext<AppDbContext>((serviceProvider, options) =>
-            options.UseNpgsql(GetRequiredConnectionString(configuration, "PostgresWrite"))
+            options.UseNpgsql(
+                    GetRequiredConnectionString(configuration, "PostgresWrite"),
+                    npgsql => npgsql.UseNetTopologySuite())
                 .AddInterceptors(
                     serviceProvider.GetRequiredService<AuditAndSoftDeleteInterceptor>(),
                     serviceProvider.GetRequiredService<ObservabilityCommandInterceptor>()));
@@ -31,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<IPickupLocationConsistencyLock, PickupLocationConsistencyLock>();
+        services.AddScoped<ILocationRegistrationStore, LocationRegistrationStore>();
+        services.AddScoped<ILocationResolutionLease, LocationResolutionLease>();
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
 
         return services;
@@ -41,7 +47,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ObservabilityCommandInterceptor>();
 
         services.AddDbContext<AppReadDbContext>((serviceProvider, options) =>
-            options.UseNpgsql(GetReadConnectionString(configuration))
+            options.UseNpgsql(
+                    GetReadConnectionString(configuration),
+                    npgsql => npgsql.UseNetTopologySuite())
                 .AddInterceptors(serviceProvider.GetRequiredService<ObservabilityCommandInterceptor>()));
 
         services.AddScoped(typeof(IReadRepository<>), typeof(EfReadRepository<>));
@@ -50,6 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILoginActivityReadModelRepository, LoginActivityReadModelRepository>();
         services.AddScoped<IActiveSessionReadModelRepository, ActiveSessionReadModelRepository>();
         services.AddScoped<ISavedPickupLocationReadModelRepository, SavedPickupLocationReadModelRepository>();
+        services.AddScoped<ILocationReadModelRepository, LocationReadModelRepository>();
 
         return services;
     }
@@ -62,7 +71,7 @@ public static class ServiceCollectionExtensions
     private static string GetReadConnectionString(IConfiguration configuration) =>
         GetRequiredConnectionString(configuration, "PostgresRead");
 
-    private static string GetRequiredConnectionString(IConfiguration configuration, string name) =>
+    internal static string GetRequiredConnectionString(IConfiguration configuration, string name) =>
         PostgresConnectionString.Normalize(
             configuration.GetConnectionString(name)
             ?? throw new InvalidOperationException($"Connection string '{name}' is required."));

@@ -7,9 +7,8 @@ public sealed class CreatePickupLocationRequestValidator : AbstractValidator<Cre
 {
     public CreatePickupLocationRequestValidator()
     {
+        RuleFor(request => request.LocationId).NotEmpty();
         RuleFor(request => request.Label).NotEmpty().MaximumLength(SavedPickupLocation.MaxLabelLength);
-        RuleFor(request => request.Address)
-            .NotNull()
-            .SetValidator(new PickupLocationAddressRequestValidator());
+        RuleFor(request => request.AdditionalDirections).MaximumLength(SavedPickupLocation.MaxAdditionalDirectionsLength);
     }
 }
