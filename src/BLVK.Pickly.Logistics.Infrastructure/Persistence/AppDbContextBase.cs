@@ -2,6 +2,7 @@ using BLVK.Pickly.Logistics.Domain.Authentication.Entities;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.FileUploads.Entities;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Notifications.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Providers.Entities;
@@ -44,6 +45,9 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<IpAddressLocation> IpAddressLocations => Set<IpAddressLocation>();
     public DbSet<LoginActivity> LoginActivities => Set<LoginActivity>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Delivery> Deliveries => Set<Delivery>();
+    public DbSet<DeliveryItem> DeliveryItems => Set<DeliveryItem>();
+    public DbSet<DeliveryStatusHistory> DeliveryStatusHistory => Set<DeliveryStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
