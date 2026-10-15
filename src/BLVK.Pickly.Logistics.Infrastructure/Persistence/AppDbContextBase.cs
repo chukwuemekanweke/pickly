@@ -48,6 +48,7 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryItem> DeliveryItems => Set<DeliveryItem>();
     public DbSet<DeliveryStatusHistory> DeliveryStatusHistory => Set<DeliveryStatusHistory>();
+    public DbSet<SavedPickupLocation> SavedPickupLocations => Set<SavedPickupLocation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

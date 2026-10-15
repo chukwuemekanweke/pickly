@@ -116,6 +116,14 @@ public static class EndpointUrl
         public static readonly string V1 = ToV1(Route);
     }
 
+    public static class PickupLocations
+    {
+        public const string Route = $"api/{Versions.V1Route}/pickup-locations";
+        public static readonly string V1 = ToV1(Route);
+        public static readonly string DefaultV1 = $"{V1}/default";
+        public static string ByIdV1(Guid locationId) => $"{V1}/{locationId}";
+    }
+
     public static class PaymentWebhooks
     {
         public static class SafeHaven

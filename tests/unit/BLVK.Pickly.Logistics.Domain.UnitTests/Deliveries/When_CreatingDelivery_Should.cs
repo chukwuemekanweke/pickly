@@ -64,10 +64,6 @@ public sealed class When_CreatingDelivery_Should
         Should.Throw<ArgumentOutOfRangeException>(() => DeliveryItem.Create("Parcel", 1, weight));
 
     [Fact]
-    public void RejectMissingTenant() =>
-        Should.Throw<ArgumentException>(() => DeliveryTestFactory.Create(tenantId: Guid.Empty));
-
-    [Fact]
     public void RejectMissingSender() =>
         Should.Throw<ArgumentException>(() => DeliveryTestFactory.Create(senderId: Guid.Empty));
 
@@ -92,7 +88,6 @@ public sealed class When_CreatingDelivery_Should
     [Fact]
     public void RejectScheduledDeliveryWithoutPickupTime() =>
         Should.Throw<ArgumentException>(() => Delivery.Create(
-            Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             "PKY-2026-0002",
             DeliveryType.Scheduled,

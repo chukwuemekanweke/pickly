@@ -17,7 +17,6 @@ public sealed class Delivery : Entity, IAggregateRoot
     }
 
     private Delivery(
-        Guid tenantId,
         Guid senderId,
         string trackingId,
         DeliveryType deliveryType,
@@ -29,7 +28,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         DateTimeOffset? scheduledPickupAtUtc,
         DateTimeOffset? dispatchEligibleAtUtc)
     {
-        TenantId = tenantId;
         SenderId = senderId;
         TrackingId = trackingId;
         DeliveryType = deliveryType;
@@ -44,7 +42,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         Status = GetInitialStatus(deliveryType, orderType);
     }
 
-    public Guid TenantId { get; private set; }
     public Guid SenderId { get; private set; }
     public string TrackingId { get; private set; } = string.Empty;
     public DeliveryType DeliveryType { get; private set; }
@@ -82,7 +79,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         (OrderType == DeliveryOrderType.PayOnDelivery || PaymentStatus == DeliveryPaymentStatus.Paid);
 
     public static Delivery Create(
-        Guid tenantId,
         Guid senderId,
         string trackingId,
         DeliveryType deliveryType,
@@ -96,7 +92,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         DateTimeOffset? scheduledPickupAtUtc = null,
         DateTimeOffset? dispatchEligibleAtUtc = null)
     {
-        EnsureRequiredId(tenantId, nameof(tenantId));
         EnsureRequiredId(senderId, nameof(senderId));
         ArgumentNullException.ThrowIfNull(pickupAddress);
         ArgumentNullException.ThrowIfNull(dropOffAddress);
@@ -146,7 +141,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         }
 
         var delivery = new Delivery(
-            tenantId,
             senderId,
             normalizedTrackingId,
             deliveryType,

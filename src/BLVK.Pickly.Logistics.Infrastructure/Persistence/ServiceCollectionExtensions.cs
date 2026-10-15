@@ -2,6 +2,8 @@ using BLVK.Pickly.Logistics.Domain.Authentication.Persistence;
 using BLVK.Pickly.Logistics.Domain.Authentication.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Payments.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Interceptors;
@@ -28,6 +30,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped<IAppUserRepository, AppUserRepository>();
+        services.AddScoped<IPickupLocationConsistencyLock, PickupLocationConsistencyLock>();
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
 
         return services;
@@ -46,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWalletTransactionReadModelRepository, WalletTransactionReadModelRepository>();
         services.AddScoped<ILoginActivityReadModelRepository, LoginActivityReadModelRepository>();
         services.AddScoped<IActiveSessionReadModelRepository, ActiveSessionReadModelRepository>();
+        services.AddScoped<ISavedPickupLocationReadModelRepository, SavedPickupLocationReadModelRepository>();
 
         return services;
     }

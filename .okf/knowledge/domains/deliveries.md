@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Deliveries Domain Foundation
-description: Delivery aggregate ownership, parcel and address snapshots, lifecycle transitions, payment gates, fulfillment evidence seams, and persistence boundaries
+description: Delivery aggregate and sender-owned saved pickup locations, including address snapshots, lifecycle transitions, default-location consistency, and persistence boundaries
 resource: okf://knowledge/domains/deliveries
 tags:
     - constraint
@@ -19,7 +19,12 @@ status: stable
 code_refs:
     - src/BLVK.Pickly.Logistics.Domain/Deliveries/**
     - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/Configurations/Delivery*.cs
+    - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/Configurations/SavedPickupLocationConfiguration.cs
+    - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/*PickupLocation*.cs
     - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddDeliveryDomain*
+    - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddSavedPickupLocations*
+    - src/BLVK.Pickly.Logistics.Application/Deliveries/**
+    - src/BLVK.Pickly.Logistics.WebAPI/Features/Deliveries/**
     - tests/unit/BLVK.Pickly.Logistics.Domain.UnitTests/Deliveries/**
     - tests/integration/BLVK.Pickly.Logistics.WebAPI.IntegrationTests/Deliveries/**
 governance: constraint
@@ -28,8 +33,9 @@ governance: constraint
 
 `Delivery` is the aggregate root. It owns one or more `DeliveryItem` parcels and append-only
 `DeliveryStatusHistory` entries. A single immutable customer-facing tracking ID identifies the whole
-delivery; parcels do not have independent tracking or lifecycles. `TenantId` and `SenderId` remain on
-the aggregate for future authorization scoping.
+delivery; parcels do not have independent tracking or lifecycles. `SenderId` remains on the aggregate
+for ownership scoping. Tenant membership is derived through the owning `Stakeholder`; duplicating
+`TenantId` on Delivery would create another value that must be kept consistent with that relationship.
 
 Pickup/drop-off addresses, recipient contact data, and the agreed charge are immutable snapshots.
 They do not refer to mutable saved-location or recipient-account records. Delivery charges store the
@@ -79,3 +85,25 @@ Future phases own pricing/quote calculation, application commands and APIs, prov
 rider discovery, cash-collection records, proof generation, remittance/reconciliation, and read
 models. They must call the aggregate's existing transition methods after validating their own
 evidence; they must not introduce a generic status setter or treat delivery status as financial truth.
+
+## Saved pickup locations
+
+`SavedPickupLocation` is a separate aggregate in the Deliveries domain. It belongs to one sender,
+reuses `DeliveryAddress` for normalization and validation, and can be updated or soft-deleted without
+mutating a delivery's pickup-address snapshot. Its tenant is derived from the owning `Stakeholder`.
+`Delivery` has no foreign key to a saved location; a future booking workflow resolves an authorized
+saved location and copies its validated address into the new delivery.
+
+The first active location becomes the default. Create-with-default, set-default, and delete-default
+operations run in one transaction and acquire a PostgreSQL transaction-scoped advisory lock keyed by
+sender. A filtered unique index on `SenderId` where `IsDefault = TRUE` and `IsDeleted = FALSE` is the
+final integrity safeguard. Setting the current default is a no-op. Deleting the default promotes the
+oldest active location, ordered by `CreatedAtUtc` and then `Id`; deleting the last location leaves no
+default.
+
+All command and query paths derive sender ownership from `ActorContext.StakeholderId` and use
+not-found semantics for records outside that scope. Authentication infrastructure remains responsible
+for validating the actor's tenant membership. Lightweight reads use `AppReadDbContext` projections.
+Listing uses an opaque, feature-scoped cursor ordered by `CreatedAtUtc DESC, Id DESC`, fetches one
+extra row, and deliberately does not sort the mutable default flag first so default changes cannot
+duplicate or skip locations while paging.

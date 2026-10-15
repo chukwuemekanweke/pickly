@@ -13,14 +13,12 @@ internal static class DeliveryTestFactory
         DeliveryType deliveryType = DeliveryType.Instant,
         DeliveryOrderType orderType = DeliveryOrderType.PayBeforeDelivery,
         IEnumerable<DeliveryItem>? items = null,
-        Guid? tenantId = null,
         Guid? senderId = null,
         DateTimeOffset? scheduledPickupAtUtc = null,
         DateTimeOffset? dispatchEligibleAtUtc = null,
         decimal amount = 2500m,
         string trackingId = "PKY-2026-0001") =>
         Delivery.Create(
-            tenantId ?? Guid.CreateVersion7(),
             senderId ?? Guid.CreateVersion7(),
             trackingId,
             deliveryType,
