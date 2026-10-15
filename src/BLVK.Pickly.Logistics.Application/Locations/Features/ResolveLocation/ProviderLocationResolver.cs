@@ -39,7 +39,7 @@ public sealed class ProviderLocationResolver(
         else
         {
             var startedAt = timeProvider.GetTimestamp();
-            var geocoding = await geocodingProvider.ForwardGeocodePermanentAsync(
+            var geocoding = await geocodingProvider.ForwardGeocodeAsync(
                 new GeocodingRequest(
                     request.AddressLine,
                     request.City,
@@ -205,8 +205,6 @@ public sealed class ProviderLocationResolver(
         GeocodingStatus.RateLimited => new ResolveLocationResult(
             ResolveLocationStatus.ProviderRateLimited,
             RetryAfter: geocoding.RetryAfter),
-        GeocodingStatus.PermanentStorageUnavailable => new ResolveLocationResult(
-            ResolveLocationStatus.PermanentGeocodingUnavailable),
         GeocodingStatus.InvalidResponse => new ResolveLocationResult(ResolveLocationStatus.InvalidProviderResponse),
         _ => new ResolveLocationResult(ResolveLocationStatus.ProviderUnavailable, RetryAfter: geocoding.RetryAfter)
     };

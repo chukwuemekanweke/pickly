@@ -17,7 +17,6 @@ code_refs:
     - src/BLVK.Pickly.Logistics.WebAPI/Infrastructure/GlobalExceptionHandler.cs
     - src/BLVK.Pickly.Logistics.Consumer/BaseMessageHandler.cs
     - src/BLVK.Pickly.Logistics.Infrastructure/Messaging/RabbitMqOutboxMessageDispatcher.cs
-    - src/BLVK.Pickly.Logistics.Infrastructure/Locations/GeocodingAttemptTelemetryHandler.cs
     - observability/otel-collector/**
 sources:
     - kind: file
@@ -47,10 +46,9 @@ only when `StakeholderId` is genuinely unavailable. See [[dotnet-style]].
 
 - Location resolution emits `Observability.EventNames.Locations.*` custom events (registry hit/miss, geocoding
   requested/failed, ambiguous, failed, registered/reused, duplicate-resolution prevented) via `ICustomTelemetryContext`.
-- Infrastructure meters use `Observability.MeterName`, which `AddBackendTelemetry` registers (e.g.
-  `pickly.locations.geocoding.requests` / `.duration`). Geocoding request metrics are recorded by an HTTP handler
-  inside the retry policy, so they count every actual provider attempt, including retries, rather than one logical
-  resolution operation. Metric tags must stay low-cardinality — never addresses, tokens or user identifiers.
+- Outbound geocoding transport telemetry comes from the standard HttpClient instrumentation registered by
+  `AddBackendTelemetry`; do not wrap provider clients in duplicate manual activities or request-duration meters.
+  Location resolution business outcomes belong in the `Observability.EventNames.Locations.*` events.
 
 ## Constraint
 

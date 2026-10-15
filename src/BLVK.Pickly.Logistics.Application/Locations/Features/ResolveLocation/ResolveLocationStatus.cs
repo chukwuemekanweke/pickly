@@ -10,6 +10,5 @@ public enum ResolveLocationStatus
     ResolutionInProgress = 6,
     ProviderRateLimited = 7,
     ProviderUnavailable = 8,
-    PermanentGeocodingUnavailable = 9,
-    InvalidProviderResponse = 10
+    InvalidProviderResponse = 9
 }

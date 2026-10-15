@@ -40,7 +40,6 @@ services:
       Authentication__Google__ClientIds__0: ${GOOGLE_CLIENT_ID:-}
       Authentication__Google__FlowLifetime: 00:10:00
       Locations__Mapbox__AccessToken: ${MAPBOX_ACCESS_TOKEN:-}
-      Locations__Mapbox__PermanentStorageEnabled: ${MAPBOX_PERMANENT_STORAGE_ENABLED:-false}
       ObjectStorage__CloudflareR2__Endpoint: ${CLOUDFLARE_R2_ENDPOINT:-}
       ObjectStorage__CloudflareR2__ApplicationFolder: ${CLOUDFLARE_R2_APPLICATION_FOLDER:-}
       ObjectStorage__CloudflareR2__PublicBucketName: ${CLOUDFLARE_R2_PUBLIC_BUCKET_NAME:-}

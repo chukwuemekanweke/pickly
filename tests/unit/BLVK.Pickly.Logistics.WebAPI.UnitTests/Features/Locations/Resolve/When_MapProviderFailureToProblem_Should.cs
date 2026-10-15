@@ -7,7 +7,6 @@ namespace BLVK.Pickly.Logistics.WebAPI.UnitTests.Features.Locations.Resolve;
 public sealed partial class When_ResolvingLocation_WithResolveRequest_Should
 {
 [Theory]
-    [InlineData(GeocodingStatus.PermanentStorageUnavailable, StatusCodes.Status503ServiceUnavailable, LocationErrorCodes.PermanentGeocodingUnavailable)]
     [InlineData(GeocodingStatus.Timeout, StatusCodes.Status503ServiceUnavailable, LocationErrorCodes.GeocodingUnavailable)]
     [InlineData(GeocodingStatus.ProviderUnavailable, StatusCodes.Status503ServiceUnavailable, LocationErrorCodes.GeocodingUnavailable)]
     [InlineData(GeocodingStatus.InvalidResponse, StatusCodes.Status502BadGateway, LocationErrorCodes.InvalidProviderResponse)]

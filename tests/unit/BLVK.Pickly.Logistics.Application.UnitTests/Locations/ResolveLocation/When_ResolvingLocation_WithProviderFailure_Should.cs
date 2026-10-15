@@ -10,7 +10,6 @@ public sealed partial class When_ResolvingLocation_WithProviderFailure_Should
     [InlineData(GeocodingStatus.Timeout, ResolveLocationStatus.ProviderUnavailable)]
     [InlineData(GeocodingStatus.ProviderUnavailable, ResolveLocationStatus.ProviderUnavailable)]
     [InlineData(GeocodingStatus.RateLimited, ResolveLocationStatus.ProviderRateLimited)]
-    [InlineData(GeocodingStatus.PermanentStorageUnavailable, ResolveLocationStatus.PermanentGeocodingUnavailable)]
     [InlineData(GeocodingStatus.InvalidResponse, ResolveLocationStatus.InvalidProviderResponse)]
     public async Task MapFailureWithoutPersistingOrCaching(GeocodingStatus providerStatus, ResolveLocationStatus expected)
     {

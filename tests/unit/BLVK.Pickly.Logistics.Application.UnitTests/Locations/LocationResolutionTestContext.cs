@@ -25,7 +25,7 @@ internal sealed class LocationResolutionTestContext
         GeocodingProvider = Substitute.For<ILocationGeocodingProvider>();
         GeocodingProvider.ProviderName.Returns("mapbox");
         GeocodingProvider.ResolutionSource.Returns(LocationResolutionSource.Mapbox);
-        GeocodingProvider.ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+        GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
             .Returns(new GeocodingResult(GeocodingStatus.Success, []));
         Lease = Substitute.For<ILocationResolutionLease>();
         Lease.TryAcquireAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
@@ -114,15 +114,15 @@ internal sealed class LocationResolutionTestContext
         new(addressLine, "Enugu", "Enugu", countryCode, Actor);
 
     public void ProviderReturns(params GeocodingCandidate[] candidates) =>
-        GeocodingProvider.ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+        GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
             .Returns(new GeocodingResult(GeocodingStatus.Success, candidates));
 
     public void ProviderFails(GeocodingStatus status, TimeSpan? retryAfter = null) =>
-        GeocodingProvider.ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+        GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
             .Returns(GeocodingResult.Failed(status, retryAfter));
 
     public Task<GeocodingResult> ProviderCalls(int expected) =>
-        GeocodingProvider.Received(expected).ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
+        GeocodingProvider.Received(expected).ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
 
     public static GeocodingCandidate Candidate(
         string featureId = "address.12",

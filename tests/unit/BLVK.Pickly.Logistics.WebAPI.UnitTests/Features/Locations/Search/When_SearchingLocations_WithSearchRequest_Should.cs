@@ -25,6 +25,6 @@ public sealed partial class When_SearchingLocations_WithSearchRequest_Should
             .ShouldBeOfType<LocationListResponse<LocationSummaryResponse>>();
         response.Items.ShouldHaveSingleItem().Id.ShouldBe(location.Id);
         await context.GeocodingProvider.DidNotReceive()
-            .ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
+            .ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
     }
 }

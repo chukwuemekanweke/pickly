@@ -9,7 +9,7 @@ public sealed partial class When_ResolvingLocation_WithProviderFailure_Should
     public async Task ReleaseLeaseWhenProviderThrows()
     {
         var context = new LocationResolutionTestContext();
-        context.GeocodingProvider.ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+        context.GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
             .Returns<GeocodingResult>(_ => throw new OperationCanceledException());
 
         await Should.ThrowAsync<OperationCanceledException>(() =>

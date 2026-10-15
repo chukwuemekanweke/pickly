@@ -6,6 +6,5 @@ public enum GeocodingStatus
     RateLimited = 2,
     Timeout = 3,
     ProviderUnavailable = 4,
-    PermanentStorageUnavailable = 5,
-    InvalidResponse = 6
+    InvalidResponse = 5
 }

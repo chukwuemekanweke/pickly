@@ -119,11 +119,6 @@ public sealed class LocationsController(
                     LocationErrorCodes.GeocodingRateLimited,
                     "Geocoding temporarily limited",
                     "Location resolution is temporarily rate limited. Retry later.")),
-            ResolveLocationStatus.PermanentGeocodingUnavailable => Problem(
-                StatusCodes.Status503ServiceUnavailable,
-                LocationErrorCodes.PermanentGeocodingUnavailable,
-                "Location resolution unavailable",
-                "Location resolution is not available because permanent geocoding is not enabled."),
             ResolveLocationStatus.InvalidProviderResponse => Problem(
                 StatusCodes.Status502BadGateway,
                 LocationErrorCodes.InvalidProviderResponse,

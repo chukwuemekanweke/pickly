@@ -2,7 +2,6 @@ using BLVK.Pickly.Logistics.Domain.Locations.Enums;
 using BLVK.Pickly.Logistics.Domain.Locations.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -11,9 +10,7 @@ using System.Text.Json;
 namespace BLVK.Pickly.Logistics.Infrastructure.Locations;
 
 /// <summary>
-/// Mapbox Geocoding v6 structured forward geocoding in permanent mode (<c>permanent=true</c>). Results requested
-/// this way may be stored, which is why this is the only provider path the registry persists from. The client never
-/// downgrades to temporary geocoding.
+/// Mapbox Geocoding v6 structured forward geocoding.
 /// </summary>
 internal sealed class MapboxGeocodingClient(
     HttpClient httpClient,
@@ -27,39 +24,12 @@ internal sealed class MapboxGeocodingClient(
     public string ProviderName => Provider;
     public LocationResolutionSource ResolutionSource => LocationResolutionSource.Mapbox;
 
-    public async Task<GeocodingResult> ForwardGeocodePermanentAsync(
+    public Task<GeocodingResult> ForwardGeocodeAsync(
         GeocodingRequest request,
         CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        if (!settings.IsPermanentGeocodingAvailable)
-        {
-            logger.LogWarning(
-                "Mapbox permanent geocoding is not enabled; location resolution is refused instead of using temporary results");
-            return GeocodingResult.Failed(GeocodingStatus.PermanentStorageUnavailable);
-        }
-
-        using var activity = GeocodingTelemetry.ActivitySource.StartActivity("locations.geocoding.mapbox", ActivityKind.Client);
-        activity?.SetTag("geocoding.provider", Provider);
-        activity?.SetTag("geocoding.storage", "permanent");
-
-        var startedAt = timeProvider.GetTimestamp();
-        var result = await SendAsync(request, settings, cancellationToken);
-        var elapsed = timeProvider.GetElapsedTime(startedAt);
-
-        activity?.SetTag("geocoding.outcome", result.Status.ToString());
-        activity?.SetTag("geocoding.candidate_count", result.Candidates.Count);
-        if (result.Status != GeocodingStatus.Success)
-        {
-            activity?.SetStatus(ActivityStatusCode.Error, result.Status.ToString());
-        }
-
-        logger.LogInformation(
-            "Mapbox permanent geocoding completed with {GeocodingOutcome}, {CandidateCount} candidates in {ElapsedMilliseconds} ms",
-            result.Status,
-            result.Candidates.Count,
-            (long)elapsed.TotalMilliseconds);
-        return result;
+        return SendAsync(request, settings, cancellationToken);
     }
 
     private async Task<GeocodingResult> SendAsync(
@@ -84,8 +54,8 @@ internal sealed class MapboxGeocodingClient(
                     logger.LogWarning("Mapbox geocoding rate limit reached");
                     return GeocodingResult.Failed(GeocodingStatus.RateLimited, ResolveRetryAfter(response, settings));
                 case HttpStatusCode.Forbidden:
-                    logger.LogError("Mapbox rejected the permanent geocoding request; verify the account permits permanent storage");
-                    return GeocodingResult.Failed(GeocodingStatus.PermanentStorageUnavailable);
+                    logger.LogError("Mapbox rejected the geocoding request");
+                    return GeocodingResult.Failed(GeocodingStatus.ProviderUnavailable);
                 case HttpStatusCode.Unauthorized:
                     logger.LogError("Mapbox rejected the configured access token");
                     return GeocodingResult.Failed(GeocodingStatus.ProviderUnavailable);
@@ -121,7 +91,7 @@ internal sealed class MapboxGeocodingClient(
             .Append("&place=").Append(Uri.EscapeDataString(request.City))
             .Append("&region=").Append(Uri.EscapeDataString(request.State))
             .Append("&country=").Append(Uri.EscapeDataString(request.CountryCode.ToLowerInvariant()))
-            .Append("&permanent=true")
+            .Append("&permanent=false")
             .Append("&autocomplete=false")
             .Append("&limit=").Append(request.MaxCandidates.ToString(CultureInfo.InvariantCulture))
             .Append("&access_token=").Append(Uri.EscapeDataString(accessToken));

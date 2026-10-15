@@ -107,11 +107,11 @@ internal sealed class LocationsControllerTestContext
         new("12 Ekpulechi Avenue", "Enugu", "Enugu", countryCode);
 
     public void ProviderReturns(params GeocodingCandidate[] candidates) =>
-        GeocodingProvider.ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+        GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
             .Returns(new GeocodingResult(GeocodingStatus.Success, candidates));
 
     public void ProviderFails(GeocodingStatus status, TimeSpan? retryAfter = null) =>
-        GeocodingProvider.ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+        GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
             .Returns(GeocodingResult.Failed(status, retryAfter));
 
     public static GeocodingCandidate Candidate(

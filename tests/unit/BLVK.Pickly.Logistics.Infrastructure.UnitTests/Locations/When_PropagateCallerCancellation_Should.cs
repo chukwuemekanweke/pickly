@@ -18,6 +18,6 @@ public sealed partial class When_GeocodingWithMapbox_WithProviderFailure_Should
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
         await Should.ThrowAsync<OperationCanceledException>(() => context.CreateProvider()
-            .ForwardGeocodePermanentAsync(MapboxGeocodingTestContext.Request(), cancellation.Token));
+            .ForwardGeocodeAsync(MapboxGeocodingTestContext.Request(), cancellation.Token));
     }
 }

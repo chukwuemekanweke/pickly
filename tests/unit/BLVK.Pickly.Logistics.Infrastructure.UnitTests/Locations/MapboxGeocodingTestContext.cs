@@ -51,7 +51,6 @@ internal sealed class MapboxGeocodingTestContext
     {
         ["Locations:Mapbox:BaseUrl"] = "https://api.mapbox.test/",
         ["Locations:Mapbox:AccessToken"] = AccessToken,
-        ["Locations:Mapbox:PermanentStorageEnabled"] = "true",
         ["Locations:Mapbox:Timeout"] = "00:00:05",
         ["Locations:Mapbox:MaxRetries"] = "2"
     };

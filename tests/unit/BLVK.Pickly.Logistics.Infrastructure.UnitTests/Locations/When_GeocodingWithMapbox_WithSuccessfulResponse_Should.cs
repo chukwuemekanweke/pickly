@@ -10,7 +10,7 @@ public sealed partial class When_GeocodingWithMapbox_WithSuccessfulResponse_Shou
     {
         var context = new MapboxGeocodingTestContext();
 
-        await context.CreateProvider().ForwardGeocodePermanentAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
+        await context.CreateProvider().ForwardGeocodeAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
 
         var request = context.Requests.ShouldHaveSingleItem();
         request.RequestUri!.AbsolutePath.ShouldBe("/search/geocode/v6/forward");

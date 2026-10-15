@@ -9,6 +9,5 @@ public static class LocationErrorCodes
     public const string LocationUnusable = "location_unusable";
     public const string GeocodingRateLimited = "geocoding_rate_limited";
     public const string GeocodingUnavailable = "geocoding_unavailable";
-    public const string PermanentGeocodingUnavailable = "permanent_geocoding_unavailable";
     public const string InvalidProviderResponse = "geocoding_invalid_response";
 }

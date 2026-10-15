@@ -15,7 +15,7 @@ public sealed partial class When_GeocodingWithMapbox_WithProviderFailure_Should
         };
 
         var result = await context.CreateProvider()
-            .ForwardGeocodePermanentAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
+            .ForwardGeocodeAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
 
         result.Status.ShouldBe(GeocodingStatus.ProviderUnavailable);
         context.Requests.Count.ShouldBe(3);

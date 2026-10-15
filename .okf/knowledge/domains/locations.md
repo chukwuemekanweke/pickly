@@ -92,12 +92,12 @@ uses a short transaction with an advisory lock on the provider feature, and the 
 ## Mapbox
 
 `MapboxGeocodingClient` calls Geocoding v6 structured forward (`search/geocode/v6/forward`, `permanent=true`,
-`autocomplete=false`, country filter, bounded `limit`). It refuses (`PermanentStorageUnavailable`, no HTTP call)
-unless `Locations:Mapbox:PermanentStorageEnabled` is true and a token is configured — never downgrade to temporary
-results, which may not be stored. 5xx/transport errors get bounded Polly retries; 429 is not retried and surfaces a
-retry hint; 403 means permanent storage is not permitted. The token travels in the query string, so default
-HttpClient loggers are removed and logs/metrics never include tokens or addresses. Search Box results do not carry the
-same storage rights and must not be persisted through this path.
+`autocomplete=false`, country filter, bounded `limit`). The application persists provider results, so this client
+always declares permanent use rather than exposing a separate runtime switch. Mapbox is the authority on whether the
+configured account may make the request; rejected requests surface as provider failures. 5xx/transport errors get
+bounded Polly retries; 429 is not retried and surfaces a retry hint. The token travels in the query string, so default
+HttpClient loggers are removed and logs never include tokens or addresses. Search Box results do not carry the same
+storage rights and must not be persisted through this path.
 
 ## Privacy, limits and prerequisites
 

@@ -7,18 +7,9 @@ public sealed class MapboxGeocodingOptions
     public string BaseUrl { get; init; } = "https://api.mapbox.com/";
     public string AccessToken { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Explicit operator confirmation that the Mapbox account and commercial terms permit Geocoding v6 permanent
-    /// storage. Resolution refuses to run without it rather than falling back to temporary results.
-    /// </summary>
-    public bool PermanentStorageEnabled { get; init; }
-
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(8);
     public int MaxRetries { get; init; } = 2;
     public TimeSpan DefaultRateLimitRetryAfter { get; init; } = TimeSpan.FromSeconds(30);
-
-    public bool IsPermanentGeocodingAvailable =>
-        PermanentStorageEnabled && !string.IsNullOrWhiteSpace(AccessToken);
 
     public void Validate()
     {

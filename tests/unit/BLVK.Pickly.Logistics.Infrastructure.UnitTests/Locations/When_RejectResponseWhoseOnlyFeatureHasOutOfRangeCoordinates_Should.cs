@@ -15,7 +15,7 @@ public sealed partial class When_GeocodingWithMapbox_WithSuccessfulResponse_Shou
         };
 
         var result = await context.CreateProvider()
-            .ForwardGeocodePermanentAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
+            .ForwardGeocodeAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
 
         result.Status.ShouldBe(GeocodingStatus.InvalidResponse);
         result.Candidates.ShouldBeEmpty();

@@ -19,8 +19,6 @@ public static class ServiceCollectionExtensions
 
         services.Configure<LocationResolutionOptions>(configuration.GetSection(LocationResolutionOptions.SectionName));
         services.Configure<MapboxGeocodingOptions>(configuration.GetSection(MapboxGeocodingOptions.SectionName));
-        services.AddTransient<GeocodingAttemptTelemetryHandler>();
-
         // The request URI carries the access token (Mapbox only accepts it as a query parameter), so the default
         // HttpClientFactory request loggers are removed and the client logs its own token-free messages.
         services.AddHttpClient<ILocationGeocodingProvider, MapboxGeocodingClient>(client =>
@@ -29,8 +27,7 @@ public static class ServiceCollectionExtensions
                 client.Timeout = mapboxOptions.Timeout;
             })
             .RemoveAllLoggers()
-            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(mapboxOptions.MaxRetries))
-            .AddHttpMessageHandler<GeocodingAttemptTelemetryHandler>();
+            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(mapboxOptions.MaxRetries));
 
         return services;
     }

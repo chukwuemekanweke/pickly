@@ -18,7 +18,7 @@ public sealed partial class When_GeocodingWithMapbox_WithProviderFailure_Should
         }.Configure("Timeout", "00:00:00.200");
 
         var result = await context.CreateProvider()
-            .ForwardGeocodePermanentAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
+            .ForwardGeocodeAsync(MapboxGeocodingTestContext.Request(), CancellationToken.None);
 
         result.Status.ShouldBe(GeocodingStatus.Timeout);
     }

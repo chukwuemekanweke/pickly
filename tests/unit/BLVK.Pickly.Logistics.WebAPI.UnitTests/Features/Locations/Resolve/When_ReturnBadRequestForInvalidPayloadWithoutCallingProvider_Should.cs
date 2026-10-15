@@ -21,6 +21,6 @@ public sealed partial class When_ResolvingLocation_WithResolveRequest_Should
         errors.Keys.ShouldContain(nameof(ResolveLocationRequest.AddressLine));
         errors.Keys.ShouldContain(nameof(ResolveLocationRequest.CountryCode));
         await context.GeocodingProvider.DidNotReceive()
-            .ForwardGeocodePermanentAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
+            .ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
     }
 }

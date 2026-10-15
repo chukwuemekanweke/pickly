@@ -18,7 +18,7 @@ public sealed class FakeLocationGeocodingProvider : ILocationGeocodingProvider
 
     public Func<GeocodingRequest, CancellationToken, Task<GeocodingResult>>? Responder { get; set; }
 
-    public async Task<GeocodingResult> ForwardGeocodePermanentAsync(
+    public async Task<GeocodingResult> ForwardGeocodeAsync(
         GeocodingRequest request,
         CancellationToken cancellationToken)
     {
