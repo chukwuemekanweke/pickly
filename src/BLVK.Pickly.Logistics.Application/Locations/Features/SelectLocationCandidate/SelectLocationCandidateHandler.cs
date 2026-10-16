@@ -32,6 +32,7 @@ public sealed class SelectLocationCandidateHandler(
             cancellationToken);
         if (selection is null ||
             selection.StakeholderId != stakeholderId.Value ||
+            candidateIndex < 0 ||
             candidateIndex >= selection.Candidates.Count)
         {
             return new SelectLocationCandidateResult(SelectLocationCandidateStatus.SelectionNotFound);
@@ -39,14 +40,14 @@ public sealed class SelectLocationCandidateHandler(
 
         // An explicitly chosen candidate is not recorded as the identity of the original request text: another
         // sender typing the same text may have meant a different candidate.
-        var location = await registrar.RegisterAsync(
+        var registration = await registrar.RegisterWithOutcomeAsync(
             selection.Candidates[candidateIndex],
             selection.Provider,
             selection.ResolutionSource,
             resolutionKey: null,
             command.ActorContext,
             cancellationToken);
-        if (!location.IsUsable)
+        if (!registration.Location.IsUsable)
         {
             return new SelectLocationCandidateResult(SelectLocationCandidateStatus.LocationUnusable);
         }
@@ -58,11 +59,12 @@ public sealed class SelectLocationCandidateHandler(
                 stakeholderId,
                 additionalProperties: new Dictionary<string, string>
                 {
-                    [Observability.PropertyNames.Locations.LocationId] = location.Id.ToString()
+                    [Observability.PropertyNames.Locations.LocationId] = registration.Location.Id.ToString()
                 }));
 
         return new SelectLocationCandidateResult(
             SelectLocationCandidateStatus.Resolved,
-            LocationResponse.FromEntity(location));
+            LocationResponse.FromEntity(registration.Location),
+            registration.Created);
     }
 }

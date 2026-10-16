@@ -24,12 +24,11 @@ internal sealed class LocationsControllerTestContext
 {
     public LocationsControllerTestContext()
     {
-        Registry = Substitute.For<IRepository<Location>>();
-        Registry.ListAsync(Arg.Any<ISpecification<Location>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Location>());
         GeocodingProvider = Substitute.For<ILocationGeocodingProvider>();
         GeocodingProvider.ProviderName.Returns("mapbox");
         GeocodingProvider.ResolutionSource.Returns(LocationResolutionSource.Mapbox);
+        GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GeocodingResult(GeocodingStatus.Success, []));
         Lease = Substitute.For<ILocationResolutionLease>();
         Lease.TryAcquireAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns(_ => Guid.CreateVersion7());
@@ -56,7 +55,6 @@ internal sealed class LocationsControllerTestContext
     }
 
     public Guid StakeholderId { get; } = Guid.CreateVersion7();
-    public IRepository<Location> Registry { get; }
     public ILocationGeocodingProvider GeocodingProvider { get; }
     public ILocationResolutionLease Lease { get; }
     public ILocationRegistrationStore RegistrationStore { get; }
@@ -76,17 +74,11 @@ internal sealed class LocationsControllerTestContext
         var registrar = new LocationCandidateRegistrar(RegistrationStore, Telemetry, TimeProvider.System);
         var resolveTelemetry = new ResolveLocationTelemetry(Telemetry);
         return new LocationsController(
-            new SearchLocationsHandler(ReadModels, options),
-            new ResolveLocationHandler(
-                new LocationRegistryMatcher(Registry, resolveTelemetry),
+            new SearchLocationsHandler(
+                ReadModels,
+                GeocodingProvider,
                 Lease,
-                new ProviderLocationResolver(
-                    GeocodingProvider,
-                    registrar,
-                    ReadModels,
-                    Cache,
-                    resolveTelemetry,
-                    TimeProvider.System),
+                Cache,
                 resolveTelemetry,
                 options,
                 TimeProvider.System),
@@ -94,17 +86,13 @@ internal sealed class LocationsControllerTestContext
             new GetLocationHandler(ReadModels),
             new GetNearbyLocationsHandler(ReadModels, options),
             new SearchLocationsRequestValidator(options),
-            new ResolveLocationRequestValidator(),
-            new SelectLocationCandidateRequestValidator(),
+            new RegisterLocationRequestValidator(),
             new GetNearbyLocationsRequestValidator(options),
             CurrentActor)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
     }
-
-    public static ResolveLocationRequest ResolveRequest(string countryCode = "NG") =>
-        new("12 Ekpulechi Avenue", "Enugu", "Enugu", countryCode);
 
     public void ProviderReturns(params GeocodingCandidate[] candidates) =>
         GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())

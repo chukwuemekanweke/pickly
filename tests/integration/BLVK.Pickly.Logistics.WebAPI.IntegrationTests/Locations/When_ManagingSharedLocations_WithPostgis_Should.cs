@@ -1,5 +1,6 @@
 using BLVK.Pickly.Logistics.Application.Authentication.Features.SignIn;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
+using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Locations.Entities;
 using BLVK.Pickly.Logistics.Domain.Locations.Enums;
@@ -139,8 +140,6 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should(Cont
             "address",
             RegisteredAt);
 
-    private static ResolveLocationRequest ResolveRequest(string addressLine) => new(addressLine, "Enugu", "Enugu", "NG");
-
     private static GeocodingResult Success(params GeocodingCandidate[] candidates) =>
         new(GeocodingStatus.Success, candidates);
 
@@ -162,17 +161,13 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should(Cont
             latitude,
             7.5221m);
 
-    private async Task<ResolveLocationResponse> ResolveAsync(ResolveLocationRequest request)
+    private async Task<LocationListResponse<LocationSearchItemResponse>> SearchAsync(string query)
     {
-        using var response = await Client.PostAsJsonAsync(EndpointUrl.Locations.ResolveV1, request);
+        using var response = await Client.GetAsync(
+            $"{EndpointUrl.Locations.SearchV1}?q={Uri.EscapeDataString(query)}&countryCode=NG");
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<ResolveLocationResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<LocationListResponse<LocationSearchItemResponse>>();
         payload.ShouldNotBeNull();
-        if (payload.LocationId.HasValue)
-        {
-            _locationIds.Add(payload.LocationId.Value);
-        }
-
         return payload;
     }
 

@@ -17,6 +17,7 @@ public sealed partial class When_SelectingLocationCandidate_WithSelectionToken_S
             CancellationToken.None);
 
         result.Location!.LocationId.ShouldBe(existing.Id);
+        result.Created.ShouldBeFalse();
         context.LocationItems.ShouldHaveSingleItem();
     }
 }

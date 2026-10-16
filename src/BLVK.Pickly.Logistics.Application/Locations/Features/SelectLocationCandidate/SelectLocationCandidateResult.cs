@@ -2,4 +2,5 @@ namespace BLVK.Pickly.Logistics.Application.Locations.Features.SelectLocationCan
 
 public sealed record SelectLocationCandidateResult(
     SelectLocationCandidateStatus Status,
-    LocationResponse? Location = null);
+    LocationResponse? Location = null,
+    bool Created = false);

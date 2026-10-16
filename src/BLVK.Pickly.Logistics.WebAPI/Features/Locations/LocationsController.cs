@@ -2,7 +2,6 @@ using Asp.Versioning;
 using BLVK.Pickly.Logistics.Application.Locations;
 using BLVK.Pickly.Logistics.Application.Locations.Features.GetLocation;
 using BLVK.Pickly.Logistics.Application.Locations.Features.GetNearbyLocations;
-using BLVK.Pickly.Logistics.Application.Locations.Features.ResolveLocation;
 using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
 using BLVK.Pickly.Logistics.Application.Locations.Features.SelectLocationCandidate;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
@@ -17,9 +16,8 @@ using System.Globalization;
 namespace BLVK.Pickly.Logistics.WebAPI.Features.Locations;
 
 /// <summary>
-/// Shared location registry endpoints. Search, lookup and proximity read only Pickly's registry; only the resolve
-/// endpoints may reach the paid geocoding provider, and they are rate limited per user. There is no endpoint that
-/// accepts client-supplied coordinates.
+/// Shared location registry endpoints. Search uses the registry first and falls back to Mapbox; registration only
+/// accepts an opaque candidate token issued by search. No endpoint accepts client-supplied coordinates.
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
@@ -27,21 +25,25 @@ namespace BLVK.Pickly.Logistics.WebAPI.Features.Locations;
 [Route(EndpointUrl.Locations.Route)]
 public sealed class LocationsController(
     SearchLocationsHandler searchHandler,
-    ResolveLocationHandler resolveHandler,
     SelectLocationCandidateHandler selectHandler,
     GetLocationHandler getHandler,
     GetNearbyLocationsHandler nearbyHandler,
     SearchLocationsRequestValidator searchValidator,
-    ResolveLocationRequestValidator resolveValidator,
-    SelectLocationCandidateRequestValidator selectValidator,
+    RegisterLocationRequestValidator registerValidator,
     GetNearbyLocationsRequestValidator nearbyValidator,
     ICurrentActor currentActor) : ControllerBase
 {
     [HttpGet("search")]
-    [ProducesResponseType<LocationListResponse<LocationSummaryResponse>>(StatusCodes.Status200OK)]
+    [EnableRateLimiting(RateLimitingPolicyNames.LocationResolutionPolicy)]
+    [ProducesResponseType<LocationListResponse<LocationSearchItemResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<LocationListResponse<LocationSummaryResponse>>> Search(
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<LocationListResponse<LocationSearchItemResponse>>> Search(
         [FromQuery] SearchLocationsRequest request,
         CancellationToken cancellationToken)
     {
@@ -55,71 +57,30 @@ public sealed class LocationsController(
             new SearchLocationsQuery(request.Q!, request.CountryCode, request.Limit, ResolveActorContext()),
             cancellationToken);
 
-        return result.Status == SearchLocationsStatus.NotAuthenticated
-            ? Unauthorized()
-            : Ok(new LocationListResponse<LocationSummaryResponse>(result.Items));
-    }
-
-    [HttpPost("resolve")]
-    [EnableRateLimiting(RateLimitingPolicyNames.LocationResolutionPolicy)]
-    [ProducesResponseType<ResolveLocationResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    [ProducesResponseType(StatusCodes.Status502BadGateway)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<ActionResult<ResolveLocationResponse>> Resolve(
-        [FromBody] ResolveLocationRequest request,
-        CancellationToken cancellationToken)
-    {
-        var validationResult = await resolveValidator.ValidateAsync(request, cancellationToken);
-        if (!validationResult.IsValid)
-        {
-            return BadRequest(new ValidationProblemDetails(validationResult.ToValidationDictionary()));
-        }
-
-        var result = await resolveHandler.HandleAsync(
-            new ResolveLocationCommand(
-                request.AddressLine,
-                request.City,
-                request.State,
-                request.CountryCode,
-                ResolveActorContext()),
-            cancellationToken);
-
         return result.Status switch
         {
-            ResolveLocationStatus.Resolved => Ok(ResolveLocationResponse.Resolved(result.Location!)),
-            ResolveLocationStatus.SelectionRequired => Ok(ResolveLocationResponse.SelectionRequired(result.Candidates!)),
-            ResolveLocationStatus.NotAuthenticated => Unauthorized(),
-            ResolveLocationStatus.Unresolved => Problem(
-                StatusCodes.Status422UnprocessableEntity,
-                LocationErrorCodes.Unresolved,
-                "Location could not be resolved",
-                "The address could not be resolved to a precise location. Choose a known landmark or another resolvable location.",
-                new Dictionary<string, object?> { ["nearbyLandmarks"] = result.NearbyLandmarks ?? [] }),
-            ResolveLocationStatus.UnsupportedRegion => Problem(
+            SearchLocationsStatus.Success => Ok(new LocationListResponse<LocationSearchItemResponse>(result.Items)),
+            SearchLocationsStatus.NotAuthenticated => Unauthorized(),
+            SearchLocationsStatus.UnsupportedRegion => Problem(
                 StatusCodes.Status422UnprocessableEntity,
                 LocationErrorCodes.UnsupportedRegion,
                 "Region not supported",
                 "Pickly does not serve this country yet."),
-            ResolveLocationStatus.ResolutionInProgress => WithRetryAfter(
+            SearchLocationsStatus.ResolutionInProgress => WithRetryAfter(
                 result.RetryAfter,
                 Problem(
                     StatusCodes.Status409Conflict,
                     LocationErrorCodes.ResolutionInProgress,
-                    "Resolution in progress",
-                    "The same address is being resolved by another request. Retry shortly.")),
-            ResolveLocationStatus.ProviderRateLimited => WithRetryAfter(
+                    "Search in progress",
+                    "The same location is being searched by another request. Retry shortly.")),
+            SearchLocationsStatus.ProviderRateLimited => WithRetryAfter(
                 result.RetryAfter,
                 Problem(
                     StatusCodes.Status503ServiceUnavailable,
                     LocationErrorCodes.GeocodingRateLimited,
                     "Geocoding temporarily limited",
-                    "Location resolution is temporarily rate limited. Retry later.")),
-            ResolveLocationStatus.InvalidProviderResponse => Problem(
+                    "Location search is temporarily rate limited. Retry later.")),
+            SearchLocationsStatus.InvalidProviderResponse => Problem(
                 StatusCodes.Status502BadGateway,
                 LocationErrorCodes.InvalidProviderResponse,
                 "Geocoding provider error",
@@ -134,18 +95,20 @@ public sealed class LocationsController(
         };
     }
 
-    [HttpPost("resolve/selections")]
+    [HttpPost]
     [EnableRateLimiting(RateLimitingPolicyNames.LocationResolutionPolicy)]
-    [ProducesResponseType<ResolveLocationResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<LocationResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<LocationResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<ResolveLocationResponse>> SelectCandidate(
-        [FromBody] SelectLocationCandidateRequest request,
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<LocationResponse>> Register(
+        [FromBody] RegisterLocationRequest request,
         CancellationToken cancellationToken)
     {
-        var validationResult = await selectValidator.ValidateAsync(request, cancellationToken);
+        var validationResult = await registerValidator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
         {
             return BadRequest(new ValidationProblemDetails(validationResult.ToValidationDictionary()));
@@ -157,7 +120,11 @@ public sealed class LocationsController(
 
         return result.Status switch
         {
-            SelectLocationCandidateStatus.Resolved => Ok(ResolveLocationResponse.Resolved(result.Location!)),
+            SelectLocationCandidateStatus.Resolved when result.Created => CreatedAtAction(
+                nameof(GetById),
+                new { locationId = result.Location!.LocationId },
+                result.Location),
+            SelectLocationCandidateStatus.Resolved => Ok(result.Location),
             SelectLocationCandidateStatus.NotAuthenticated => Unauthorized(),
             SelectLocationCandidateStatus.LocationUnusable => Problem(
                 StatusCodes.Status422UnprocessableEntity,
@@ -168,7 +135,7 @@ public sealed class LocationsController(
                 StatusCodes.Status404NotFound,
                 LocationErrorCodes.SelectionNotFound,
                 "Selection not found",
-                "The selection has expired or is not valid. Resolve the address again.")
+                "The selection has expired or is not valid. Search again.")
         };
     }
 

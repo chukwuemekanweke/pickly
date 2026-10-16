@@ -22,6 +22,11 @@ public static partial class LocationSearchTerms
             .Take(MaxTerms)
             .ToArray();
 
+    public static string NormalizeForComparison(string? value) =>
+        string.Join(' ', TermRegex()
+            .Matches(value ?? string.Empty)
+            .Select(match => match.Value.ToLower(CultureInfo.InvariantCulture)));
+
     [GeneratedRegex(@"[\p{L}\p{N}]+")]
     private static partial Regex TermRegex();
 }

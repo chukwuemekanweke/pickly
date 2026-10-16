@@ -13,8 +13,8 @@ public sealed partial class When_SelectingLocationCandidate_WithSelectionRequest
     {
         var context = new LocationsControllerTestContext();
 
-        var result = await context.CreateController().SelectCandidate(
-            new SelectLocationCandidateRequest($"{LocationSelectionTokens.NewSelectionId()}.0"),
+        var result = await context.CreateController().Register(
+            new RegisterLocationRequest($"{LocationSelectionTokens.NewSelectionId()}.0"),
             CancellationToken.None);
 
         var objectResult = result.Result.ShouldBeOfType<ObjectResult>();

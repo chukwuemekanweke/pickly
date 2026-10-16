@@ -18,6 +18,7 @@ public sealed partial class When_SelectingLocationCandidate_WithSelectionToken_S
             CancellationToken.None);
 
         result.Status.ShouldBe(SelectLocationCandidateStatus.Resolved);
+        result.Created.ShouldBeTrue();
         var registered = context.LocationItems.ShouldHaveSingleItem();
         registered.HasProviderReference("mapbox", "address.12b").ShouldBeTrue();
         result.Location!.LocationId.ShouldBe(registered.Id);

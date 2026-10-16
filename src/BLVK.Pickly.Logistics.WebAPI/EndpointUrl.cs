@@ -129,8 +129,6 @@ public static class EndpointUrl
         public const string Route = $"api/{Versions.V1Route}/locations";
         public static readonly string V1 = ToV1(Route);
         public static readonly string SearchV1 = $"{V1}/search";
-        public static readonly string ResolveV1 = $"{V1}/resolve";
-        public static readonly string ResolveSelectionsV1 = $"{V1}/resolve/selections";
         public static readonly string NearbyV1 = $"{V1}/nearby";
         public static string ByIdV1(Guid locationId) => $"{V1}/{locationId}";
     }

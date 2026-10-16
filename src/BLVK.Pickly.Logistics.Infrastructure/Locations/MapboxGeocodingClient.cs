@@ -10,7 +10,7 @@ using System.Text.Json;
 namespace BLVK.Pickly.Logistics.Infrastructure.Locations;
 
 /// <summary>
-/// Mapbox Geocoding v6 structured forward geocoding.
+/// Mapbox Geocoding v6 permanent forward geocoding using structured or sanitized free-text input.
 /// </summary>
 internal sealed class MapboxGeocodingClient(
     HttpClient httpClient,
@@ -86,12 +86,20 @@ internal sealed class MapboxGeocodingClient(
 
     internal static string BuildRequestUri(GeocodingRequest request, string accessToken)
     {
-        var query = new StringBuilder(ForwardPath)
-            .Append("?address_line1=").Append(Uri.EscapeDataString(request.AddressLine))
-            .Append("&place=").Append(Uri.EscapeDataString(request.City))
-            .Append("&region=").Append(Uri.EscapeDataString(request.State))
-            .Append("&country=").Append(Uri.EscapeDataString(request.CountryCode.ToLowerInvariant()))
-            .Append("&permanent=false")
+        var query = new StringBuilder(ForwardPath).Append('?');
+        if (string.IsNullOrWhiteSpace(request.City) && string.IsNullOrWhiteSpace(request.State))
+        {
+            query.Append("q=").Append(Uri.EscapeDataString(request.AddressLine));
+        }
+        else
+        {
+            query.Append("address_line1=").Append(Uri.EscapeDataString(request.AddressLine))
+                .Append("&place=").Append(Uri.EscapeDataString(request.City))
+                .Append("&region=").Append(Uri.EscapeDataString(request.State));
+        }
+
+        query.Append("&country=").Append(Uri.EscapeDataString(request.CountryCode.ToLowerInvariant()))
+            .Append("&permanent=true")
             .Append("&autocomplete=false")
             .Append("&limit=").Append(request.MaxCandidates.ToString(CultureInfo.InvariantCulture))
             .Append("&access_token=").Append(Uri.EscapeDataString(accessToken));

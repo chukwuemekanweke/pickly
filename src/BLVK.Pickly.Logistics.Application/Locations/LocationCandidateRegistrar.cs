@@ -29,6 +29,21 @@ public sealed class LocationCandidateRegistrar(
         LocationResolutionSource resolutionSource,
         string? resolutionKey,
         ActorContext actorContext,
+        CancellationToken cancellationToken) =>
+        (await RegisterWithOutcomeAsync(
+            candidate,
+            provider,
+            resolutionSource,
+            resolutionKey,
+            actorContext,
+            cancellationToken)).Location;
+
+    public async Task<LocationRegistration> RegisterWithOutcomeAsync(
+        GeocodingCandidate candidate,
+        string provider,
+        LocationResolutionSource resolutionSource,
+        string? resolutionKey,
+        ActorContext actorContext,
         CancellationToken cancellationToken)
     {
         if (!TryBuildAddress(candidate, out var address))
@@ -73,7 +88,7 @@ public sealed class LocationCandidateRegistrar(
                     [Observability.PropertyNames.Locations.MatchKind] = "provider_reference"
                 }));
 
-        return registration.Location;
+        return registration;
     }
 
     private static bool TryBuildAddress(GeocodingCandidate candidate, out LocationAddress address)

@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Shared Location Registry (Locations Domain)
-description: Provider-neutral shared Location aggregate on PostGIS, Mapbox Geocoding v6 permanent resolution, search vs resolution separation, conservative deduplication, cross-instance resolution lease, landmark fallback and privacy rules
+description: Provider-neutral shared Location aggregate on PostGIS, unified registry-first search with Mapbox fallback, explicit token-based registration, conservative deduplication, cross-instance resolution lease, landmark fallback and privacy rules
 resource: okf://knowledge/domains/locations
 tags:
     - constraint
@@ -67,18 +67,30 @@ client-supplied coordinates; landmarks are created by internal operations, never
   must use the identical expression with an inline `'simple'` literal. Terms are sanitized to letters/digits and
   prefix-matched — no leading-wildcard `LIKE`.
 
-## Search vs resolution (strictly separate)
+## Unified search and explicit registration
 
-- `SearchLocations`, `GetLocation`, `GetNearbyLocations` read only the registry and never call a provider.
-- `ResolveLocation` order: supported-country check → registry lookup (resolution key, then a *unique*
-  normalized-address match) → cross-instance lease → recheck registry → cached recent provider outcome → Mapbox.
-- Auto-accept only when exactly one registrable candidate has `Exact`/`High` confidence and no other candidate is
-  better than `Low`. Registrable = `Premise` or `Street` precision, matching country, valid coordinates and address.
-  Otherwise candidates are held server-side (`PendingLocationSelection` in `IJsonCache`, bound to the stakeholder)
-  and clients get opaque selection tokens for `SelectLocationCandidate`. A selected candidate is registered without
-  recording the request text as its resolution key (another sender may mean a different candidate).
-- Unresolved: no coordinates are fabricated. If the provider returned only an `Area` result it is used, unpersisted,
-  as an anchor to suggest nearby public `Landmark`s; the sender must explicitly pick one.
+- `GET /api/v1/locations/search` is the only public resolution entry point. It authenticates the sender, bounds and
+  normalizes the query, and searches usable public registry locations first. A full normalized display-address match
+  is reliable enough to suppress Mapbox; partial street-name matches remain in the result but do not suppress useful
+  provider candidates.
+- When registry results are not reliable, search takes the cross-instance resolution lease, reuses a cached recent
+  permanent-geocoding outcome when available, and otherwise calls Mapbox. Search never creates a `Location`.
+- Registry and provider matches share one result contract. Registry items contain a `LocationId` and no token;
+  provider items contain an opaque selection token and no `LocationId`. Provider precision remains visible so a
+  street-centre result is not represented as a verified premise or building entrance.
+- Registrable provider candidates are `Premise` or `Street` precision, match the supported country, and carry a valid
+  canonical address and WGS84 coordinates. Candidates are held server-side (`PendingLocationSelection` in
+  `IJsonCache`) and bound to the stakeholder; clients never submit provider payloads or coordinates.
+- `POST /api/v1/locations` accepts only a selection token. It validates token ownership/expiry, registers or reuses
+  the provider feature through `LocationCandidateRegistrar` and `LocationRegistrationStore`, returns `201 Created`
+  for a new canonical location and `200 OK` for a reused one. Repeating a still-valid token is idempotent because
+  provider-reference locking and uniqueness return the existing location.
+- `POST /locations/resolve` and `POST /locations/resolve/selections` are not public routes. The internal resolution
+  helpers remain available for orchestration and tests, but pickup-location handlers accept only `LocationId` and
+  never geocode.
+- Unresolved searches return no fabricated coordinates. Existing weak registry alternatives can still be selected,
+  and registered landmark alternatives remain available through registry search and the nearby-location endpoint;
+  the sender must explicitly choose one.
 
 ## Deduplication and concurrency
 
@@ -91,19 +103,20 @@ uses a short transaction with an advisory lock on the provider feature, and the 
 
 ## Mapbox
 
-`MapboxGeocodingClient` calls Geocoding v6 structured forward (`search/geocode/v6/forward`, `permanent=true`,
-`autocomplete=false`, country filter, bounded `limit`). The application persists provider results, so this client
-always declares permanent use rather than exposing a separate runtime switch. Mapbox is the authority on whether the
-configured account may make the request; rejected requests surface as provider failures. 5xx/transport errors get
-bounded Polly retries; 429 is not retried and surfaces a retry hint. The token travels in the query string, so default
-HttpClient loggers are removed and logs never include tokens or addresses. Search Box results do not carry the same
-storage rights and must not be persisted through this path.
+`MapboxGeocodingClient` calls Geocoding v6 forward (`search/geocode/v6/forward`) with structured fields for internal
+address requests and sanitized free text (`q`) for unified search. Every request uses `permanent=true`,
+`autocomplete=false`, a supported-country hard filter and a bounded `limit`, because provider candidates and recent
+outcomes are held for later canonical registration. The client does not offer a temporary-storage mode. Mapbox is the
+authority on whether the configured account may make permanent requests; rejected requests surface as provider
+failures. 5xx/transport errors get bounded Polly retries; 429 is not retried and surfaces a retry hint. The token
+travels in the query string, so default HttpClient loggers are removed and logs never include tokens or addresses.
+Search Box results do not carry the same storage rights and must not be persisted through this path.
 
 ## Privacy, limits and prerequisites
 
 - Mapbox premise results are `Private` (reachable only by exact resolution or id); street-level results and landmarks
   are `Public` (searchable and proximity-discoverable). Search/nearby never return private locations.
-- Resolution endpoints use the per-user `LocationResolutionPolicy` rate limit; query length, radius, limits and
+- Search and registration use the per-user `LocationResolutionPolicy` rate limit; query length, radius, limits and
   supported countries are bounded (`LocationResolutionOptions`).
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT
   EXISTS postgis`, which needs sufficient privileges on managed services (pre-create it otherwise).

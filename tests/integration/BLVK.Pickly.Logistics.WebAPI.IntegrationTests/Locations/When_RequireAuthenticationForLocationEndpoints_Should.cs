@@ -1,3 +1,4 @@
+using BLVK.Pickly.Logistics.WebAPI.Features.Locations;
 using Shouldly;
 using System.Net;
 using System.Net.Http.Json;
@@ -13,11 +14,13 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should
         Client.DefaultRequestHeaders.Authorization = null;
 
         using var search = await Client.GetAsync($"{EndpointUrl.Locations.SearchV1}?q=polo");
-        using var resolve = await Client.PostAsJsonAsync(EndpointUrl.Locations.ResolveV1, ResolveRequest("1 Test Road"));
+        using var register = await Client.PostAsJsonAsync(
+            EndpointUrl.Locations.V1,
+            new RegisterLocationRequest("invalid"));
         Client.DefaultRequestHeaders.Authorization = authorization;
 
         search.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        resolve.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        register.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         LocationGeocodingProvider.CallCount.ShouldBe(0);
     }
 }

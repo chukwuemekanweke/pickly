@@ -13,18 +13,23 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should
     public async Task ResolveOnceAndServeRepeatedRequestsFromRegistry()
     {
         LocationGeocodingProvider.Responder = (request, _) => Task.FromResult(Success(Candidate($"{_run}-addr-12", request.AddressLine)));
-        var request = ResolveRequest($"12 Ekpulechi Avenue {_run}");
+        var query = $"12 Ekpulechi Avenue {_run}";
 
-        var first = await ResolveAsync(request);
-        var second = await ResolveAsync(request);
+        var firstSearch = await SearchAsync(query);
+        var candidate = firstSearch.Items.Single(item => item.SelectionToken is not null);
+        using var registration = await Client.PostAsJsonAsync(
+            EndpointUrl.Locations.V1,
+            new RegisterLocationRequest(candidate.SelectionToken!));
+        var first = await registration.Content.ReadFromJsonAsync<LocationResponse>();
+        var second = await SearchAsync(query);
 
-        first.Status.ShouldBe(ResolveLocationResponse.ResolvedStatus);
-        first.ResolutionSource.ShouldBe(LocationResolutionSource.Mapbox);
+        registration.StatusCode.ShouldBe(HttpStatusCode.Created);
+        first!.ResolutionSource.ShouldBe(LocationResolutionSource.Mapbox);
         first.LocationType.ShouldBe(LocationType.Address);
-        second.LocationId.ShouldBe(first.LocationId);
+        second.Items.ShouldContain(item => item.LocationId == first.LocationId);
         LocationGeocodingProvider.CallCount.ShouldBe(1);
 
-        using var getResponse = await Client.GetAsync(EndpointUrl.Locations.ByIdV1(first.LocationId!.Value));
+        using var getResponse = await Client.GetAsync(EndpointUrl.Locations.ByIdV1(first.LocationId));
         var location = await getResponse.Content.ReadFromJsonAsync<LocationResponse>();
         getResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         location!.Coordinates.ShouldBe(new LocationCoordinatesResponse(6.4512m, 7.5221m));

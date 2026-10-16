@@ -1,4 +1,4 @@
-using BLVK.Pickly.Logistics.Application.Locations;
+using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
 using BLVK.Pickly.Logistics.WebAPI.Features.Locations;
 using Shouldly;
 using System.Net;
@@ -11,14 +11,16 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should
 [Fact]
     public async Task SearchOnlyPubliclyDiscoverableRegistryLocations()
     {
-        using var landmarkResponse = await Client.GetAsync($"{EndpointUrl.Locations.SearchV1}?q={_run}%20polo");
-        var landmarks = await landmarkResponse.Content.ReadFromJsonAsync<LocationListResponse<LocationSummaryResponse>>();
+        LocationGeocodingProvider.Responder = (_, _) => Task.FromResult(Success());
+        using var landmarkResponse = await Client.GetAsync(
+            $"{EndpointUrl.Locations.SearchV1}?q={Uri.EscapeDataString(_poloPark.Address.DisplayAddress)}");
+        var landmarks = await landmarkResponse.Content.ReadFromJsonAsync<LocationListResponse<LocationSearchItemResponse>>();
         using var premiseResponse = await Client.GetAsync($"{EndpointUrl.Locations.SearchV1}?q=hidden%20{_run}");
-        var premises = await premiseResponse.Content.ReadFromJsonAsync<LocationListResponse<LocationSummaryResponse>>();
+        var premises = await premiseResponse.Content.ReadFromJsonAsync<LocationListResponse<LocationSearchItemResponse>>();
 
         landmarkResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        landmarks!.Items.Select(item => item.Id).ShouldBe([_poloPark.Id, _northGate.Id], ignoreOrder: true);
+        landmarks!.Items.ShouldHaveSingleItem().LocationId.ShouldBe(_poloPark.Id);
         premises!.Items.ShouldBeEmpty();
-        LocationGeocodingProvider.CallCount.ShouldBe(0);
+        LocationGeocodingProvider.CallCount.ShouldBe(1);
     }
 }

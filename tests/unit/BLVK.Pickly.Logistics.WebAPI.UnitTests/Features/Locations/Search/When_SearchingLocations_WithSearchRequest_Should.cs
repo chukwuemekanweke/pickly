@@ -1,4 +1,4 @@
-using BLVK.Pickly.Logistics.Application.Locations;
+using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
 using BLVK.Pickly.Logistics.Domain.Locations.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Locations.Services;
 using BLVK.Pickly.Logistics.WebAPI.Features.Locations;
@@ -18,12 +18,12 @@ public sealed partial class When_SearchingLocations_WithSearchRequest_Should
             .Returns([location]);
 
         var result = await context.CreateController().Search(
-            new SearchLocationsRequest("Polo Park"),
+            new SearchLocationsRequest("Polo Park Mall, Enugu"),
             CancellationToken.None);
 
         var response = result.Result.ShouldBeOfType<OkObjectResult>().Value
-            .ShouldBeOfType<LocationListResponse<LocationSummaryResponse>>();
-        response.Items.ShouldHaveSingleItem().Id.ShouldBe(location.Id);
+            .ShouldBeOfType<LocationListResponse<LocationSearchItemResponse>>();
+        response.Items.ShouldHaveSingleItem().LocationId.ShouldBe(location.Id);
         await context.GeocodingProvider.DidNotReceive()
             .ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
     }
