@@ -121,8 +121,10 @@ Search Box results do not carry the same storage rights and must not be persiste
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT
   EXISTS postgis`, which needs sufficient privileges on managed services (pre-create it otherwise).
 
-## Future consumers
+## Delivery pricing consumer
 
-Delivery creation copies a usable location's address/coordinates into the immutable `DeliveryAddress` snapshot; it
-never references `Location` mutably. Zones, routing, pricing and rider proximity should query the same `geography`
-column with GiST-backed PostGIS predicates.
+Delivery quote creation loads usable canonical locations by id, resolves delivery-zone membership against their
+existing coordinates and copies their address/coordinates into immutable quote snapshots; it never geocodes or
+modifies a `Location`. Delivery creation will later copy the already-agreed quote snapshot. Zone matching uses the
+same WGS84 coordinates, while routing sends those server-resolved coordinates to the provider. See
+[[delivery-pricing-and-quotes]].

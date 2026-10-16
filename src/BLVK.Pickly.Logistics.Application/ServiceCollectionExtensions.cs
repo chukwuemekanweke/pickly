@@ -25,13 +25,17 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.StartGoogleAuthe
 using BLVK.Pickly.Logistics.Application.Authentication.Features.VerifyTwoFactorEnrollment;
 using BLVK.Pickly.Logistics.Application.Authentication.Stakeholders;
 using BLVK.Pickly.Logistics.Application.Common.FileUploads;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreateDeliveryQuote;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.DeletePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDefaultPickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDeliveryQuote;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetPickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetVehicleOptions;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.ListPickupLocations;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.SetDefaultPickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.UpdatePickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Quotes;
 using BLVK.Pickly.Logistics.Application.Locations;
 using BLVK.Pickly.Logistics.Application.Locations.Features.GetLocation;
 using BLVK.Pickly.Logistics.Application.Locations.Features.GetNearbyLocations;
@@ -121,6 +125,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UpdatePickupLocationHandler>();
         services.AddScoped<SetDefaultPickupLocationHandler>();
         services.AddScoped<DeletePickupLocationHandler>();
+        services.AddScoped<DeliveryQuotePreparationService>();
+        services.AddScoped<GetVehicleOptionsHandler>();
+        services.AddScoped<CreateDeliveryQuoteHandler>();
+        services.AddScoped<GetDeliveryQuoteHandler>();
         services.AddScoped<LocationCandidateRegistrar>();
         services.AddScoped<LocationRegistryMatcher>();
         services.AddScoped<ProviderLocationResolver>();

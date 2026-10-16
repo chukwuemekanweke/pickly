@@ -83,7 +83,8 @@ auditing, and soft-delete infrastructure described in [[persistence]]. Tracking 
 evidence references have database uniqueness constraints. Status history uses restricted deletion so
 hard deletion of a delivery cannot silently cascade into its history.
 
-Future phases own pricing/quote calculation, application commands and APIs, provider verification,
+Phase 3 pricing, routing, zones, vehicle recommendations and immutable quotes are described in
+[[delivery-pricing-and-quotes]]. Future phases own quote consumption into a Delivery, provider verification,
 rider discovery, cash-collection records, proof generation, remittance/reconciliation, and read
 models. They must call the aggregate's existing transition methods after validating their own
 evidence; they must not introduce a generic status setter or treat delivery status as financial truth.

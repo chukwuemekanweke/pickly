@@ -1,4 +1,5 @@
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Services;
 using BLVK.Pickly.Logistics.Domain.Locations.Services;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using Microsoft.AspNetCore.Hosting;
@@ -19,6 +20,7 @@ public sealed class CustomWebApplicationFactory(
 {
     public FakeGoogleIdentityTokenService GoogleIdentityTokenService { get; } = new();
     public FakeLocationGeocodingProvider LocationGeocodingProvider { get; } = new();
+    public FakeDeliveryRouteProvider DeliveryRouteProvider { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -70,6 +72,8 @@ public sealed class CustomWebApplicationFactory(
             services.AddSingleton<IGoogleIdentityTokenService>(GoogleIdentityTokenService);
             services.RemoveAll<ILocationGeocodingProvider>();
             services.AddSingleton<ILocationGeocodingProvider>(LocationGeocodingProvider);
+            services.RemoveAll<IDeliveryRouteProvider>();
+            services.AddSingleton<IDeliveryRouteProvider>(DeliveryRouteProvider);
 
             if (useFakePaymentProviderServices)
             {

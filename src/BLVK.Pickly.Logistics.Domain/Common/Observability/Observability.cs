@@ -60,6 +60,12 @@ public static class Observability
             public const string CountryCode = "country_code";
             public const string DurationMilliseconds = "duration_ms";
         }
+
+        public static class Deliveries
+        {
+            public const string Outcome = "quote_outcome";
+            public const string VehicleOptionCount = "vehicle_option_count";
+        }
     }
 
     public static class EventNames
@@ -139,6 +145,13 @@ public static class Observability
             public const string Reused = "location.reused";
             public const string DuplicateResolutionPrevented = "location.resolution.duplicate_prevented";
             public const string CandidateSelected = "location.candidate.selected";
+        }
+
+        public static class Deliveries
+        {
+            public const string VehicleOptionsCalculated = "delivery.vehicle_options.calculated";
+            public const string QuoteCreated = "delivery.quote.created";
+            public const string QuoteCreationFailed = "delivery.quote.creation_failed";
         }
     }
 }
