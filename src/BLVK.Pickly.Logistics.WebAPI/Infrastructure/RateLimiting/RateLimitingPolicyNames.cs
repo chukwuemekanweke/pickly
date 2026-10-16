@@ -8,4 +8,5 @@ public static class RateLimitingPolicyNames
     public const string EmailOperationsPolicy = "email-operations-policy";
     public const string PasswordResetPolicy = "password-reset-policy";
     public const string TwoFactorVerificationPolicy = "two-factor-verification-policy";
+    public const string LocationResolutionPolicy = "location-resolution-policy";
 }

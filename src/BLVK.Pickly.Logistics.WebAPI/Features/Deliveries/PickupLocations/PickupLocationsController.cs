@@ -48,21 +48,27 @@ public sealed class PickupLocationsController(
 
         var result = await createHandler.HandleAsync(
             new CreatePickupLocationCommand(
+                request.LocationId,
                 request.Label,
-                MapAddress(request.Address),
+                request.AdditionalDirections,
                 request.IsDefault,
                 ResolveActorContext()),
             cancellationToken);
 
-        if (result.Status == CreatePickupLocationStatus.NotAuthenticated)
+        switch (result.Status)
         {
-            return Unauthorized();
+            case CreatePickupLocationStatus.NotAuthenticated:
+                return Unauthorized();
+            case CreatePickupLocationStatus.LocationNotFound:
+                return LocationNotFound();
+            case CreatePickupLocationStatus.LocationUnusable:
+                return LocationUnusable();
         }
 
         var location = result.Location!;
         return CreatedAtAction(
             nameof(GetById),
-            new { version = "1.0", locationId = location.Id },
+            new { version = "1.0", pickupLocationId = location.Id },
             location);
     }
 
@@ -107,16 +113,16 @@ public sealed class PickupLocationsController(
         };
     }
 
-    [HttpGet("{locationId:guid}")]
+    [HttpGet("{pickupLocationId:guid}")]
     [ProducesResponseType<PickupLocationResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PickupLocationResponse>> GetById(
-        Guid locationId,
+        Guid pickupLocationId,
         CancellationToken cancellationToken)
     {
         var result = await getHandler.HandleAsync(
-            new GetPickupLocationQuery(locationId, ResolveActorContext()),
+            new GetPickupLocationQuery(pickupLocationId, ResolveActorContext()),
             cancellationToken);
 
         return result.Status switch
@@ -127,13 +133,13 @@ public sealed class PickupLocationsController(
         };
     }
 
-    [HttpPut("{locationId:guid}")]
+    [HttpPut("{pickupLocationId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
-        Guid locationId,
+        Guid pickupLocationId,
         [FromBody] UpdatePickupLocationRequest request,
         CancellationToken cancellationToken)
     {
@@ -145,9 +151,10 @@ public sealed class PickupLocationsController(
 
         var result = await updateHandler.HandleAsync(
             new UpdatePickupLocationCommand(
-                locationId,
+                pickupLocationId,
+                request.LocationId,
                 request.Label,
-                MapAddress(request.Address),
+                request.AdditionalDirections,
                 ResolveActorContext()),
             cancellationToken);
 
@@ -155,18 +162,20 @@ public sealed class PickupLocationsController(
         {
             UpdatePickupLocationStatus.NotAuthenticated => Unauthorized(),
             UpdatePickupLocationStatus.NotFound => NotFound(),
+            UpdatePickupLocationStatus.LocationNotFound => LocationNotFound(),
+            UpdatePickupLocationStatus.LocationUnusable => LocationUnusable(),
             _ => NoContent()
         };
     }
 
-    [HttpPut("{locationId:guid}/default")]
+    [HttpPut("{pickupLocationId:guid}/default")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SetDefault(Guid locationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> SetDefault(Guid pickupLocationId, CancellationToken cancellationToken)
     {
         var result = await setDefaultHandler.HandleAsync(
-            new SetDefaultPickupLocationCommand(locationId, ResolveActorContext()),
+            new SetDefaultPickupLocationCommand(pickupLocationId, ResolveActorContext()),
             cancellationToken);
 
         return result.Status switch
@@ -177,14 +186,14 @@ public sealed class PickupLocationsController(
         };
     }
 
-    [HttpDelete("{locationId:guid}")]
+    [HttpDelete("{pickupLocationId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid locationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid pickupLocationId, CancellationToken cancellationToken)
     {
         var result = await deleteHandler.HandleAsync(
-            new DeletePickupLocationCommand(locationId, ResolveActorContext()),
+            new DeletePickupLocationCommand(pickupLocationId, ResolveActorContext()),
             cancellationToken);
 
         return result.Status switch
@@ -204,13 +213,17 @@ public sealed class PickupLocationsController(
                 currentActor.FlowId)
             : ActorContext.FromAnonymousActor(currentActor);
 
-    private static PickupLocationAddress MapAddress(PickupLocationAddressRequest address) =>
-        new(
-            address.AddressLine,
-            address.AdditionalInformation,
-            address.City,
-            address.State,
-            address.CountryCode,
-            address.Latitude,
-            address.Longitude);
+    private static ObjectResult LocationNotFound() =>
+        AuthenticationProblemDetails.Create(
+            StatusCodes.Status400BadRequest,
+            PickupLocationErrorCodes.LocationNotFound,
+            "Location not found",
+            "The referenced location does not exist. Resolve or select a location before saving it.");
+
+    private static ObjectResult LocationUnusable() =>
+        AuthenticationProblemDetails.Create(
+            StatusCodes.Status400BadRequest,
+            PickupLocationErrorCodes.LocationUnusable,
+            "Location unavailable",
+            "The referenced location is no longer available for pickups. Choose another location.");
 }

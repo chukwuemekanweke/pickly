@@ -56,18 +56,25 @@ public sealed class SavedPickupLocationReadModelRepository(AppReadDbContext dbCo
         return new SavedPickupLocationsCursorPage(locations, hasMore);
     }
 
-    private static IQueryable<SavedPickupLocationReadModel> Project(
+    private IQueryable<SavedPickupLocationReadModel> Project(
         IQueryable<Domain.Deliveries.Entities.SavedPickupLocation> query) =>
-        query.Select(location => new SavedPickupLocationReadModel(
-            location.Id,
-            location.Label,
-            location.Address.AddressLine,
-            location.Address.AdditionalInformation,
-            location.Address.City,
-            location.Address.State,
-            location.Address.CountryCode,
-            location.Address.Latitude,
-            location.Address.Longitude,
-            location.IsDefault,
-            location.CreatedAtUtc));
+        query.Join(
+            dbContext.Locations.AsNoTracking(),
+            saved => saved.LocationId,
+            shared => shared.Id,
+            (saved, shared) => new SavedPickupLocationReadModel(
+                saved.Id,
+                shared.Id,
+                saved.Label,
+                saved.AdditionalDirections,
+                saved.IsDefault,
+                saved.CreatedAtUtc,
+                shared.Address.DisplayAddress,
+                shared.Address.AddressLine,
+                shared.Address.City,
+                shared.Address.State,
+                shared.Address.CountryCode,
+                shared.LocationType,
+                shared.Coordinates.Latitude,
+                shared.Coordinates.Longitude));
 }

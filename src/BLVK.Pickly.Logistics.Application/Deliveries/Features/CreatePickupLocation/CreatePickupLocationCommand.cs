@@ -3,7 +3,8 @@ using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
 
 public sealed record CreatePickupLocationCommand(
+    Guid LocationId,
     string Label,
-    PickupLocationAddress Address,
+    string? AdditionalDirections,
     bool IsDefault,
     ActorContext ActorContext);

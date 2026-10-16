@@ -1,6 +1,7 @@
 namespace BLVK.Pickly.Logistics.WebAPI.Features.Deliveries.PickupLocations;
 
 public sealed record CreatePickupLocationRequest(
+    Guid LocationId,
     string Label,
-    PickupLocationAddressRequest Address,
+    string? AdditionalDirections = null,
     bool IsDefault = false);

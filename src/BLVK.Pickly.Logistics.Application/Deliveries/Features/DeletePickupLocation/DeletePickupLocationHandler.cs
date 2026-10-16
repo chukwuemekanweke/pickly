@@ -27,7 +27,7 @@ public sealed class DeletePickupLocationHandler(
         var location = await repository.FirstOrDefaultAsync(
             new SavedPickupLocationByOwnerAndIdSpecification(
                 senderId.Value,
-                command.LocationId,
+                command.PickupLocationId,
                 enableTracking: true),
             cancellationToken);
 

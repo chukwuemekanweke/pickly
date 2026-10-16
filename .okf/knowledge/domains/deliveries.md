@@ -23,9 +23,11 @@ code_refs:
     - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/*PickupLocation*.cs
     - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddDeliveryDomain*
     - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddSavedPickupLocations*
+    - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddSharedLocationRegistry*
     - src/BLVK.Pickly.Logistics.Application/Deliveries/**
     - src/BLVK.Pickly.Logistics.WebAPI/Features/Deliveries/**
     - tests/unit/BLVK.Pickly.Logistics.Domain.UnitTests/Deliveries/**
+    - tests/unit/BLVK.Pickly.Logistics.Application.UnitTests/Deliveries/**
     - tests/integration/BLVK.Pickly.Logistics.WebAPI.IntegrationTests/Deliveries/**
 governance: constraint
 ---
@@ -88,11 +90,16 @@ evidence; they must not introduce a generic status setter or treat delivery stat
 
 ## Saved pickup locations
 
-`SavedPickupLocation` is a separate aggregate in the Deliveries domain. It belongs to one sender,
-reuses `DeliveryAddress` for normalization and validation, and can be updated or soft-deleted without
-mutating a delivery's pickup-address snapshot. Its tenant is derived from the owning `Stakeholder`.
-`Delivery` has no foreign key to a saved location; a future booking workflow resolves an authorized
-saved location and copies its validated address into the new delivery.
+`SavedPickupLocation` is a separate aggregate in the Deliveries domain. It is a sender-owned association with a
+shared registry `Location` (see [[locations]]): `SenderId`, required `LocationId` (FK, restrict delete), `Label`,
+optional `AdditionalDirections` and `IsDefault`. It holds no canonical address or coordinates of its own, and
+updating it never modifies the shared location. Its tenant is derived from the owning `Stakeholder`.
+
+Create and update accept only an already-resolved `LocationId`; the handlers verify it exists and is usable and
+otherwise return `LocationNotFound`/`LocationUnusable` (HTTP 400 with a `code`). They must never geocode, call a
+provider, invoke location resolution or create a shared location — resolution is a separate, earlier step.
+`Delivery` has no foreign key to a saved or shared location; a future booking workflow loads the authorized saved
+location's shared `Location` and copies its address and coordinates into the immutable `DeliveryAddress` snapshot.
 
 The first active location becomes the default. Create-with-default, set-default, and delete-default
 operations run in one transaction and acquire a PostgreSQL transaction-scoped advisory lock keyed by
@@ -103,7 +110,8 @@ default.
 
 All command and query paths derive sender ownership from `ActorContext.StakeholderId` and use
 not-found semantics for records outside that scope. Authentication infrastructure remains responsible
-for validating the actor's tenant membership. Lightweight reads use `AppReadDbContext` projections.
+for validating the actor's tenant membership. Lightweight reads use `AppReadDbContext` projections that join the shared location (no N+1); do not add
+`IgnoreQueryFilters()` to that join — it is query-wide and would resurface soft-deleted saved locations.
 Listing uses an opaque, feature-scoped cursor ordered by `CreatedAtUtc DESC, Id DESC`, fetches one
 extra row, and deliberately does not sort the mutable default flag first so default changes cannot
 duplicate or skip locations while paging.

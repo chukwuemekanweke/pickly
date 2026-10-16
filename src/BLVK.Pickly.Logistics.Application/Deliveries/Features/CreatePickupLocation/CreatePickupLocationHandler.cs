@@ -2,11 +2,17 @@ using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
+using BLVK.Pickly.Logistics.Domain.Locations.Entities;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
 
+/// <summary>
+/// Associates the sender with an already-resolved shared location. This is a database-only operation: it never
+/// geocodes, never calls an external provider and never creates a shared location implicitly.
+/// </summary>
 public sealed class CreatePickupLocationHandler(
     IRepository<SavedPickupLocation> repository,
+    IRepository<Location> locations,
     IPickupLocationConsistencyLock consistencyLock,
     IUnitOfWork unitOfWork)
 {
@@ -18,6 +24,19 @@ public sealed class CreatePickupLocationHandler(
         if (!senderId.HasValue || senderId.Value == Guid.Empty)
         {
             return new CreatePickupLocationResult(CreatePickupLocationStatus.NotAuthenticated);
+        }
+
+        var location = command.LocationId == Guid.Empty
+            ? null
+            : await locations.GetByIdAsync(command.LocationId, cancellationToken);
+        if (location is null)
+        {
+            return new CreatePickupLocationResult(CreatePickupLocationStatus.LocationNotFound);
+        }
+
+        if (!location.IsUsable)
+        {
+            return new CreatePickupLocationResult(CreatePickupLocationStatus.LocationUnusable);
         }
 
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -34,18 +53,19 @@ public sealed class CreatePickupLocationHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        var location = SavedPickupLocation.Create(
+        var savedLocation = SavedPickupLocation.Create(
             senderId.Value,
             command.Label,
-            command.Address.ToDomain(),
+            location.Id,
+            command.AdditionalDirections,
             shouldBecomeDefault);
 
-        await repository.AddAsync(location, cancellationToken);
+        await repository.AddAsync(savedLocation, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return new CreatePickupLocationResult(
             CreatePickupLocationStatus.Success,
-            PickupLocationResponse.FromEntity(location));
+            PickupLocationResponse.FromEntities(savedLocation, location));
     }
 }

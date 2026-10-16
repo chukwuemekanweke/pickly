@@ -1,22 +1,17 @@
-using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
+using BLVK.Pickly.Logistics.Domain.Locations.Enums;
+using System.Text.Json.Serialization;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries;
 
+/// <summary>
+/// Customer-facing view of the shared location a saved pickup location references.
+/// </summary>
 public sealed record PickupLocationAddress(
+    string DisplayAddress,
     string AddressLine,
-    string? AdditionalInformation,
     string City,
     string State,
     string CountryCode,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] LocationType LocationType,
     decimal Latitude,
-    decimal Longitude)
-{
-    public DeliveryAddress ToDomain() => DeliveryAddress.Create(
-        AddressLine,
-        AdditionalInformation,
-        City,
-        State,
-        CountryCode,
-        Latitude,
-        Longitude);
-}
+    decimal Longitude);

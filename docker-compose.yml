@@ -39,6 +39,7 @@ services:
       Authentication__Google__Enabled: ${GOOGLE_AUTHENTICATION_ENABLED:-false}
       Authentication__Google__ClientIds__0: ${GOOGLE_CLIENT_ID:-}
       Authentication__Google__FlowLifetime: 00:10:00
+      Locations__Mapbox__AccessToken: ${MAPBOX_ACCESS_TOKEN:-}
       ObjectStorage__CloudflareR2__Endpoint: ${CLOUDFLARE_R2_ENDPOINT:-}
       ObjectStorage__CloudflareR2__ApplicationFolder: ${CLOUDFLARE_R2_APPLICATION_FOLDER:-}
       ObjectStorage__CloudflareR2__PublicBucketName: ${CLOUDFLARE_R2_PUBLIC_BUCKET_NAME:-}
@@ -208,7 +209,7 @@ services:
 
   postgres:
     profiles: [local]
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.5-alpine
     environment:
       POSTGRES_DB: BLVK.Pickly.LogisticsDb
       POSTGRES_USER: postgres

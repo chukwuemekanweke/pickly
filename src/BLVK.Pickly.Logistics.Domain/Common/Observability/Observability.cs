@@ -3,6 +3,7 @@ namespace BLVK.Pickly.Logistics.Domain.Common.Observability;
 public static class Observability
 {
     public const string ActivitySourceName = "BLVK.Pickly.Logistics";
+    public const string MeterName = "BLVK.Pickly.Logistics";
     public const string FlowIdHeaderName = "X-Flow-Id";
 
     public static class PropertyNames
@@ -47,6 +48,17 @@ public static class Observability
             public const string CurrencyCode = "currency_code";
             public const string WalletId = "wallet_id";
             public const string TerminalState = "terminal_state";
+        }
+
+        public static class Locations
+        {
+            public const string LocationId = "location_id";
+            public const string Provider = "geocoding_provider";
+            public const string Outcome = "resolution_outcome";
+            public const string MatchKind = "registry_match_kind";
+            public const string CandidateCount = "candidate_count";
+            public const string CountryCode = "country_code";
+            public const string DurationMilliseconds = "duration_ms";
         }
     }
 
@@ -113,6 +125,20 @@ public static class Observability
             public const string WalletCredited = "payment.wallet.credited";
             public const string CreditWallet = "payment.credit_wallet";
             public const string ActivateSubscription = "payment.activate_subscription";
+        }
+
+        public static class Locations
+        {
+            public const string RegistryHit = "location.registry.hit";
+            public const string RegistryMiss = "location.registry.miss";
+            public const string GeocodingRequested = "location.geocoding.requested";
+            public const string GeocodingFailed = "location.geocoding.failed";
+            public const string ResolutionAmbiguous = "location.resolution.ambiguous";
+            public const string ResolutionFailed = "location.resolution.failed";
+            public const string Registered = "location.registered";
+            public const string Reused = "location.reused";
+            public const string DuplicateResolutionPrevented = "location.resolution.duplicate_prevented";
+            public const string CandidateSelected = "location.candidate.selected";
         }
     }
 }

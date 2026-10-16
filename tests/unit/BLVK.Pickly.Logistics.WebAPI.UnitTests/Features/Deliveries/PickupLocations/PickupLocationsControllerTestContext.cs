@@ -9,8 +9,10 @@ using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
-using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
+using BLVK.Pickly.Logistics.Domain.Locations.Enums;
+using BLVK.Pickly.Logistics.Domain.Locations.ValueObjects;
 using BLVK.Pickly.Logistics.WebAPI.Features.Deliveries.PickupLocations;
+using RegistryLocation = BLVK.Pickly.Logistics.Domain.Locations.Entities.Location;
 
 namespace BLVK.Pickly.Logistics.WebAPI.UnitTests.Features.Deliveries.PickupLocations;
 
@@ -24,6 +26,17 @@ internal sealed class PickupLocationsControllerTestContext
         Transaction = Substitute.For<IUnitOfWorkTransaction>();
         ConsistencyLock = Substitute.For<IPickupLocationConsistencyLock>();
         CurrentActor = Substitute.For<ICurrentActor>();
+        SharedLocations = Substitute.For<IRepository<RegistryLocation>>();
+        SharedLocation = RegistryLocation.RegisterProviderResolved(
+            LocationAddress.Create("36 Garden Avenue", "Enugu", "Enugu", "NG"),
+            GeographicCoordinates.Create(6.4474m, 7.5139m),
+            LocationVisibility.Private,
+            LocationResolutionSource.Mapbox,
+            "mapbox",
+            "address.36",
+            "address",
+            DateTimeOffset.UtcNow);
+        SharedLocations.GetByIdAsync(SharedLocation.Id, Arg.Any<CancellationToken>()).Returns(SharedLocation);
 
         CurrentActor.ActorId.Returns(SenderId.ToString());
         CurrentActor.TenantId.Returns(TenantId);
@@ -40,14 +53,16 @@ internal sealed class PickupLocationsControllerTestContext
     public IUnitOfWorkTransaction Transaction { get; }
     public IPickupLocationConsistencyLock ConsistencyLock { get; }
     public ICurrentActor CurrentActor { get; }
+    public IRepository<RegistryLocation> SharedLocations { get; }
+    public RegistryLocation SharedLocation { get; }
 
     public PickupLocationsController CreateController() =>
         new(
-            new CreatePickupLocationHandler(Repository, ConsistencyLock, UnitOfWork),
+            new CreatePickupLocationHandler(Repository, SharedLocations, ConsistencyLock, UnitOfWork),
             new ListPickupLocationsHandler(ReadRepository),
             new GetDefaultPickupLocationHandler(ReadRepository),
             new GetPickupLocationHandler(ReadRepository),
-            new UpdatePickupLocationHandler(Repository, UnitOfWork),
+            new UpdatePickupLocationHandler(Repository, SharedLocations, UnitOfWork),
             new SetDefaultPickupLocationHandler(Repository, ConsistencyLock, UnitOfWork),
             new DeletePickupLocationHandler(Repository, ConsistencyLock, UnitOfWork, TimeProvider.System),
             new CreatePickupLocationRequestValidator(),
@@ -55,23 +70,14 @@ internal sealed class PickupLocationsControllerTestContext
             new ListPickupLocationsRequestValidator(),
             CurrentActor);
 
-    public static CreatePickupLocationRequest CreateRequest(string label = "Home") =>
-        new(label, Address());
-
-    public static PickupLocationAddressRequest Address(string line = "36 Garden Avenue") =>
-        new(line, null, "Enugu", "Enugu", "NG", 6.4474m, 7.5139m);
+    public CreatePickupLocationRequest CreateRequest(string label = "Home") =>
+        new(SharedLocation.Id, label, "Call when you arrive at the entrance", true);
 
     public SavedPickupLocation Location(string label = "Home", bool isDefault = false) =>
         SavedPickupLocation.Create(
             SenderId,
             label,
-            DeliveryAddress.Create(
-                "36 Garden Avenue",
-                null,
-                "Enugu",
-                "Enugu",
-                "NG",
-                6.4474m,
-                7.5139m),
+            Guid.CreateVersion7(),
+            null,
             isDefault);
 }

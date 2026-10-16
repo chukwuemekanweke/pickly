@@ -421,3 +421,6 @@ FodyWeavers.xsd
 
 # OKF local metadata index (machine-specific absolute paths/timestamps; regenerate with `okf metadata rebuild`)
 .okf/knowledge/.metadata.json
+
+# Local AI assistant permissions
+.claude/settings.local.json

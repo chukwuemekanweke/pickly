@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         Validate(options.EmailOperationsPolicy, nameof(RateLimitingOptions.EmailOperationsPolicy));
         Validate(options.PasswordResetPolicy, nameof(RateLimitingOptions.PasswordResetPolicy));
         Validate(options.TwoFactorVerificationPolicy, nameof(RateLimitingOptions.TwoFactorVerificationPolicy));
+        Validate(options.LocationResolutionPolicy, nameof(RateLimitingOptions.LocationResolutionPolicy));
 
         services.Configure<RateLimitingOptions>(configuration.GetSection(RateLimitingOptions.SectionName));
         services.AddRateLimiter(rateLimiterOptions =>
@@ -48,6 +49,12 @@ public static class ServiceCollectionExtensions
             rateLimiterOptions.AddPolicy(
                 RateLimitingPolicyNames.TwoFactorVerificationPolicy,
                 context => CreateFixedWindowPartition(options.TwoFactorVerificationPolicy, ResolveClientIpPartitionKey(context)));
+
+            // Location resolution can trigger paid geocoding, so it is limited per authenticated user on top of the
+            // global limiter.
+            rateLimiterOptions.AddPolicy(
+                RateLimitingPolicyNames.LocationResolutionPolicy,
+                context => CreateFixedWindowPartition(options.LocationResolutionPolicy, ResolveAuthenticatedUserPartitionKey(context)));
 
             rateLimiterOptions.OnRejected = async (context, cancellationToken) =>
             {

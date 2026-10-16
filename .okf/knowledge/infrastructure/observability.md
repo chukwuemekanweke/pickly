@@ -42,6 +42,14 @@ only when `StakeholderId` is genuinely unavailable. See [[dotnet-style]].
   `GlobalExceptionHandler` (WebAPI), `RabbitMqOutboxMessageDispatcher`, and `BaseMessageHandler` (Consumer) for the existing pattern. Any new top-level error boundary (a new global exception handler, a
   new base message-handler type) should follow the same pattern.
 
+## Domain events and metrics
+
+- Location resolution emits `Observability.EventNames.Locations.*` custom events (registry hit/miss, geocoding
+  requested/failed, ambiguous, failed, registered/reused, duplicate-resolution prevented) via `ICustomTelemetryContext`.
+- Outbound geocoding transport telemetry comes from the standard HttpClient instrumentation registered by
+  `AddBackendTelemetry`; do not wrap provider clients in duplicate manual activities or request-duration meters.
+  Location resolution business outcomes belong in the `Observability.EventNames.Locations.*` events.
+
 ## Constraint
 
 Do not add probabilistic/head sampling logic in Application, WebAPI, Consumer, or Jobs code. If a new failure-handling boundary is added, mark its `Activity` as errored the same way the existing ones do, so local tail sampling keeps it.
