@@ -11,7 +11,7 @@ public sealed class DeliveryQuoteConfiguration : IEntityTypeConfiguration<Delive
 {
     public void Configure(EntityTypeBuilder<DeliveryQuote> builder)
     {
-        builder.ToTable("DeliveryQuotes", SchemaNames.Deliveries, table => { table.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\""); table.HasCheckConstraint("CK_DeliveryQuotes_Distance", "\"DistanceMeters\" >= 0"); table.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0"); });
+        builder.ToTable("DeliveryQuotes", SchemaNames.Deliveries, table => { table.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\""); table.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0"); });
         builder.HasKey(x => x.Id);
         builder.Property(x => x.DeliveryType).HasConversion<int>().IsRequired();
         builder.Property(x => x.OrderType).HasConversion<int>().IsRequired();

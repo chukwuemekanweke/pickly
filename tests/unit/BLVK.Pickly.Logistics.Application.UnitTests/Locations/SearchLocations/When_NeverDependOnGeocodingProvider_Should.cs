@@ -56,7 +56,7 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
             "NG",
             6.45m,
             7.52m,
-            LocationType.Address,
+            LocationType.Street,
             LocationResolutionSource.Mapbox,
             LocationResolutionStatus.Resolved,
             LocationVisibility.Public);

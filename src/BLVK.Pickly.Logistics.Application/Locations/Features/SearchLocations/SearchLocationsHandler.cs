@@ -149,10 +149,25 @@ public sealed class SearchLocationsHandler(
             await cache.SetAsync(outcomeCacheKey, outcome, settings.CandidateSelectionLifetime, cancellationToken);
         }
 
+        var effectiveRegistryItems = registryItems.ToList();
+        var registeredFeatureIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var candidate in outcome.Candidates
+                     .Where(candidate => LocationCandidateRegistrar.IsRegistrable(candidate, countryCode))
+                     .DistinctBy(candidate => candidate.FeatureId))
+        {
+            var existing = await repository.FindByProviderReferenceAsync(outcome.Provider, candidate.FeatureId, cancellationToken);
+            if (existing is not null && effectiveRegistryItems.All(item => item.LocationId != existing.Id))
+            {
+                effectiveRegistryItems.Add(LocationSearchItemResponse.FromRegistry(existing));
+            }
+            if (existing is not null) registeredFeatureIds.Add(candidate.FeatureId);
+        }
+
         var candidates = outcome.Candidates
             .Where(candidate => LocationCandidateRegistrar.IsRegistrable(candidate, countryCode))
             .DistinctBy(candidate => candidate.FeatureId)
-            .Where(candidate => registryItems.All(item => !string.Equals(
+            .Where(candidate => !registeredFeatureIds.Contains(candidate.FeatureId))
+            .Where(candidate => effectiveRegistryItems.All(item => !string.Equals(
                 item.DisplayAddress,
                 candidate.DisplayAddress,
                 StringComparison.OrdinalIgnoreCase)))
@@ -160,7 +175,14 @@ public sealed class SearchLocationsHandler(
             .ToArray();
         if (candidates.Length == 0)
         {
-            return new SearchLocationsResult(SearchLocationsStatus.Success, registryItems);
+            var area = outcome.Candidates.FirstOrDefault(candidate =>
+                candidate.Precision == GeocodingPrecision.Area &&
+                string.Equals(candidate.CountryCode, countryCode, StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(candidate.DisplayAddress));
+            var fallback = area is null
+                ? effectiveRegistryItems.ToArray()
+                : effectiveRegistryItems.Concat([LocationSearchItemResponse.FromArea(area)]).Take(limit).ToArray();
+            return new SearchLocationsResult(SearchLocationsStatus.Success, fallback);
         }
 
         var selectionId = LocationSelectionTokens.NewSelectionId();
@@ -194,7 +216,7 @@ public sealed class SearchLocationsHandler(
             .ToArray();
         return new SearchLocationsResult(
             SearchLocationsStatus.Success,
-            registryItems.Concat(providerItems).Take(limit).ToArray());
+            effectiveRegistryItems.Concat(providerItems).Take(limit).ToArray());
     }
 
     private void RecordProviderOutcome(

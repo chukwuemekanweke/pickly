@@ -12,6 +12,14 @@ public sealed class LocationReadModelRepository(AppReadDbContext dbContext) : IL
         Project(dbContext.Locations.AsNoTracking().Where(location => location.Id == locationId))
             .FirstOrDefaultAsync(cancellationToken);
 
+    public Task<LocationReadModel?> FindByProviderReferenceAsync(string provider, string featureId, CancellationToken cancellationToken)
+    {
+        var normalizedProvider = LocationProviderReference.NormalizeProvider(provider);
+        return Project(Discoverable(dbContext.Locations.AsNoTracking()).Where(location =>
+                location.ProviderReferences.Any(reference => reference.Provider == normalizedProvider && reference.FeatureId == featureId)))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<LocationReadModel>> SearchAsync(
         LocationSearchRequest request,
         CancellationToken cancellationToken)

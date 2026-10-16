@@ -28,3 +28,8 @@ implementation and serializes values as JSON over the configured distributed cac
 ## Constraint
 
 New caching needs go through `IJsonCache`. Do not inject `IDistributedCache` or a Redis client into Application/WebAPI code — that keeps caching swappable and keeps cache-key/serialization conventions in one place.
+
+Routing also uses the narrow `IDistributedLease` abstraction implemented by `RedisDistributedLease`. Acquisition is
+`SET NX` with a bounded expiry and release is an owner-token Lua compare/delete, so abandoned owners expire and cannot
+release another owner's lease. Waiting route requests recheck `IJsonCache`; Redis failures degrade to per-instance
+coalescing and a direct provider call rather than poisoning the cache.

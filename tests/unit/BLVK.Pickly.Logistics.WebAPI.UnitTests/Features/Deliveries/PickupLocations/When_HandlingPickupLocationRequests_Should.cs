@@ -38,7 +38,7 @@ public sealed partial class When_HandlingPickupLocationRequests_Should
             "Enugu",
             "Enugu",
             "NG",
-            LocationType.Address,
+            LocationType.Street,
             6.4474m,
             7.5139m);
 }

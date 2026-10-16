@@ -11,11 +11,18 @@ public sealed record LocationSearchItemResponse(
     string DisplayAddress,
     [property: JsonConverter(typeof(JsonStringEnumConverter))] LocationSearchSource Source,
     [property: JsonConverter(typeof(JsonStringEnumConverter))] LocationType LocationType,
-    [property: JsonConverter(typeof(JsonStringEnumConverter))] GeocodingPrecision? Precision)
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] GeocodingPrecision? Precision,
+    bool IsSelectable)
 {
     public static LocationSearchItemResponse FromRegistry(LocationReadModel location) =>
-        new(location.Id, null, location.DisplayAddress, LocationSearchSource.Registry, location.LocationType, null);
+        new(location.Id, null, location.DisplayAddress, LocationSearchSource.Registry, location.LocationType, null, true);
 
     public static LocationSearchItemResponse FromMapbox(GeocodingCandidate candidate, string selectionToken) =>
-        new(null, selectionToken, candidate.DisplayAddress, LocationSearchSource.Mapbox, LocationType.Address, candidate.Precision);
+        new(null, selectionToken, candidate.DisplayAddress, LocationSearchSource.Mapbox,
+            candidate.Precision == GeocodingPrecision.Landmark ? LocationType.Landmark : LocationType.Street,
+            candidate.Precision, true);
+
+    public static LocationSearchItemResponse FromArea(GeocodingCandidate candidate) =>
+        new(null, null, candidate.DisplayAddress, LocationSearchSource.Mapbox, LocationType.Area,
+            candidate.Precision, false);
 }

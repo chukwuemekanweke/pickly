@@ -13,7 +13,7 @@ public sealed partial class When_GettingNearbyLocations_WithNearbyRequest_Should
     public async Task ReturnNearbyLocationsWithDistances()
     {
         var context = new LocationsControllerTestContext();
-        var anchor = LocationsControllerTestContext.ReadModel(type: LocationType.Address);
+        var anchor = LocationsControllerTestContext.ReadModel(type: LocationType.Street);
         var nearby = new NearbyLocationReadModel(LocationsControllerTestContext.ReadModel(), 512.4);
         context.ReadModels.GetByIdAsync(anchor.Id, Arg.Any<CancellationToken>()).Returns(anchor);
         context.ReadModels.FindNearbyAsync(Arg.Any<NearbyLocationsRequest>(), Arg.Any<CancellationToken>())

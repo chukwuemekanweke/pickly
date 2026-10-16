@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddRedisCaching(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IJsonCache, DistributedJsonCache>();
+        services.AddSingleton<IDistributedLease, RedisDistributedLease>();
 
         var redisConnectionString = configuration.GetConnectionString("Redis");
         var redisConfiguration = ConfigurationOptions.Parse(redisConnectionString!);

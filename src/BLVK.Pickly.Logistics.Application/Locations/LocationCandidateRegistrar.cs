@@ -9,7 +9,7 @@ using BLVK.Pickly.Logistics.Domain.Locations.ValueObjects;
 namespace BLVK.Pickly.Logistics.Application.Locations;
 
 /// <summary>
-/// Turns a validated, registrable provider candidate into a canonical shared location, reusing an existing location
+/// Turns a validated street or landmark provider candidate into a canonical shared location, reusing an existing location
 /// when the provider reference is already registered.
 /// </summary>
 public sealed class LocationCandidateRegistrar(
@@ -18,7 +18,7 @@ public sealed class LocationCandidateRegistrar(
     TimeProvider timeProvider)
 {
     public static bool IsRegistrable(GeocodingCandidate candidate, string requestedCountryCode) =>
-        candidate.Precision is GeocodingPrecision.Premise or GeocodingPrecision.Street &&
+        candidate.Precision is GeocodingPrecision.Street or GeocodingPrecision.Landmark &&
         string.Equals(candidate.CountryCode, requestedCountryCode, StringComparison.OrdinalIgnoreCase) &&
         TryBuildAddress(candidate, out _) &&
         GeographicCoordinates.IsValid(candidate.Latitude, candidate.Longitude);
@@ -51,16 +51,10 @@ public sealed class LocationCandidateRegistrar(
             throw new InvalidOperationException("Only validated provider candidates can be registered.");
         }
 
-        // Street-level features describe public infrastructure; premise-level addresses may identify a customer's
-        // home, so they are only reachable through an exact resolution, never through global search or proximity.
-        var visibility = candidate.Precision == GeocodingPrecision.Street
-            ? LocationVisibility.Public
-            : LocationVisibility.Private;
-
         var location = Location.RegisterProviderResolved(
             address,
             GeographicCoordinates.Create(candidate.Latitude, candidate.Longitude),
-            visibility,
+            LocationVisibility.Public,
             resolutionSource,
             provider,
             candidate.FeatureId,

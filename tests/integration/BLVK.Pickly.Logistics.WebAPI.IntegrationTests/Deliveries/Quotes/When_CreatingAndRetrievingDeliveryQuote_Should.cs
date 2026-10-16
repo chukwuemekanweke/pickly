@@ -84,7 +84,6 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
         var created = await create.Content.ReadFromJsonAsync<DeliveryQuoteResponse>();
         create.StatusCode.ShouldBe(HttpStatusCode.Created);
         created.ShouldNotBeNull();
-        created.DistanceMeters.ShouldBe(8000);
         created.Pricing.TotalAmount.ShouldBe(260m);
         created.PaymentResponsibleParty.ShouldBe("Recipient");
         created.PaymentMethod.ShouldBe("Cash");

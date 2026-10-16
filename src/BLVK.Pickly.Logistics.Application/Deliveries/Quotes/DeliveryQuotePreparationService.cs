@@ -50,7 +50,7 @@ public sealed class DeliveryQuotePreparationService(IRepository<SavedPickupLocat
             hasCompletePricing = true;
             if (!routeByProfile.TryGetValue(vehicle.RoutingProfile, out var route))
             {
-                route = await routeProvider.GetRouteAsync(new(origin.Id, origin.Coordinates, destination.Id, destination.Coordinates, vehicle.RoutingProfile), cancellationToken);
+                route = await routeProvider.GetRouteAsync(new(origin.Id, origin.Coordinates, destination.Id, destination.Coordinates, vehicle.RoutingProfile, scheduledPickupAtUtc ?? now), cancellationToken);
                 routeByProfile[vehicle.RoutingProfile] = route;
             }
             if (route.Status != DeliveryRouteStatus.Success)

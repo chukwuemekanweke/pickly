@@ -35,5 +35,8 @@ public sealed class When_RoutingWithMapbox_Should
         await provider.GetRouteAsync(MapboxDeliveryRoutingTestContext.Request(origin, destination), CancellationToken.None);
         await provider.GetRouteAsync(MapboxDeliveryRoutingTestContext.Request(destination, origin), CancellationToken.None);
         context.Requests.Count.ShouldBe(2);
+        context.CacheSetCount.ShouldBe(2);
+        context.LastCacheTtl.ShouldNotBeNull();
+        context.LastCacheTtl.Value.ShouldBeLessThanOrEqualTo(TimeSpan.FromHours(24));
     }
 }

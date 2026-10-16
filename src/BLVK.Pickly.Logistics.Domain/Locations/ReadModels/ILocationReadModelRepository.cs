@@ -4,6 +4,11 @@ public interface ILocationReadModelRepository
 {
     Task<LocationReadModel?> GetByIdAsync(Guid locationId, CancellationToken cancellationToken);
 
+    Task<LocationReadModel?> FindByProviderReferenceAsync(
+        string provider,
+        string featureId,
+        CancellationToken cancellationToken);
+
     /// <summary>Text search over publicly discoverable, usable locations, ranked by relevance.</summary>
     Task<IReadOnlyList<LocationReadModel>> SearchAsync(
         LocationSearchRequest request,

@@ -19,7 +19,7 @@ public sealed class CreateDeliveryQuoteHandler(DeliveryQuotePreparationService p
         }
         var selected = prepared.Options!.Single();
         var now = timeProvider.GetUtcNow();
-        var quote = DeliveryQuote.Create(command.ActorContext.StakeholderId!.Value, prepared.PickupLocationId, prepared.DropOffLocationId, prepared.PickupAddress!, prepared.DropOffAddress!, command.DeliveryType, command.OrderType, command.ScheduledPickupAtUtc, selected.Vehicle, prepared.Zones!, selected.DistanceMeters, selected.Policy, selected.Pricing, command.Items.Select(x => (x.Description, x.Quantity, x.WeightKg)), now, now + options.Value.ValidityDuration);
+        var quote = DeliveryQuote.Create(command.ActorContext.StakeholderId!.Value, prepared.PickupLocationId, prepared.DropOffLocationId, prepared.PickupAddress!, prepared.DropOffAddress!, command.DeliveryType, command.OrderType, command.ScheduledPickupAtUtc, selected.Vehicle, prepared.Zones!, selected.Policy, selected.Pricing, command.Items.Select(x => (x.Description, x.Quantity, x.WeightKg)), now, now + options.Value.ValidityDuration);
         await quotes.AddAsync(quote, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         telemetry.AddCustomEvent(Observability.EventNames.Deliveries.QuoteCreated);

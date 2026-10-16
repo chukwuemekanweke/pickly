@@ -48,7 +48,7 @@ public sealed class Location : Entity, IAggregateRoot
     public bool IsUsable => ResolutionStatus == LocationResolutionStatus.Resolved && !IsDeleted;
 
     /// <summary>
-    /// Registers an address resolved through a permanent-storage geocoding request. Only results obtained under
+    /// Registers a canonical street or landmark resolved through a permanent-storage geocoding request. Only results obtained under
     /// permanent storage terms may be persisted, so the provider reference is always classified that way.
     /// </summary>
     public static Location RegisterProviderResolved(
@@ -67,7 +67,9 @@ public sealed class Location : Entity, IAggregateRoot
         var location = new Location(
             address,
             coordinates,
-            LocationType.Address,
+            string.Equals(featureType, "poi", StringComparison.OrdinalIgnoreCase)
+                ? LocationType.Landmark
+                : LocationType.Street,
             resolutionSource,
             visibility,
             resolvedAtUtc);

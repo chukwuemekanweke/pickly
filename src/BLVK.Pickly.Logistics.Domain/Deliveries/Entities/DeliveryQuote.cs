@@ -11,7 +11,7 @@ public sealed class DeliveryQuote : Entity, IAggregateRoot
     private readonly List<DeliveryQuoteItem> _items = [];
     private DeliveryQuote() { }
 
-    private DeliveryQuote(Guid senderId, Guid pickupLocationId, Guid dropOffLocationId, DeliveryAddress pickupAddress, DeliveryAddress dropOffAddress, DeliveryType deliveryType, DeliveryOrderType orderType, DateTimeOffset? scheduledPickupAtUtc, VehicleCategory vehicle, DeliveryZoneReadModels zones, long distanceMeters, DeliveryPricingPolicy policy, DeliveryPricingBreakdown pricing, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
+    private DeliveryQuote(Guid senderId, Guid pickupLocationId, Guid dropOffLocationId, DeliveryAddress pickupAddress, DeliveryAddress dropOffAddress, DeliveryType deliveryType, DeliveryOrderType orderType, DateTimeOffset? scheduledPickupAtUtc, VehicleCategory vehicle, DeliveryZoneReadModels zones, DeliveryPricingPolicy policy, DeliveryPricingBreakdown pricing, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
     {
         SenderId = senderId;
         PickupLocationId = pickupLocationId;
@@ -28,7 +28,6 @@ public sealed class DeliveryQuote : Entity, IAggregateRoot
         OriginZoneCode = zones.OriginCode;
         DestinationZoneId = zones.DestinationId;
         DestinationZoneCode = zones.DestinationCode;
-        DistanceMeters = distanceMeters;
         PricingPolicyId = policy.Id;
         PricingPolicyVersion = policy.Version;
         CurrencyId = policy.CurrencyId;
@@ -55,7 +54,6 @@ public sealed class DeliveryQuote : Entity, IAggregateRoot
     public string OriginZoneCode { get; private set; } = string.Empty;
     public Guid DestinationZoneId { get; private set; }
     public string DestinationZoneCode { get; private set; } = string.Empty;
-    public long DistanceMeters { get; private set; }
     public Guid PricingPolicyId { get; private set; }
     public string PricingPolicyVersion { get; private set; } = string.Empty;
     public DeliveryPricingBreakdown Pricing { get; private set; } = null!;
@@ -73,17 +71,17 @@ public sealed class DeliveryQuote : Entity, IAggregateRoot
     public DeliveryPaymentMethod PaymentMethod => OrderType == DeliveryOrderType.PayBeforeDelivery ? DeliveryPaymentMethod.Digital : DeliveryPaymentMethod.Cash;
     public bool IsExpired(DateTimeOffset utcNow) => utcNow.ToUniversalTime() >= ExpiresAtUtc;
 
-    public static DeliveryQuote Create(Guid senderId, Guid pickupLocationId, Guid dropOffLocationId, DeliveryAddress pickupAddress, DeliveryAddress dropOffAddress, DeliveryType deliveryType, DeliveryOrderType orderType, DateTimeOffset? scheduledPickupAtUtc, VehicleCategory vehicle, DeliveryZoneReadModels zones, long distanceMeters, DeliveryPricingPolicy policy, DeliveryPricingBreakdown pricing, IEnumerable<(string Description, int Quantity, decimal WeightKg)> items, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
+    public static DeliveryQuote Create(Guid senderId, Guid pickupLocationId, Guid dropOffLocationId, DeliveryAddress pickupAddress, DeliveryAddress dropOffAddress, DeliveryType deliveryType, DeliveryOrderType orderType, DateTimeOffset? scheduledPickupAtUtc, VehicleCategory vehicle, DeliveryZoneReadModels zones, DeliveryPricingPolicy policy, DeliveryPricingBreakdown pricing, IEnumerable<(string Description, int Quantity, decimal WeightKg)> items, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
     {
         if (senderId == Guid.Empty || pickupLocationId == Guid.Empty || dropOffLocationId == Guid.Empty) throw new ArgumentException("Sender and locations are required.");
         if (!Enum.IsDefined(deliveryType) || !Enum.IsDefined(orderType)) throw new ArgumentOutOfRangeException(nameof(deliveryType));
         if (deliveryType == DeliveryType.Scheduled && (scheduledPickupAtUtc is null || scheduledPickupAtUtc <= createdAtUtc)) throw new ArgumentException("A future pickup time is required for scheduled delivery.", nameof(scheduledPickupAtUtc));
         if (deliveryType == DeliveryType.Instant && scheduledPickupAtUtc is not null) throw new ArgumentException("Instant delivery cannot have a scheduled pickup time.", nameof(scheduledPickupAtUtc));
-        if (distanceMeters < 0 || expiresAtUtc <= createdAtUtc) throw new ArgumentOutOfRangeException(nameof(expiresAtUtc));
+        if (expiresAtUtc <= createdAtUtc) throw new ArgumentOutOfRangeException(nameof(expiresAtUtc));
         var snapshots = items?.ToArray() ?? throw new ArgumentNullException(nameof(items));
         var totalWeight = DeliveryPricingCalculator.CalculateTotalWeight(snapshots.Select(x => (x.Quantity, x.WeightKg)));
         if (!vehicle.CanCarry(totalWeight)) throw new ArgumentException("Vehicle cannot carry the shipment.", nameof(vehicle));
-        var quote = new DeliveryQuote(senderId, pickupLocationId, dropOffLocationId, pickupAddress, dropOffAddress, deliveryType, orderType, scheduledPickupAtUtc, vehicle, zones, distanceMeters, policy, pricing, createdAtUtc, expiresAtUtc) { TotalWeightKg = totalWeight };
+        var quote = new DeliveryQuote(senderId, pickupLocationId, dropOffLocationId, pickupAddress, dropOffAddress, deliveryType, orderType, scheduledPickupAtUtc, vehicle, zones, policy, pricing, createdAtUtc, expiresAtUtc) { TotalWeightKg = totalWeight };
         quote._items.AddRange(snapshots.Select(x => DeliveryQuoteItem.Create(quote.Id, x.Description, x.Quantity, x.WeightKg)));
         return quote;
     }

@@ -10,7 +10,7 @@ public sealed class When_BuildingMapboxRouteRequest_Should
     [Fact]
     public void PutLongitudeBeforeLatitude_AndSuppressRouteGeometry()
     {
-        var request = new DeliveryRouteRequest(Guid.CreateVersion7(), GeographicCoordinates.FromDegrees(6.4483, 7.5139), Guid.CreateVersion7(), GeographicCoordinates.FromDegrees(6.4550, 7.5200), "driving");
+        var request = new DeliveryRouteRequest(Guid.CreateVersion7(), GeographicCoordinates.FromDegrees(6.4483, 7.5139), Guid.CreateVersion7(), GeographicCoordinates.FromDegrees(6.4550, 7.5200), "driving", DateTimeOffset.UtcNow);
 
         var uri = MapboxDeliveryRouteProvider.BuildUri(request, "driving", "secret token");
 

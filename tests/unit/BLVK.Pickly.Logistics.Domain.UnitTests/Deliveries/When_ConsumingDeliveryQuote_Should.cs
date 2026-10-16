@@ -39,6 +39,6 @@ public sealed class When_ConsumingDeliveryQuote_Should
         policy.AddZoneRule(origin, destination, 1m);
         var price = DeliveryPricingCalculator.Calculate(policy, vehicle.Id, origin, destination, 1000, 1m);
         var address = DeliveryAddress.Create("1 Street", null, "Enugu", "Enugu", "NG", 6.4m, 7.5m);
-        return DeliveryQuote.Create(Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), address, address, DeliveryType.Instant, DeliveryOrderType.PayOnDelivery, null, vehicle, new(origin, "A", destination, "B"), 1000, policy, price, [("Parcel", 1, 1m)], now, expires);
+        return DeliveryQuote.Create(Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), address, address, DeliveryType.Instant, DeliveryOrderType.PayOnDelivery, null, vehicle, new(origin, "A", destination, "B"), policy, price, [("Parcel", 1, 1m)], now, expires);
     }
 }

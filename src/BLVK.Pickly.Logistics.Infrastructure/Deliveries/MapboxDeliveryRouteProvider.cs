@@ -9,7 +9,7 @@ using System.Text.Json;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Deliveries;
 
-internal sealed class MapboxDeliveryRouteProvider(HttpClient httpClient, IJsonCache cache, IOptions<DeliveryRoutingOptions> options, TimeProvider timeProvider, ILogger<MapboxDeliveryRouteProvider> logger) : IDeliveryRouteProvider
+internal sealed class MapboxDeliveryRouteProvider(HttpClient httpClient, IJsonCache cache, IOptions<DeliveryRoutingOptions> options, TimeProvider timeProvider, ILogger<MapboxDeliveryRouteProvider> logger, IDistributedLease? distributedLease = null) : IDeliveryRouteProvider
 {
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Gates = new(StringComparer.Ordinal);
     private static readonly HashSet<string> Profiles = ["driving", "driving-traffic", "walking", "cycling"];
@@ -19,24 +19,89 @@ internal sealed class MapboxDeliveryRouteProvider(HttpClient httpClient, IJsonCa
         if (!Profiles.Contains(profile)) return new DeliveryRouteResult(DeliveryRouteStatus.UnsupportedProfile, RoutingProfile: profile);
         var settings = options.Value;
         if (string.IsNullOrWhiteSpace(settings.AccessToken)) return new DeliveryRouteResult(DeliveryRouteStatus.MissingConfiguration, RoutingProfile: profile);
-        var key = $"delivery-route:v1:mapbox:{request.OriginLocationId:N}:{request.DestinationLocationId:N}:{profile}";
-        var cached = await cache.GetAsync<CachedRoute>(key, cancellationToken);
-        if (cached is not null) return cached.ToResult(profile);
+        var window = RoutingWindowResolver.Resolve(request.DepartureAtUtc, settings);
+        var key = BuildCacheKey(request, profile, window);
+        var cached = await TryGetCachedAsync(key, request, profile, window, settings, cancellationToken);
+        if (cached is not null) return cached;
         var gate = Gates.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(cancellationToken);
         try
         {
-            cached = await cache.GetAsync<CachedRoute>(key, cancellationToken);
-            if (cached is not null) return cached.ToResult(profile);
-            var result = await SendAsync(request, profile, settings, cancellationToken);
-            if (result.Status == DeliveryRouteStatus.Success)
-                await cache.SetAsync(key, new CachedRoute(result.DistanceMeters, result.Duration?.TotalSeconds), settings.CacheDuration, cancellationToken);
-            return result;
+            cached = await TryGetCachedAsync(key, request, profile, window, settings, cancellationToken);
+            if (cached is not null) return cached;
+            string? owner = null;
+            try
+            {
+                if (distributedLease is not null)
+                {
+                    owner = await distributedLease.TryAcquireAsync($"{key}:lease", settings.CoordinationLeaseDuration, cancellationToken);
+                    var waitUntil = timeProvider.GetUtcNow() + settings.CoordinationWaitTimeout;
+                    while (owner is null && timeProvider.GetUtcNow() < waitUntil)
+                    {
+                        await Task.Delay(settings.CoordinationPollInterval, timeProvider, cancellationToken);
+                        cached = await TryGetCachedAsync(key, request, profile, window, settings, cancellationToken);
+                        if (cached is not null) return cached;
+                        owner = await distributedLease.TryAcquireAsync($"{key}:lease", settings.CoordinationLeaseDuration, cancellationToken);
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                logger.LogWarning("Redis route coordination is unavailable; routing is degraded to per-instance coalescing");
+                owner = null;
+            }
+
+            try
+            {
+                var result = await SendAsync(request, profile, settings, cancellationToken);
+                if (result.Status == DeliveryRouteStatus.Success)
+                {
+                    var calculatedAt = timeProvider.GetUtcNow();
+                    var retentionEnd = calculatedAt + settings.MaximumCacheAge;
+                    var ttl = (window.EndsAtUtc < retentionEnd ? window.EndsAtUtc : retentionEnd) - calculatedAt;
+                    if (ttl > TimeSpan.Zero)
+                    {
+                        var value = new CachedRoute(result.DistanceMeters, result.Duration?.TotalSeconds, calculatedAt, request.OriginLocationId, request.DestinationLocationId, profile, window.Id, window.ScheduleVersion, window.LocalDate);
+                        try { await cache.SetAsync(key, value, ttl, cancellationToken); }
+                        catch (Exception exception) when (exception is not OperationCanceledException) { logger.LogWarning("Redis route cache write failed"); }
+                    }
+                }
+                return result;
+            }
+            finally
+            {
+                if (owner is not null && distributedLease is not null)
+                {
+                    try { await distributedLease.ReleaseAsync($"{key}:lease", owner, CancellationToken.None); }
+                    catch (Exception) { logger.LogWarning("Redis route lease release failed; the bounded lease will expire"); }
+                }
+            }
         }
         finally
         {
             gate.Release();
             if (gate.CurrentCount == 1) Gates.TryRemove(key, out _);
+        }
+    }
+
+    internal static string BuildCacheKey(DeliveryRouteRequest request, string profile, RoutingWindowContext window) =>
+        $"delivery-route:v2:mapbox:{request.OriginLocationId:N}:{request.DestinationLocationId:N}:{profile}:{window.ScheduleVersion}:{window.Id}:{window.LocalDate:yyyyMMdd}";
+
+    private async Task<DeliveryRouteResult?> TryGetCachedAsync(string key, DeliveryRouteRequest request, string profile, RoutingWindowContext window, DeliveryRoutingOptions settings, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var cached = await cache.GetAsync<CachedRoute>(key, cancellationToken);
+            if (cached is null || cached.CalculatedAtUtc + settings.MaximumCacheAge <= timeProvider.GetUtcNow() ||
+                cached.OriginLocationId != request.OriginLocationId || cached.DestinationLocationId != request.DestinationLocationId ||
+                cached.RoutingProfile != profile || cached.WindowId != window.Id || cached.ScheduleVersion != window.ScheduleVersion || cached.LocalDate != window.LocalDate)
+                return null;
+            return cached.ToResult(profile);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning("Redis route cache read failed; routing will call the provider");
+            return null;
         }
     }
 
@@ -80,5 +145,8 @@ internal sealed class MapboxDeliveryRouteProvider(HttpClient httpClient, IJsonCa
         if (response.Headers.RetryAfter?.Date is { } date && date > timeProvider.GetUtcNow()) return date - timeProvider.GetUtcNow();
         return settings.DefaultRateLimitRetryAfter;
     }
-    private sealed record CachedRoute(long DistanceMeters, double? DurationSeconds) { public DeliveryRouteResult ToResult(string profile) => new(DeliveryRouteStatus.Success, DistanceMeters, DurationSeconds.HasValue ? TimeSpan.FromSeconds(DurationSeconds.Value) : null, "mapbox", profile); }
+    private sealed record CachedRoute(long DistanceMeters, double? DurationSeconds, DateTimeOffset CalculatedAtUtc, Guid OriginLocationId, Guid DestinationLocationId, string RoutingProfile, string WindowId, string ScheduleVersion, DateOnly LocalDate)
+    {
+        public DeliveryRouteResult ToResult(string profile) => new(DeliveryRouteStatus.Success, DistanceMeters, DurationSeconds.HasValue ? TimeSpan.FromSeconds(DurationSeconds.Value) : null, "mapbox", profile);
+    }
 }

@@ -54,11 +54,14 @@ Directions v5 with `overview=false`, stores no geometry or raw response, validat
 no-route, throttling, timeout, configuration, invalid-response and provider failures. Straight-line PostGIS distance is
 never a commercial fallback. Default HTTP request logging is removed because the token is in the query string.
 
-Successful scalar distance/duration results use a configurable five-minute Redis `IJsonCache` entry keyed by provider,
-ordered origin/destination ids and profile; an in-process keyed gate coalesces same-instance calls. Direction matters.
-Public Directions documentation does not grant Permanent Geocoding-style storage rights, so cache life is short. The
-immutable distance on an issued quote is commercial evidence rather than a reusable response cache; production must
-confirm that use against its executed Mapbox agreement before launch.
+Successful scalar distance/duration results use Redis `IJsonCache`; no geometry or provider response is retained. The
+`delivery-route:v2` key includes provider, ordered canonical origin/destination `LocationId`s, profile, schedule
+version, routing-window id, and applicable local date. Configurable windows cover every local time (including
+overnight periods) in the configured service-area time zone and are selected from the instant or scheduled departure
+using `TimeProvider`. Entries expire at `min(window end, calculated-at + configured maximum age)`, with the maximum
+hard-limited to 24 hours; reads never refresh the timestamp or TTL. A bounded owner-token Redis lease coalesces calls
+across instances, while an in-process gate remains the documented Redis-outage degradation. Direction and landmarks
+remain distinct.
 
 ## Pricing and quotes
 
@@ -73,8 +76,10 @@ The authenticated APIs are `POST /api/v1/deliveries/vehicle-options`, `POST /api
 identify usable canonical Locations. Cross-owner pickup and quote reads use not-found semantics. External routing runs
 before the short quote save.
 
-`DeliveryQuote` snapshots addresses, parcels, total weight, vehicle, zones, routed metres, policy version, five price
-components, currency and expiry. Retrieval never reroutes, re-zones or reprices. Expiration derives through
+`DeliveryQuote` snapshots addresses, parcels, total weight, vehicle, zones, policy version, five price components,
+currency and expiry. Raw provider-derived distance and duration are not persisted in PostgreSQL, logs, or quote API
+responses; the distance-derived commercial charge remains part of the immutable financial breakdown. Retrieval never
+reroutes, re-zones or reprices and remains readable after the temporary route cache expires. Expiration derives through
 `TimeProvider`; no job mutates expired rows. `Consume` is Phase 4-ready only: it requires an unexpired quote, permits an
 idempotent retry for the same delivery and rejects another consumer. PostgreSQL `xmin` is mapped as the quote row-version
 so competing Phase 4 consumers cannot both save successfully. Phase 4 should consume and create the Delivery in

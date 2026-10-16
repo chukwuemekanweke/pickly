@@ -182,7 +182,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     OriginZoneCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     DestinationZoneId = table.Column<Guid>(type: "uuid", nullable: false),
                     DestinationZoneCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    DistanceMeters = table.Column<long>(type: "bigint", nullable: false),
                     PricingPolicyId = table.Column<Guid>(type: "uuid", nullable: false),
                     PricingPolicyVersion = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     BaseFee = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
@@ -209,7 +208,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_DeliveryQuotes", x => x.Id);
-                    table.CheckConstraint("CK_DeliveryQuotes_Distance", "\"DistanceMeters\" >= 0");
                     table.CheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\"");
                     table.CheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0");
                     table.ForeignKey(

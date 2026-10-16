@@ -21,7 +21,7 @@ public sealed partial class When_ResolvingLocation_WithConfidentProviderMatch_Sh
         result.Location.ResolutionSource.ShouldBe(LocationResolutionSource.Mapbox);
         result.Location.Coordinates.Latitude.ShouldBe(6.4512m);
         result.Location.Coordinates.Longitude.ShouldBe(7.5221m);
-        registered.Visibility.ShouldBe(LocationVisibility.Private);
+        registered.Visibility.ShouldBe(LocationVisibility.Public);
         registered.ResolutionKeys.ShouldHaveSingleItem().Key.ShouldBe(LocationResolutionTestContext.ResolutionKey());
     }
 }

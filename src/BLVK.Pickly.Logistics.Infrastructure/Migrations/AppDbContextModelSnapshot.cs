@@ -972,9 +972,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.Property<Guid>("DestinationZoneId")
                         .HasColumnType("uuid");
 
-                    b.Property<long>("DistanceMeters")
-                        .HasColumnType("bigint");
-
                     b.Property<Guid>("DropOffLocationId")
                         .HasColumnType("uuid");
 
@@ -1070,8 +1067,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
                     b.ToTable("DeliveryQuotes", "deliveries", t =>
                         {
-                            t.HasCheckConstraint("CK_DeliveryQuotes_Distance", "\"DistanceMeters\" >= 0");
-
                             t.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\"");
 
                             t.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0");
