@@ -807,83 +807,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.ToTable("Deliveries", "deliveries");
                 });
 
-            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryBookingConfirmation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTimeOffset?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid>("DeliveryId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DeliveryQuoteId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("KeyHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character(64)")
-                        .IsFixedLength();
-
-                    b.Property<string>("Operation")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("RequestFingerprint")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character(64)")
-                        .IsFixedLength();
-
-                    b.Property<Guid>("SenderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeliveryId")
-                        .IsUnique();
-
-                    b.HasIndex("DeliveryQuoteId")
-                        .IsUnique();
-
-                    b.HasIndex("ExpiresAtUtc");
-
-                    b.HasIndex("DeliveryId", "DeliveryQuoteId");
-
-                    b.HasIndex("SenderId", "Operation", "KeyHash")
-                        .IsUnique();
-
-                    b.ToTable("DeliveryBookingConfirmations", "deliveries");
-                });
-
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3438,28 +3361,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Recipient")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryBookingConfirmation", b =>
-                {
-                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", null)
-                        .WithMany()
-                        .HasForeignKey("DeliveryQuoteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BLVK.Pickly.Logistics.Domain.Stakeholders.Entities.Stakeholder", null)
-                        .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.Delivery", null)
-                        .WithMany()
-                        .HasForeignKey("DeliveryId", "DeliveryQuoteId")
-                        .HasPrincipalKey("Id", "DeliveryQuoteId")
-                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

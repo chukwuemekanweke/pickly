@@ -8,15 +8,12 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using Microsoft.Extensions.Options;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.CreateDelivery;
 
 public sealed class CreateDeliveryHandler(
     IRepository<DeliveryQuote> quotes,
     IRepository<Delivery> deliveries,
-    IRepository<DeliveryBookingConfirmation> confirmations,
     IRepository<Currency> currencies,
     IDeliveryBookingPersistence bookingPersistence,
     IDeliveryTrackingIdGenerator trackingIdGenerator,
@@ -37,10 +34,11 @@ public sealed class CreateDeliveryHandler(
             return new(CreateDeliveryStatus.InvalidRequest);
         }
 
-        if (command.IdempotencyKey is { Length: > 200 } ||
-            command.IdempotencyKey is not null && string.IsNullOrWhiteSpace(command.IdempotencyKey))
+        var senderId = command.ActorContext.StakeholderId.Value;
+        var replay = await FindExistingAsync(senderId, command.QuoteId, cancellationToken);
+        if (replay is not null)
         {
-            return new(CreateDeliveryStatus.InvalidIdempotencyKey);
+            return replay;
         }
 
         DeliveryRecipient recipient;
@@ -54,23 +52,9 @@ public sealed class CreateDeliveryHandler(
             return new(CreateDeliveryStatus.InvalidRequest);
         }
 
-        var senderId = command.ActorContext.StakeholderId.Value;
         var normalizedInstructions = string.IsNullOrWhiteSpace(command.DropOffInstructions)
             ? null
             : command.DropOffInstructions.Trim();
-        var keyHash = Hash(command.IdempotencyKey?.Trim() ?? $"quote:{command.QuoteId:D}");
-        var requestFingerprint = Hash(string.Join(
-            '\u001F',
-            command.QuoteId.ToString("D"),
-            recipient.Name,
-            recipient.PhoneNumber,
-            normalizedInstructions ?? string.Empty));
-
-        var replay = await ResolveExistingAsync(senderId, keyHash, command.QuoteId, requestFingerprint, cancellationToken);
-        if (replay is not null)
-        {
-            return replay;
-        }
 
         var quote = await quotes.FirstOrDefaultAsync(
             new TrackedDeliveryQuoteByOwnerAndIdSpecification(senderId, command.QuoteId),
@@ -128,23 +112,12 @@ public sealed class CreateDeliveryHandler(
 
         // The aggregate identifier remains stable through any tracking-ID collision retry.
         quote.Consume(delivery.Id, now);
-        var confirmation = DeliveryBookingConfirmation.Create(
-            senderId,
-            quote.Id,
-            delivery.Id,
-            keyHash,
-            requestFingerprint,
-            now + options.Value.IdempotencyRetention);
 
-        var commit = await bookingPersistence.CommitAsync(delivery, quote, confirmation, cancellationToken);
-        if (commit.Status == DeliveryBookingCommitStatus.Existing && commit.ExistingDeliveryId.HasValue)
+        var commit = await bookingPersistence.CommitAsync(delivery, quote, cancellationToken);
+        if (commit.Status == DeliveryBookingCommitStatus.Existing)
         {
-            return await ExistingResultAsync(
-                senderId,
-                commit.ExistingDeliveryId.Value,
-                requestFingerprint,
-                commit.ExistingRequestFingerprint,
-                cancellationToken);
+            return await FindExistingAsync(senderId, command.QuoteId, cancellationToken)
+                ?? new(CreateDeliveryStatus.PersistenceConflict);
         }
 
         if (commit.Status != DeliveryBookingCommitStatus.Created)
@@ -156,46 +129,16 @@ public sealed class CreateDeliveryHandler(
         return new(CreateDeliveryStatus.Success, DeliveryResponse.From(delivery, currency?.CurrencyCode ?? string.Empty));
     }
 
-    private async Task<CreateDeliveryResult?> ResolveExistingAsync(
+    private async Task<CreateDeliveryResult?> FindExistingAsync(
         Guid senderId,
-        string keyHash,
         Guid quoteId,
-        string requestFingerprint,
         CancellationToken cancellationToken)
     {
-        var byKey = await confirmations.FirstOrDefaultAsync(
-            new DeliveryBookingByKeySpecification(senderId, keyHash), cancellationToken);
-        if (byKey is not null)
-        {
-            return await ExistingResultAsync(
-                senderId, byKey.DeliveryId, requestFingerprint, byKey.RequestFingerprint, cancellationToken);
-        }
-
-        var byQuote = await confirmations.FirstOrDefaultAsync(
-            new DeliveryBookingByQuoteSpecification(senderId, quoteId), cancellationToken);
-        return byQuote is null
-            ? null
-            : await ExistingResultAsync(
-                senderId, byQuote.DeliveryId, requestFingerprint, byQuote.RequestFingerprint, cancellationToken);
-    }
-
-    private async Task<CreateDeliveryResult> ExistingResultAsync(
-        Guid senderId,
-        Guid deliveryId,
-        string requestFingerprint,
-        string? existingFingerprint,
-        CancellationToken cancellationToken)
-    {
-        if (!string.Equals(requestFingerprint, existingFingerprint, StringComparison.Ordinal))
-        {
-            return new(CreateDeliveryStatus.IdempotencyConflict);
-        }
-
         var delivery = await deliveries.FirstOrDefaultAsync(
-            new DeliveryByOwnerAndIdSpecification(senderId, deliveryId), cancellationToken);
+            new DeliveryByOwnerAndQuoteSpecification(senderId, quoteId), cancellationToken);
         if (delivery is null)
         {
-            return new(CreateDeliveryStatus.PersistenceConflict);
+            return null;
         }
 
         var currency = await currencies.GetByIdAsync(delivery.Charge.CurrencyId, cancellationToken);
@@ -216,6 +159,4 @@ public sealed class CreateDeliveryHandler(
             source.Longitude);
 
     private static DateTimeOffset Max(DateTimeOffset first, DateTimeOffset second) => first >= second ? first : second;
-
-    private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 }

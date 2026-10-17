@@ -24,7 +24,7 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
         var context = new TestContext();
         var controller = context.Controller();
 
-        var create = await controller.Create(context.Request(), "request-key", CancellationToken.None);
+        var create = await controller.Create(context.Request(), CancellationToken.None);
         var created = create.ShouldBeOfType<CreatedAtActionResult>();
         var response = created.Value.ShouldBeOfType<DeliveryResponse>();
         created.ActionName.ShouldBe(nameof(DeliveryBookingsController.Get));
@@ -41,7 +41,6 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
 
         var result = await controller.Create(
             new(Guid.Empty, new("", "08012345678"), new string('x', 501)),
-            null,
             CancellationToken.None);
 
         result.ShouldBeOfType<BadRequestObjectResult>().Value.ShouldBeOfType<ValidationProblemDetails>();
@@ -53,7 +52,6 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
         private readonly Guid _senderId = Guid.CreateVersion7();
         private readonly IRepository<DeliveryQuote> _quotes = Substitute.For<IRepository<DeliveryQuote>>();
         private readonly IRepository<Delivery> _deliveries = Substitute.For<IRepository<Delivery>>();
-        private readonly IRepository<DeliveryBookingConfirmation> _confirmations = Substitute.For<IRepository<DeliveryBookingConfirmation>>();
         private readonly IRepository<Currency> _currencies = Substitute.For<IRepository<Currency>>();
         private readonly IDeliveryBookingPersistence _persistence = Substitute.For<IDeliveryBookingPersistence>();
         private Delivery? _delivery;
@@ -88,7 +86,6 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
             _persistence.CommitAsync(
                     Arg.Any<Delivery>(),
                     Arg.Any<DeliveryQuote>(),
-                    Arg.Any<DeliveryBookingConfirmation>(),
                     Arg.Any<CancellationToken>())
                 .Returns(callInfo =>
                 {
@@ -106,7 +103,6 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
             var create = new CreateDeliveryHandler(
                 _quotes,
                 _deliveries,
-                _confirmations,
                 _currencies,
                 _persistence,
                 tracking,

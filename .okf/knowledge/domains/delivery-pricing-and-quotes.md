@@ -82,7 +82,8 @@ responses; the distance-derived commercial charge remains part of the immutable 
 reroutes, re-zones or reprices and remains readable after the temporary route cache expires. Expiration derives through
 `TimeProvider`; no job mutates expired rows. `Consume` requires an unexpired quote, permits an
 idempotent retry for the same delivery and rejects another consumer. PostgreSQL `xmin` is mapped as the quote row-version,
-so competing consumers cannot both save successfully. Phase 4 now consumes the quote while creating its Delivery and
-durable idempotency result in one transaction. It constructs the existing `DeliveryCharge`, copies item and address
-snapshots without routing or repricing, and records the quoted `VehicleCategoryId` and unique `DeliveryQuoteId` on
-Delivery. The booking API is described in [[deliveries]].
+so competing consumers cannot both save successfully. Phase 4 consumes the quote while creating its Delivery in one
+transaction. It constructs the existing `DeliveryCharge`, copies item and address snapshots without routing or
+repricing, and records the quoted `VehicleCategoryId` and unique `DeliveryQuoteId` on Delivery. `DeliveryQuoteId` is
+the natural booking identifier: retries return the already-created Delivery without modifying it. The booking API is
+described in [[deliveries]].

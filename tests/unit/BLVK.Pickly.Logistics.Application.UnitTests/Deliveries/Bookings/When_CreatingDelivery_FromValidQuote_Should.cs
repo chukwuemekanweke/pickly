@@ -60,35 +60,43 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
     }
 
     [Fact]
-    public async Task ReturnOriginalDeliveryForMatchingRetryAfterQuoteExpiry()
+    public async Task ReturnOriginalDeliveryForRetryAfterQuoteExpiry()
     {
         var context = new TestContext(DeliveryType.Instant, DeliveryOrderType.PayOnDelivery);
         var first = await context.Handler.HandleAsync(context.Command(), CancellationToken.None);
-        context.EnableReplay(first.Delivery!.DeliveryId);
+        context.Advance(TimeSpan.FromMinutes(20));
 
         var replay = await context.Handler.HandleAsync(context.Command(), CancellationToken.None);
 
         replay.Status.ShouldBe(CreateDeliveryStatus.Success);
         replay.IsReplay.ShouldBeTrue();
-        replay.Delivery!.DeliveryId.ShouldBe(first.Delivery.DeliveryId);
+        replay.Delivery!.DeliveryId.ShouldBe(first.Delivery!.DeliveryId);
         await context.Persistence.Received(1).CommitAsync(
             Arg.Any<Delivery>(),
             Arg.Any<DeliveryQuote>(),
-            Arg.Any<DeliveryBookingConfirmation>(),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task RejectSameKeyWithDifferentPayload()
+    public async Task ReturnOriginalDeliveryUnchangedForRetryWithDifferentPayload()
     {
         var context = new TestContext(DeliveryType.Instant, DeliveryOrderType.PayOnDelivery);
         var first = await context.Handler.HandleAsync(context.Command(), CancellationToken.None);
-        context.EnableReplay(first.Delivery!.DeliveryId);
 
-        var conflict = await context.Handler.HandleAsync(
-            context.Command(recipientName: "Different Recipient"), CancellationToken.None);
+        var replay = await context.Handler.HandleAsync(
+            context.Command("Different Recipient", "+2348099999999", "Different gate"),
+            CancellationToken.None);
 
-        conflict.Status.ShouldBe(CreateDeliveryStatus.IdempotencyConflict);
+        replay.Status.ShouldBe(CreateDeliveryStatus.Success);
+        replay.IsReplay.ShouldBeTrue();
+        replay.Delivery!.DeliveryId.ShouldBe(first.Delivery!.DeliveryId);
+        replay.Delivery.Recipient.Name.ShouldBe("Ada Recipient");
+        replay.Delivery.Recipient.PhoneNumber.ShouldBe("+2348012345678");
+        replay.Delivery.DropOffAddress.AdditionalInformation.ShouldBe("Blue gate");
+        await context.Persistence.Received(1).CommitAsync(
+            Arg.Any<Delivery>(),
+            Arg.Any<DeliveryQuote>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -103,7 +111,7 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
     }
 
     [Fact]
-    public async Task RejectExpiredQuoteBeforeCreatingAnything()
+    public async Task RejectExpiredUnusedQuoteBeforeCreatingAnything()
     {
         var context = new TestContext(
             DeliveryType.Instant,
@@ -116,8 +124,18 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
         await context.Persistence.DidNotReceive().CommitAsync(
             Arg.Any<Delivery>(),
             Arg.Any<DeliveryQuote>(),
-            Arg.Any<DeliveryBookingConfirmation>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RejectConsumedQuoteWithoutExistingDelivery()
+    {
+        var context = new TestContext(DeliveryType.Instant, DeliveryOrderType.PayOnDelivery);
+        context.Quote.Consume(Guid.CreateVersion7(), TestContext.Now);
+
+        var result = await context.Handler.HandleAsync(context.Command(), CancellationToken.None);
+
+        result.Status.ShouldBe(CreateDeliveryStatus.QuoteConsumed);
     }
 
     [Fact]
@@ -136,10 +154,10 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
     private sealed class TestContext
     {
         public static readonly DateTimeOffset Now = new(2026, 10, 17, 12, 0, 0, TimeSpan.Zero);
-        private readonly Guid _senderId = Guid.CreateVersion7();
         private readonly IRepository<DeliveryQuote> _quoteRepository;
+        private readonly MutableTimeProvider _timeProvider = new(Now);
+        private readonly Guid _senderId = Guid.CreateVersion7();
         private Delivery? _createdDelivery;
-        private DeliveryBookingConfirmation? _confirmation;
 
         public TestContext(
             DeliveryType deliveryType,
@@ -176,22 +194,16 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
             var deliveryRepository = Substitute.For<IRepository<Delivery>>();
             deliveryRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Delivery>>(), Arg.Any<CancellationToken>())
                 .Returns(_ => _createdDelivery);
-            var confirmationRepository = Substitute.For<IRepository<DeliveryBookingConfirmation>>();
-            confirmationRepository.FirstOrDefaultAsync(
-                    Arg.Any<ISpecification<DeliveryBookingConfirmation>>(), Arg.Any<CancellationToken>())
-                .Returns(_ => _confirmation);
             var currencyRepository = Substitute.For<IRepository<Currency>>();
             currencyRepository.GetByIdAsync(Currency.Id, Arg.Any<CancellationToken>()).Returns(Currency);
             Persistence = Substitute.For<IDeliveryBookingPersistence>();
             Persistence.CommitAsync(
                     Arg.Any<Delivery>(),
                     Arg.Any<DeliveryQuote>(),
-                    Arg.Any<DeliveryBookingConfirmation>(),
                     Arg.Any<CancellationToken>())
                 .Returns(callInfo =>
                 {
                     _createdDelivery = callInfo.ArgAt<Delivery>(0);
-                    _confirmation = callInfo.ArgAt<DeliveryBookingConfirmation>(2);
                     return new DeliveryBookingCommitResult(DeliveryBookingCommitStatus.Created);
                 });
             var tracking = Substitute.For<IDeliveryTrackingIdGenerator>();
@@ -199,16 +211,11 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
             Handler = new(
                 _quoteRepository,
                 deliveryRepository,
-                confirmationRepository,
                 currencyRepository,
                 Persistence,
                 tracking,
-                Options.Create(new DeliveryDispatchOptions
-                {
-                    LeadTime = TimeSpan.FromMinutes(30),
-                    IdempotencyRetention = TimeSpan.FromDays(7)
-                }),
-                new FixedTimeProvider(Now));
+                Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
+                _timeProvider);
         }
 
         public Currency Currency { get; }
@@ -216,21 +223,18 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
         public IDeliveryBookingPersistence Persistence { get; }
         public CreateDeliveryHandler Handler { get; }
 
-        public CreateDeliveryCommand Command(string recipientName = "Ada Recipient") =>
+        public CreateDeliveryCommand Command(
+            string recipientName = "Ada Recipient",
+            string recipientPhoneNumber = "+2348012345678",
+            string? dropOffInstructions = "Blue gate") =>
             new(
                 Quote.Id,
                 recipientName,
-                "+2348012345678",
-                "Blue gate",
-                "booking-key",
+                recipientPhoneNumber,
+                dropOffInstructions,
                 new ActorContext(_senderId, Guid.CreateVersion7(), "correlation", "flow"));
 
-        public void EnableReplay(Guid deliveryId)
-        {
-            _createdDelivery.ShouldNotBeNull();
-            _confirmation.ShouldNotBeNull();
-            deliveryId.ShouldBe(_createdDelivery.Id);
-        }
+        public void Advance(TimeSpan duration) => _timeProvider.Advance(duration);
 
         public void HideQuote()
         {
@@ -243,8 +247,12 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
             DeliveryAddress.Create(line, information, "Enugu", "Enugu", "NG", 6.45m, 7.51m);
     }
 
-    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    private sealed class MutableTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => utcNow;
+        private DateTimeOffset _utcNow = utcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public void Advance(TimeSpan duration) => _utcNow += duration;
     }
 }

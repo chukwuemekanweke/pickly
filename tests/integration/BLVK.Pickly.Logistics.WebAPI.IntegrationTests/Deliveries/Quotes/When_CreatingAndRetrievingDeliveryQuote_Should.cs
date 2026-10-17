@@ -26,7 +26,7 @@ namespace BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries.Quotes;
 public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFixture fixture) : WebApiIntegrationTestBase(fixture), IAsyncLifetime
 {
     private SeededSender _sender = default!;
-    private readonly Currency _currency = Currency.Create("TST", "Test currency", true);
+    private readonly Currency _currency = Currency.Create(UniqueCurrencyCode(), "Test currency", true);
     private readonly VehicleCategory _vehicle = VehicleCategory.Create($"V{Guid.CreateVersion7():N}"[..20], "Test van", null, 100m, "driving");
     private readonly DeliveryZone _zone = DeliveryZone.Create($"Z{Guid.CreateVersion7():N}"[..20], "Test zone", "NG", 1, new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
     private DomainLocation _pickup = default!;
@@ -53,7 +53,8 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
         }
         DeliveryRouteProvider.Responder = _ => new(DeliveryRouteStatus.Success, 8000, TimeSpan.FromMinutes(20), "fake", "driving");
         Client.DefaultRequestHeaders.Add("X-Tenant-Id", _sender.TenantId.ToString());
-        using var signIn = await Client.PostAsJsonAsync("/api/v1/sessions", new SignInRequest(_sender.Email, IntegrationSenderSeeder.Password));
+        using var signIn = await Client.PostAsJsonAsync(EndpointUrl.Sessions.V1, new SignInRequest(_sender.Email, IntegrationSenderSeeder.Password));
+        signIn.StatusCode.ShouldBe(HttpStatusCode.OK);
         var session = await signIn.Content.ReadFromJsonAsync<SignInResponse>();
         Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session!.AccessToken);
     }
@@ -64,7 +65,6 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var deliveryIds = await db.Deliveries.IgnoreQueryFilters().Where(x => x.SenderId == _sender.StakeholderId).Select(x => x.Id).ToListAsync();
-            await db.DeliveryBookingConfirmations.IgnoreQueryFilters().Where(x => deliveryIds.Contains(x.DeliveryId)).ExecuteDeleteAsync();
             await db.DeliveryQuotes.IgnoreQueryFilters().Where(x => x.SenderId == _sender.StakeholderId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(x => x.ConsumptionStatus, DeliveryQuoteConsumptionStatus.Active)
@@ -115,7 +115,7 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
     }
 
     [Fact]
-    public async Task ConfirmBookingAtomically_AndReturnItForMatchingRetry()
+    public async Task ConfirmBookingAtomically_AndReturnOriginalForAnyRetry()
     {
         var quoteRequest = new CreateDeliveryQuoteRequest(
             _savedPickup.Id,
@@ -132,12 +132,7 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
             quote!.QuoteId,
             new("Ada Recipient", "+2348012345678"),
             "No. 23, blue gate");
-        using var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deliveries")
-        {
-            Content = JsonContent.Create(bookingRequest)
-        };
-        createRequest.Headers.Add("Idempotency-Key", "phase-4-integration-booking");
-        using var createResponse = await Client.SendAsync(createRequest);
+        using var createResponse = await Client.PostAsJsonAsync("/api/v1/deliveries", bookingRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<DeliveryResponse>();
 
         createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -152,27 +147,28 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
         created.DropOffAddress.AdditionalInformation.ShouldBe("No. 23, blue gate");
         created.TrackingId.ShouldStartWith("PKL-");
 
-        using var retryRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deliveries")
+        using (var expiryScope = CreateScope())
         {
-            Content = JsonContent.Create(bookingRequest)
+            var expiryDb = expiryScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var expiredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1);
+            await expiryDb.DeliveryQuotes.Where(item => item.Id == quote.QuoteId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(item => item.IssuedAtUtc, expiredAtUtc.AddMinutes(-1))
+                    .SetProperty(item => item.ExpiresAtUtc, expiredAtUtc));
+        }
+
+        var retryRequest = bookingRequest with
+        {
+            Recipient = new("Different Recipient", "+2348099999999"),
+            DropOffInstructions = "Different instructions"
         };
-        retryRequest.Headers.Add("Idempotency-Key", "phase-4-integration-booking");
-        using var retryResponse = await Client.SendAsync(retryRequest);
+        using var retryResponse = await Client.PostAsJsonAsync("/api/v1/deliveries", retryRequest);
         var retried = await retryResponse.Content.ReadFromJsonAsync<DeliveryResponse>();
         retryResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         retried!.DeliveryId.ShouldBe(created.DeliveryId);
-
-        var conflictingRequest = bookingRequest with
-        {
-            Recipient = new("Different Recipient", "+2348012345678")
-        };
-        using var conflictMessage = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deliveries")
-        {
-            Content = JsonContent.Create(conflictingRequest)
-        };
-        conflictMessage.Headers.Add("Idempotency-Key", "phase-4-integration-booking");
-        using var conflictResponse = await Client.SendAsync(conflictMessage);
-        conflictResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        retried.Recipient.Name.ShouldBe("Ada Recipient");
+        retried.Recipient.PhoneNumber.ShouldBe("+2348012345678");
+        retried.DropOffAddress.AdditionalInformation.ShouldBe("No. 23, blue gate");
 
         using var getResponse = await Client.GetAsync($"/api/v1/deliveries/{created.DeliveryId}");
         var retrieved = await getResponse.Content.ReadFromJsonAsync<DeliveryResponse>();
@@ -184,7 +180,6 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
         var persistedQuote = await db.DeliveryQuotes.SingleAsync(item => item.Id == quote.QuoteId);
         persistedQuote.ConsumedByDeliveryId.ShouldBe(created.DeliveryId);
         (await db.Deliveries.CountAsync(item => item.DeliveryQuoteId == quote.QuoteId)).ShouldBe(1);
-        (await db.DeliveryBookingConfirmations.CountAsync(item => item.DeliveryId == created.DeliveryId)).ShouldBe(1);
     }
 
     [Fact]
@@ -204,8 +199,8 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
             new("Concurrent Recipient", "+2348012345678"),
             "Gate 2");
 
-        using var firstRequest = BookingMessage(booking, "concurrent-key-a");
-        using var secondRequest = BookingMessage(booking, "concurrent-key-b");
+        using var firstRequest = BookingMessage(booking);
+        using var secondRequest = BookingMessage(booking);
         var responses = await Task.WhenAll(Client.SendAsync(firstRequest), Client.SendAsync(secondRequest));
         using var firstResponse = responses[0];
         using var secondResponse = responses[1];
@@ -220,14 +215,18 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
         (await db.Deliveries.CountAsync(item => item.DeliveryQuoteId == quote.QuoteId)).ShouldBe(1);
     }
 
-    private static HttpRequestMessage BookingMessage(CreateDeliveryRequest request, string key)
+    private static HttpRequestMessage BookingMessage(CreateDeliveryRequest request)
     {
-        var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deliveries")
+        return new HttpRequestMessage(HttpMethod.Post, "/api/v1/deliveries")
         {
             Content = JsonContent.Create(request)
         };
-        message.Headers.Add("Idempotency-Key", key);
-        return message;
+    }
+
+    private static string UniqueCurrencyCode()
+    {
+        var bytes = Guid.NewGuid().ToByteArray();
+        return new string(bytes[..3].Select(value => (char)('A' + (value % 26))).ToArray());
     }
 
     private static MultiPolygon Boundary()

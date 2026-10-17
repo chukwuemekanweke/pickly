@@ -7,5 +7,4 @@ public sealed record CreateDeliveryCommand(
     string RecipientName,
     string RecipientPhoneNumber,
     string? DropOffInstructions,
-    string? IdempotencyKey,
     ActorContext ActorContext);

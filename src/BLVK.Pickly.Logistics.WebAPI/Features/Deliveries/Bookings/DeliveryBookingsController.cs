@@ -22,7 +22,6 @@ public sealed class DeliveryBookingsController(
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateDeliveryRequest request,
-        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken)
     {
         var validation = await validator.ValidateAsync(request, cancellationToken);
@@ -37,7 +36,6 @@ public sealed class DeliveryBookingsController(
                 request.Recipient.Name,
                 request.Recipient.PhoneNumber,
                 request.DropOffInstructions,
-                idempotencyKey,
                 Actor()),
             cancellationToken);
 
@@ -56,11 +54,9 @@ public sealed class DeliveryBookingsController(
             CreateDeliveryStatus.NotAuthenticated => Unauthorized(),
             CreateDeliveryStatus.NotFound => NotFound(),
             CreateDeliveryStatus.InvalidRequest => Problem(400, "invalid_delivery_request", "Invalid delivery request", "Recipient or delivery instructions are invalid."),
-            CreateDeliveryStatus.InvalidIdempotencyKey => Problem(400, "invalid_idempotency_key", "Invalid idempotency key", "Idempotency-Key must be nonempty and no longer than 200 characters."),
             CreateDeliveryStatus.QuoteExpired => Problem(409, "quote_expired", "Quote expired", "The quote expired before it could be booked."),
             CreateDeliveryStatus.QuoteConsumed => Problem(409, "quote_consumed", "Quote already used", "The quote has already been used for another booking."),
             CreateDeliveryStatus.ScheduledPickupExpired => Problem(409, "scheduled_pickup_expired", "Scheduled pickup unavailable", "The scheduled pickup time is no longer in the future."),
-            CreateDeliveryStatus.IdempotencyConflict => Problem(409, "idempotency_conflict", "Idempotency conflict", "The idempotency key or quote was previously used with different booking details."),
             _ => Problem(409, "booking_conflict", "Booking conflict", "The quote was concurrently booked or its persisted state conflicts with this request.")
         };
     }

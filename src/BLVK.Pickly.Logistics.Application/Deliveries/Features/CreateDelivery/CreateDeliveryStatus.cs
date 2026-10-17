@@ -6,10 +6,8 @@ public enum CreateDeliveryStatus
     NotAuthenticated,
     NotFound,
     InvalidRequest,
-    InvalidIdempotencyKey,
     QuoteExpired,
     QuoteConsumed,
     ScheduledPickupExpired,
-    IdempotencyConflict,
     PersistenceConflict
 }

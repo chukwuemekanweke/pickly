@@ -7,14 +7,10 @@ public interface IDeliveryBookingPersistence
     Task<DeliveryBookingCommitResult> CommitAsync(
         Delivery delivery,
         DeliveryQuote quote,
-        DeliveryBookingConfirmation confirmation,
         CancellationToken cancellationToken = default);
 }
 
-public sealed record DeliveryBookingCommitResult(
-    DeliveryBookingCommitStatus Status,
-    Guid? ExistingDeliveryId = null,
-    string? ExistingRequestFingerprint = null);
+public sealed record DeliveryBookingCommitResult(DeliveryBookingCommitStatus Status);
 
 public enum DeliveryBookingCommitStatus
 {

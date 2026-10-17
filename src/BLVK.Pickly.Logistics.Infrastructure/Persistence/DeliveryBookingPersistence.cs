@@ -12,15 +12,14 @@ public sealed class DeliveryBookingPersistence(
 {
     private const int MaximumTrackingCollisionRetries = 4;
     private const string TrackingIdIndexName = "IX_Deliveries_TrackingId";
+    private const string DeliveryQuoteIdIndexName = "IX_Deliveries_DeliveryQuoteId";
 
     public async Task<DeliveryBookingCommitResult> CommitAsync(
         Delivery delivery,
         DeliveryQuote quote,
-        DeliveryBookingConfirmation confirmation,
         CancellationToken cancellationToken = default)
     {
         await dbContext.Deliveries.AddAsync(delivery, cancellationToken);
-        await dbContext.DeliveryBookingConfirmations.AddAsync(confirmation, cancellationToken);
 
         if (dbContext.Entry(quote).State == EntityState.Detached)
         {
@@ -53,47 +52,45 @@ public sealed class DeliveryBookingPersistence(
             catch (DbUpdateConcurrencyException)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return await ResolveConcurrentOutcomeAsync(confirmation, cancellationToken);
+                return await ResolveConcurrentOutcomeAsync(delivery.SenderId, delivery.DeliveryQuoteId, cancellationToken);
             }
-            catch (DbUpdateException exception) when (IsUniqueConstraint(exception))
+            catch (DbUpdateException exception) when (IsUniqueConstraint(exception, DeliveryQuoteIdIndexName))
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return await ResolveConcurrentOutcomeAsync(confirmation, cancellationToken);
+                return await ResolveConcurrentOutcomeAsync(delivery.SenderId, delivery.DeliveryQuoteId, cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
             }
         }
+
         throw new InvalidOperationException("The delivery booking could not be committed.");
     }
 
     private async Task<DeliveryBookingCommitResult> ResolveConcurrentOutcomeAsync(
-        DeliveryBookingConfirmation attempted,
+        Guid senderId,
+        Guid quoteId,
         CancellationToken cancellationToken)
     {
         dbContext.ChangeTracker.Clear();
 
-        var existing = await dbContext.DeliveryBookingConfirmations
+        var existingDeliveryExists = await dbContext.Deliveries
             .AsNoTracking()
-            .Where(confirmation =>
-                confirmation.SenderId == attempted.SenderId &&
-                (confirmation.DeliveryQuoteId == attempted.DeliveryQuoteId ||
-                 confirmation.Operation == attempted.Operation && confirmation.KeyHash == attempted.KeyHash))
-            .OrderBy(confirmation => confirmation.DeliveryQuoteId == attempted.DeliveryQuoteId ? 0 : 1)
-            .FirstOrDefaultAsync(cancellationToken);
+            .AnyAsync(
+                delivery => delivery.SenderId == senderId && delivery.DeliveryQuoteId == quoteId,
+                cancellationToken);
 
-        if (existing is null)
-        {
-            return new(DeliveryBookingCommitStatus.Conflict);
-        }
-
-        return new(
-            DeliveryBookingCommitStatus.Existing,
-            existing.DeliveryId,
-            existing.RequestFingerprint);
+        return existingDeliveryExists
+            ? new(DeliveryBookingCommitStatus.Existing)
+            : new(DeliveryBookingCommitStatus.Conflict);
     }
 
-    private static bool IsUniqueConstraint(DbUpdateException exception, string? constraintName = null) =>
+    private static bool IsUniqueConstraint(DbUpdateException exception, string constraintName) =>
         exception.InnerException is PostgresException
         {
-            SqlState: PostgresErrorCodes.UniqueViolation
-        } postgresException &&
-        (constraintName is null || postgresException.ConstraintName == constraintName);
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: var actualConstraintName
+        } && actualConstraintName == constraintName;
 }

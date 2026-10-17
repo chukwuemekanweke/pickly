@@ -150,8 +150,8 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should(Cont
         decimal latitude = 6.4512m) =>
         new(
             featureId,
-            "address",
-            GeocodingPrecision.Premise,
+            "street",
+            GeocodingPrecision.Street,
             confidence,
             $"{addressLine}, Thinkers Corner, Enugu",
             addressLine,

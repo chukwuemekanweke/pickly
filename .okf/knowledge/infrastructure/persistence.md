@@ -52,8 +52,8 @@ specification-based query path rather than ad hoc LINQ scattered across handlers
 ## Delivery booking transaction
 
 `DeliveryBookingPersistence` is the narrow infrastructure transaction boundary for quote confirmation. The Application
-handler prepares a tracked quote, new Delivery and `DeliveryBookingConfirmation`; Infrastructure adds the two new rows,
-saves quote consumption, and commits them in one EF Core transaction. Quote `xmin` plus database unique indexes are the
-final concurrency safeguards. On concurrency or non-tracking uniqueness races, the change tracker is cleared and the
-durable sender-scoped confirmation is read to distinguish a matching committed result from conflict. A tracking-ID-only
-unique violation receives a bounded retry with the same Delivery ID; other database failures propagate after rollback.
+handler prepares a tracked quote and new Delivery; Infrastructure adds the Delivery, saves quote consumption, and commits
+both in one EF Core transaction. Quote `xmin` plus the unfiltered unique index on `Delivery.DeliveryQuoteId` are the final
+concurrency safeguards. On quote concurrency or that specific uniqueness race, the change tracker is cleared and the
+sender-scoped Delivery is resolved by `(SenderId, DeliveryQuoteId)`. A tracking-ID-only unique violation receives a
+bounded retry with the same Delivery ID; unrelated uniqueness and database failures propagate after rollback.
