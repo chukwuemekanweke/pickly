@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Shared Location Registry (Locations Domain)
-description: Provider-neutral shared Location aggregate on PostGIS, unified registry-first search with Mapbox fallback, explicit token-based registration, conservative deduplication, cross-instance resolution lease, landmark fallback and privacy rules
+description: Canonical street and landmark registry on PostGIS with registry-first search, explicit token-based registration, area-only suggestions and privacy rules
 resource: okf://knowledge/domains/locations
 tags:
     - constraint
@@ -39,7 +39,7 @@ status: stable
 
 `Location` (schema `locations`) is a canonical, reusable physical place shared by every sender. It holds only
 canonical data: `LocationAddress` (display/normalized address, line, city, state, ISO country), WGS84
-`GeographicCoordinates`, `LocationType` (`Address`, `Landmark`), `ResolutionSource` (`Mapbox`,
+`GeographicCoordinates`, `LocationType` (`Street`, `Landmark`), `ResolutionSource` (`Mapbox`,
 `InternallyRegistered`), `ResolutionStatus` (`Resolved`, `Retired`), `Visibility` and `ResolvedAtUtc`. It must never
 carry sender data (labels, directions, phone numbers, access codes) — those live on referencing records such as
 `SavedPickupLocation` (see [[deliveries]]). A location is usable only while `Resolved` and not soft-deleted.
@@ -50,7 +50,7 @@ Children:
 - `LocationResolutionKey` — SHA-256 of a normalized resolution request (`LocationAddress.ComputeResolutionKey`),
   unique. Only hashes are stored so raw customer input is not retained.
 
-Factories: `Location.RegisterProviderResolved` (always `Address` type, explicit provider resolution source and
+Factories: `Location.RegisterProviderResolved` (provider street or landmark, explicit provider resolution source and
 permanent provenance) and
 `Location.RegisterLandmark` (internally curated, always `Public`). There is deliberately no API that accepts
 client-supplied coordinates; landmarks are created by internal operations, never from failed geocoding.
@@ -75,11 +75,14 @@ client-supplied coordinates; landmarks are created by internal operations, never
   provider candidates.
 - When registry results are not reliable, search takes the cross-instance resolution lease, reuses a cached recent
   permanent-geocoding outcome when available, and otherwise calls Mapbox. Search never creates a `Location`.
-- Registry and provider matches share one result contract. Registry items contain a `LocationId` and no token;
-  provider items contain an opaque selection token and no `LocationId`. Provider precision remains visible so a
-  street-centre result is not represented as a verified premise or building entrance.
-- Registrable provider candidates are `Premise` or `Street` precision, match the supported country, and carry a valid
-  canonical address and WGS84 coordinates. Candidates are held server-side (`PendingLocationSelection` in
+- Registry and provider matches share one result contract with `LocationType` and `IsSelectable`. Registered streets
+  and landmarks contain a `LocationId`; new verified ones contain an opaque selection token. Area suggestions contain
+  neither and are never selectable or persisted. No useful provider result returns an empty collection; provider
+  outages remain explicit errors.
+- Registrable provider candidates are canonical `Street` or `Landmark` precision, match the supported country, and
+  carry a valid canonical address and WGS84 coordinates. A premise is accepted only when Mapbox supplies reliable
+  structured parent-street identity; the provider street id and street/locality display become the canonical result,
+  so different building numbers reuse one `LocationId`. Candidates are held server-side (`PendingLocationSelection` in
   `IJsonCache`) and bound to the stakeholder; clients never submit provider payloads or coordinates.
 - `POST /api/v1/locations` accepts only a selection token. It validates token ownership/expiry, registers or reuses
   the provider feature through `LocationCandidateRegistrar` and `LocationRegistrationStore`, returns `201 Created`
@@ -88,15 +91,15 @@ client-supplied coordinates; landmarks are created by internal operations, never
 - `POST /locations/resolve` and `POST /locations/resolve/selections` are not public routes. The internal resolution
   helpers remain available for orchestration and tests, but pickup-location handlers accept only `LocationId` and
   never geocode.
-- Unresolved searches return no fabricated coordinates. Existing weak registry alternatives can still be selected,
-  and registered landmark alternatives remain available through registry search and the nearby-location endpoint;
-  the sender must explicitly choose one.
+- Unresolved searches return no fabricated coordinates. A relevant provider area may be shown only as a nonselectable
+  suggestion; city/state-only or irrelevant results return nothing. Areas cannot be pickup, quote, or saved locations.
 
 ## Deduplication and concurrency
 
 Matching priority: LocationId → provider reference → resolution key / unique normalized full address → new location.
-Normalization only folds case, whitespace and punctuation — no abbreviation expansion, and a street is never merged
-with premises on it. `ILocationResolutionLease` is a database lease (`locations."LocationResolutionLeases"`) taken by
+Normalization only folds case, whitespace and punctuation — no abbreviation expansion. Provider street identity plus
+country/state/city/locality context prevents same-named streets in different localities from being merged, while a
+distinct named landmark never collapses into its parent street. `ILocationResolutionLease` is a database lease (`locations."LocationResolutionLeases"`) taken by
 one autocommit upsert that only steals expired leases; waiters poll the registry and give up with
 `ResolutionInProgress` (409). The provider call happens outside any transaction; `LocationRegistrationStore` then
 uses a short transaction with an advisory lock on the provider feature, and the unique index is the final guard.
@@ -114,15 +117,18 @@ Search Box results do not carry the same storage rights and must not be persiste
 
 ## Privacy, limits and prerequisites
 
-- Mapbox premise results are `Private` (reachable only by exact resolution or id); street-level results and landmarks
-  are `Public` (searchable and proximity-discoverable). Search/nearby never return private locations.
+- Only canonical streets and distinct landmarks are registered, and both are `Public`. Premises and areas are never
+  persisted; private building numbers and access directions remain sender-specific metadata.
 - Search and registration use the per-user `LocationResolutionPolicy` rate limit; query length, radius, limits and
   supported countries are bounded (`LocationResolutionOptions`).
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT
   EXISTS postgis`, which needs sufficient privileges on managed services (pre-create it otherwise).
 
-## Future consumers
+## Delivery pricing consumer
 
-Delivery creation copies a usable location's address/coordinates into the immutable `DeliveryAddress` snapshot; it
-never references `Location` mutably. Zones, routing, pricing and rider proximity should query the same `geography`
-column with GiST-backed PostGIS predicates.
+Delivery quote creation loads usable canonical street/landmark locations by id, resolves delivery-zone membership
+against their representative coordinates and copies their address/coordinates into immutable quote snapshots; it
+never geocodes or modifies a `Location`. The same `LocationId` and coordinate drive Mapbox routing, Redis cache keys,
+and PostGIS membership. A long street intentionally has one representative point and one zone; no routing anchor,
+street segmentation, or multi-zone membership exists. See
+[[delivery-pricing-and-quotes]].

@@ -43,6 +43,7 @@ internal static class MapboxFeatureParser
     {
         "address" or "secondary_address" or "block" => GeocodingPrecision.Premise,
         "street" => GeocodingPrecision.Street,
+        "poi" => GeocodingPrecision.Landmark,
         "neighborhood" or "locality" or "place" or "district" or "postcode" => GeocodingPrecision.Area,
         _ => GeocodingPrecision.Region
     };
@@ -78,16 +79,38 @@ internal static class MapboxFeatureParser
             ? contextElement
             : default;
         var name = GetString(properties, "name") ?? string.Empty;
-        var displayAddress = GetString(properties, "full_address")
+        var canonicalFeatureId = featureId;
+        var canonicalFeatureType = featureType;
+        var precision = MapPrecision(featureType);
+        var addressLine = ResolveAddressLine(featureType, name, context);
+        string displayAddress;
+
+        // A premise is not a Pickly location. Mapbox's structured street context is the authoritative parent
+        // identity: every house number on that street/locality therefore produces the same provider reference.
+        if (precision == GeocodingPrecision.Premise &&
+            GetNestedString(context, "street", "mapbox_id") is { } streetId &&
+            GetContextName(context, "street") is { } streetName)
+        {
+            canonicalFeatureId = streetId;
+            canonicalFeatureType = "street";
+            precision = GeocodingPrecision.Street;
+            addressLine = streetName;
+            displayAddress = JoinDistinct(", ", streetName, GetContextName(context, "neighborhood"),
+                GetContextName(context, "locality"), GetContextName(context, "place"), GetContextName(context, "region"));
+        }
+        else
+        {
+            displayAddress = GetString(properties, "full_address")
                              ?? JoinNonEmpty(", ", GetString(properties, "name_preferred") ?? name, GetString(properties, "place_formatted"));
+        }
 
         return new GeocodingCandidate(
-            featureId,
-            featureType,
-            MapPrecision(featureType),
+            canonicalFeatureId,
+            canonicalFeatureType,
+            precision,
             MapConfidence(GetNestedString(properties, "match_code", "confidence")),
             displayAddress,
-            ResolveAddressLine(featureType, name, context),
+            addressLine,
             GetContextName(context, "place") ?? GetContextName(context, "locality") ?? GetContextName(context, "district")
                 ?? (featureType == "place" ? name : string.Empty),
             GetContextName(context, "region") ?? (featureType == "region" ? name : string.Empty),
@@ -152,4 +175,8 @@ internal static class MapboxFeatureParser
 
     private static string JoinNonEmpty(string separator, params string?[] values) =>
         string.Join(separator, values.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static string JoinDistinct(string separator, params string?[] values) =>
+        string.Join(separator, values.Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase));
 }

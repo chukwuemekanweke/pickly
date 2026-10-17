@@ -9,7 +9,7 @@ public sealed partial class When_RegisteringLocation_Should
     {
         var location = LocationTestFactory.ProviderResolved();
 
-        location.LocationType.ShouldBe(LocationType.Address);
+        location.LocationType.ShouldBe(LocationType.Street);
         location.ResolutionSource.ShouldBe(LocationResolutionSource.Mapbox);
         location.ResolutionStatus.ShouldBe(LocationResolutionStatus.Resolved);
         location.Visibility.ShouldBe(LocationVisibility.Private);

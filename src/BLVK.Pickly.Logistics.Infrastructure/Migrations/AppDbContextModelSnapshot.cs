@@ -848,6 +848,288 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.ToTable("DeliveryItems", "deliveries");
                 });
 
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryPricingPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("BaseFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CurrencyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("DeliveryType")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("DistanceRatePerKilometre")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<DateTimeOffset>("EffectiveFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("EffectiveToUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("OrderType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("WeightRatePerKilogram")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CurrencyId");
+
+                    b.HasIndex("Version")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("DeliveryPricingPolicies", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryPricingPolicies_EffectivePeriod", "\"EffectiveToUtc\" IS NULL OR \"EffectiveToUtc\" > \"EffectiveFromUtc\"");
+
+                            t.HasCheckConstraint("CK_DeliveryPricingPolicies_NonnegativeRates", "\"BaseFee\" >= 0 AND \"DistanceRatePerKilometre\" >= 0 AND \"WeightRatePerKilogram\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ConsumedByDeliveryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ConsumptionStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CurrencyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("DeliveryType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DestinationZoneCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("DestinationZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DropOffLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OriginZoneCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("OriginZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PickupLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PricingPolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PricingPolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset?>("ScheduledPickupAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalWeightKg")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("VehicleCategoryCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("VehicleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VehicleCategoryName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConsumedByDeliveryId")
+                        .IsUnique()
+                        .HasFilter("\"ConsumedByDeliveryId\" IS NOT NULL");
+
+                    b.HasIndex("CurrencyId");
+
+                    b.HasIndex("DestinationZoneId");
+
+                    b.HasIndex("OriginZoneId");
+
+                    b.HasIndex("PricingPolicyId");
+
+                    b.HasIndex("VehicleCategoryId");
+
+                    b.HasIndex("SenderId", "CreatedAtUtc")
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("DeliveryQuotes", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuoteItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("DeliveryQuoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("WeightKg")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryQuoteId");
+
+                    b.ToTable("DeliveryQuoteItems", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryQuoteItems_Quantity", "\"Quantity\" > 0");
+
+                            t.HasCheckConstraint("CK_DeliveryQuoteItems_WeightKg", "\"WeightKg\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryStatusHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -911,6 +1193,200 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.ToTable("DeliveryStatusHistory", "deliveries");
                 });
 
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryVehiclePricingRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Charge")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("DeliveryPricingPolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("VehicleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleCategoryId");
+
+                    b.HasIndex("DeliveryPricingPolicyId", "VehicleCategoryId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("DeliveryVehiclePricingRules", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryVehiclePricingRules_Charge", "\"Charge\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<MultiPolygon>("Boundary")
+                        .IsRequired()
+                        .HasColumnType("geometry(MultiPolygon,4326)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character(2)")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("EffectiveFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("EffectiveToUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Boundary");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Boundary"), "gist");
+
+                    b.HasIndex("CountryCode", "Code")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.HasIndex("IsActive", "EffectiveFromUtc", "EffectiveToUtc")
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("DeliveryZones", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryZones_EffectivePeriod", "\"EffectiveToUtc\" IS NULL OR \"EffectiveToUtc\" > \"EffectiveFromUtc\"");
+                        });
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZonePricingRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Charge")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("DeliveryPricingPolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DestinationZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OriginZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationZoneId");
+
+                    b.HasIndex("OriginZoneId");
+
+                    b.HasIndex("DeliveryPricingPolicyId", "OriginZoneId", "DestinationZoneId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("DeliveryZonePricingRules", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryZonePricingRules_Charge", "\"Charge\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.SavedPickupLocation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -971,6 +1447,77 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.ToTable("SavedPickupLocations", "deliveries");
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.VehicleCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MaximumWeightKg")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RoutingProfile")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.HasIndex("IsActive", "MaximumWeightKg")
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("VehicleCategories", "deliveries", t =>
+                        {
+                            t.HasCheckConstraint("CK_VehicleCategories_MaximumWeightKg", "\"MaximumWeightKg\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Locations.Entities.Location", b =>
@@ -2800,11 +3347,257 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryPricingPolicy", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Payments.Entities.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CurrencyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Payments.Entities.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CurrencyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZone", null)
+                        .WithMany()
+                        .HasForeignKey("DestinationZoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZone", null)
+                        .WithMany()
+                        .HasForeignKey("OriginZoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryPricingPolicy", null)
+                        .WithMany()
+                        .HasForeignKey("PricingPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Stakeholders.Entities.Stakeholder", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.VehicleCategory", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects.DeliveryAddress", "DropOffAddress", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryQuoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AdditionalInformation")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("DropOffAdditionalInformation");
+
+                            b1.Property<string>("AddressLine")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("DropOffAddressLine");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("DropOffCity");
+
+                            b1.Property<string>("CountryCode")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("character(2)")
+                                .HasColumnName("DropOffCountryCode")
+                                .IsFixedLength();
+
+                            b1.Property<decimal>("Latitude")
+                                .HasPrecision(9, 6)
+                                .HasColumnType("numeric(9,6)")
+                                .HasColumnName("DropOffLatitude");
+
+                            b1.Property<decimal>("Longitude")
+                                .HasPrecision(9, 6)
+                                .HasColumnType("numeric(9,6)")
+                                .HasColumnName("DropOffLongitude");
+
+                            b1.Property<string>("State")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("DropOffState");
+
+                            b1.HasKey("DeliveryQuoteId");
+
+                            b1.ToTable("DeliveryQuotes", "deliveries");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryQuoteId");
+                        });
+
+                    b.OwnsOne("BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects.DeliveryAddress", "PickupAddress", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryQuoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AdditionalInformation")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("PickupAdditionalInformation");
+
+                            b1.Property<string>("AddressLine")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("PickupAddressLine");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("PickupCity");
+
+                            b1.Property<string>("CountryCode")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("character(2)")
+                                .HasColumnName("PickupCountryCode")
+                                .IsFixedLength();
+
+                            b1.Property<decimal>("Latitude")
+                                .HasPrecision(9, 6)
+                                .HasColumnType("numeric(9,6)")
+                                .HasColumnName("PickupLatitude");
+
+                            b1.Property<decimal>("Longitude")
+                                .HasPrecision(9, 6)
+                                .HasColumnType("numeric(9,6)")
+                                .HasColumnName("PickupLongitude");
+
+                            b1.Property<string>("State")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("PickupState");
+
+                            b1.HasKey("DeliveryQuoteId");
+
+                            b1.ToTable("DeliveryQuotes", "deliveries");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryQuoteId");
+                        });
+
+                    b.OwnsOne("BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects.DeliveryPricingBreakdown", "Pricing", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryQuoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("BaseFee")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("BaseFee");
+
+                            b1.Property<decimal>("DistanceCharge")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("DistanceCharge");
+
+                            b1.Property<decimal>("VehicleCharge")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("VehicleCharge");
+
+                            b1.Property<decimal>("WeightCharge")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("WeightCharge");
+
+                            b1.Property<decimal>("ZoneCharge")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("ZoneCharge");
+
+                            b1.HasKey("DeliveryQuoteId");
+
+                            b1.ToTable("DeliveryQuotes", "deliveries");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryQuoteId");
+                        });
+
+                    b.Navigation("DropOffAddress")
+                        .IsRequired();
+
+                    b.Navigation("PickupAddress")
+                        .IsRequired();
+
+                    b.Navigation("Pricing")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuoteItem", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", null)
+                        .WithMany("Items")
+                        .HasForeignKey("DeliveryQuoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryStatusHistory", b =>
                 {
                     b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.Delivery", null)
                         .WithMany("StatusHistory")
                         .HasForeignKey("DeliveryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryVehiclePricingRule", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryPricingPolicy", null)
+                        .WithMany("VehicleRules")
+                        .HasForeignKey("DeliveryPricingPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.VehicleCategory", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZonePricingRule", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryPricingPolicy", null)
+                        .WithMany("ZoneRules")
+                        .HasForeignKey("DeliveryPricingPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZone", null)
+                        .WithMany()
+                        .HasForeignKey("DestinationZoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryZone", null)
+                        .WithMany()
+                        .HasForeignKey("OriginZoneId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -2989,6 +3782,18 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("StatusHistory");
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryPricingPolicy", b =>
+                {
+                    b.Navigation("VehicleRules");
+
+                    b.Navigation("ZoneRules");
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Locations.Entities.Location", b =>

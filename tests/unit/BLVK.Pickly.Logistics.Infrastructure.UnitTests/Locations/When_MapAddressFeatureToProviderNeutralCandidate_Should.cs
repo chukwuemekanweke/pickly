@@ -15,12 +15,12 @@ public sealed partial class When_GeocodingWithMapbox_WithSuccessfulResponse_Shou
 
         result.Status.ShouldBe(GeocodingStatus.Success);
         var candidate = result.Candidates.ShouldHaveSingleItem();
-        candidate.FeatureId.ShouldBe("dXJuOm1ieGFkcjoxMg");
-        candidate.FeatureType.ShouldBe("address");
-        candidate.Precision.ShouldBe(GeocodingPrecision.Premise);
+        candidate.FeatureId.ShouldBe("s");
+        candidate.FeatureType.ShouldBe("street");
+        candidate.Precision.ShouldBe(GeocodingPrecision.Street);
         candidate.Confidence.ShouldBe(GeocodingMatchConfidence.Exact);
-        candidate.DisplayAddress.ShouldBe("12 Ekpulechi Avenue, Enugu 400001, Enugu, Nigeria");
-        candidate.AddressLine.ShouldBe("12 Ekpulechi Avenue");
+        candidate.DisplayAddress.ShouldBe("Ekpulechi Avenue, Enugu");
+        candidate.AddressLine.ShouldBe("Ekpulechi Avenue");
         candidate.City.ShouldBe("Enugu");
         candidate.State.ShouldBe("Enugu");
         candidate.CountryCode.ShouldBe("NG");

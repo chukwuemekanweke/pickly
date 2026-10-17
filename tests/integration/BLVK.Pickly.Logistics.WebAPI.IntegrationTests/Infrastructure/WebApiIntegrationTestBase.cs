@@ -20,6 +20,7 @@ public abstract class WebApiIntegrationTestBase
     protected HttpClient Client { get; private set; } = default!;
     protected FakeGoogleIdentityTokenService GoogleIdentityTokenService => _factory.GoogleIdentityTokenService;
     protected FakeLocationGeocodingProvider LocationGeocodingProvider => _factory.LocationGeocodingProvider;
+    protected FakeDeliveryRouteProvider DeliveryRouteProvider => _factory.DeliveryRouteProvider;
 
     protected Task InitializeClientAsync()
     {

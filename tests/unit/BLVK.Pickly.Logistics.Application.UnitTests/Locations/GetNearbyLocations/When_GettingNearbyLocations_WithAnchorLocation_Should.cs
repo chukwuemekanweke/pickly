@@ -16,7 +16,7 @@ public sealed partial class When_GettingNearbyLocations_WithAnchorLocation_Shoul
     [Fact]
     public async Task QueryAroundAnchorExcludingItAndBoundingRadiusAndLimit()
     {
-        var anchor = ReadModel(Guid.CreateVersion7(), LocationType.Address);
+        var anchor = ReadModel(Guid.CreateVersion7(), LocationType.Street);
         var nearby = new NearbyLocationReadModel(ReadModel(Guid.CreateVersion7(), LocationType.Landmark), 245.6);
         _repository.GetByIdAsync(anchor.Id, Arg.Any<CancellationToken>()).Returns(anchor);
         NearbyLocationsRequest? captured = null;

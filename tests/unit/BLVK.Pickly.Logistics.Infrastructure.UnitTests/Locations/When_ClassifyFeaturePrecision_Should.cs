@@ -6,12 +6,13 @@ namespace BLVK.Pickly.Logistics.Infrastructure.UnitTests.Locations;
 public sealed partial class When_GeocodingWithMapbox_WithSuccessfulResponse_Should
 {
 [Theory]
-    [InlineData("address", GeocodingPrecision.Premise)]
-    [InlineData("secondary_address", GeocodingPrecision.Premise)]
+    [InlineData("address", GeocodingPrecision.Street)]
+    [InlineData("secondary_address", GeocodingPrecision.Street)]
     [InlineData("street", GeocodingPrecision.Street)]
     [InlineData("neighborhood", GeocodingPrecision.Area)]
     [InlineData("locality", GeocodingPrecision.Area)]
     [InlineData("place", GeocodingPrecision.Area)]
+    [InlineData("poi", GeocodingPrecision.Landmark)]
     [InlineData("region", GeocodingPrecision.Region)]
     [InlineData("country", GeocodingPrecision.Region)]
     public async Task ClassifyFeaturePrecision(string featureType, GeocodingPrecision expected)

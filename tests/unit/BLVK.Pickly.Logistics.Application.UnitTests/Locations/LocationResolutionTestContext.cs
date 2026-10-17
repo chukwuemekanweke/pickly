@@ -127,7 +127,7 @@ internal sealed class LocationResolutionTestContext
     public static GeocodingCandidate Candidate(
         string featureId = "address.12",
         string addressLine = AddressLine,
-        GeocodingPrecision precision = GeocodingPrecision.Premise,
+        GeocodingPrecision precision = GeocodingPrecision.Street,
         GeocodingMatchConfidence confidence = GeocodingMatchConfidence.Exact,
         decimal latitude = 6.4512m,
         decimal longitude = 7.5221m,

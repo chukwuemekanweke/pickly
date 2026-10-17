@@ -59,6 +59,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActiveSessionReadModelRepository, ActiveSessionReadModelRepository>();
         services.AddScoped<ISavedPickupLocationReadModelRepository, SavedPickupLocationReadModelRepository>();
         services.AddScoped<ILocationReadModelRepository, LocationReadModelRepository>();
+        services.AddScoped<IDeliveryZoneReadModelRepository, DeliveryZoneReadModelRepository>();
 
         return services;
     }

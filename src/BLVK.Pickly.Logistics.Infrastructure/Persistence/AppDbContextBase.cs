@@ -50,6 +50,13 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<DeliveryItem> DeliveryItems => Set<DeliveryItem>();
     public DbSet<DeliveryStatusHistory> DeliveryStatusHistory => Set<DeliveryStatusHistory>();
     public DbSet<SavedPickupLocation> SavedPickupLocations => Set<SavedPickupLocation>();
+    public DbSet<VehicleCategory> VehicleCategories => Set<VehicleCategory>();
+    public DbSet<DeliveryZone> DeliveryZones => Set<DeliveryZone>();
+    public DbSet<DeliveryPricingPolicy> DeliveryPricingPolicies => Set<DeliveryPricingPolicy>();
+    public DbSet<DeliveryVehiclePricingRule> DeliveryVehiclePricingRules => Set<DeliveryVehiclePricingRule>();
+    public DbSet<DeliveryZonePricingRule> DeliveryZonePricingRules => Set<DeliveryZonePricingRule>();
+    public DbSet<DeliveryQuote> DeliveryQuotes => Set<DeliveryQuote>();
+    public DbSet<DeliveryQuoteItem> DeliveryQuoteItems => Set<DeliveryQuoteItem>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<LocationProviderReference> LocationProviderReferences => Set<LocationProviderReference>();
     public DbSet<LocationResolutionKey> LocationResolutionKeys => Set<LocationResolutionKey>();

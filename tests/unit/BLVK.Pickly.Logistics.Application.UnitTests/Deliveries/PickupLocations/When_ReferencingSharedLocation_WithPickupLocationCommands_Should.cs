@@ -33,7 +33,7 @@ public sealed partial class When_ReferencingSharedLocation_WithPickupLocationCom
         result.Location!.LocationId.ShouldBe(context.HomeLocation.Id);
         result.Location.AdditionalDirections.ShouldBe("Call when you arrive at the entrance");
         result.Location.Address.AddressLine.ShouldBe("36 Garden Avenue");
-        result.Location.Address.LocationType.ShouldBe(LocationType.Address);
+        result.Location.Address.LocationType.ShouldBe(LocationType.Street);
         result.Location.Address.Latitude.ShouldBe(context.HomeLocation.Coordinates.Latitude);
         context.Repository.Locations.ShouldHaveSingleItem().LocationId.ShouldBe(context.HomeLocation.Id);
     }

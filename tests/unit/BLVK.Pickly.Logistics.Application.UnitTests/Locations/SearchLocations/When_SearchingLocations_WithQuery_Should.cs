@@ -30,6 +30,8 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
             .Returns(new GeocodingResult(GeocodingStatus.Success, []));
         _lease.TryAcquireAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns(Guid.CreateVersion7());
+        _repository.FindByProviderReferenceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((LocationReadModel?)null);
     }
 
     [Fact]
@@ -45,7 +47,7 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
             "NG",
             6.45m,
             7.52m,
-            LocationType.Address,
+            LocationType.Street,
             LocationResolutionSource.Mapbox,
             LocationResolutionStatus.Resolved,
             LocationVisibility.Public);

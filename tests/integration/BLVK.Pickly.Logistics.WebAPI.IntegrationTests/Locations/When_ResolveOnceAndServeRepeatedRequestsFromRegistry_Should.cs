@@ -25,7 +25,7 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should
 
         registration.StatusCode.ShouldBe(HttpStatusCode.Created);
         first!.ResolutionSource.ShouldBe(LocationResolutionSource.Mapbox);
-        first.LocationType.ShouldBe(LocationType.Address);
+        first.LocationType.ShouldBe(LocationType.Street);
         second.Items.ShouldContain(item => item.LocationId == first.LocationId);
         LocationGeocodingProvider.CallCount.ShouldBe(1);
 
