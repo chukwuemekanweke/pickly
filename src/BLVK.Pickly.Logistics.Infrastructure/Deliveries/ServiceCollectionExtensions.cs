@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDeliveryServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IDeliveryTrackingIdGenerator, DeliveryTrackingIdGenerator>();
         var options = configuration.GetSection(DeliveryRoutingOptions.SectionName).Get<DeliveryRoutingOptions>() ?? new DeliveryRoutingOptions();
         options.Validate();
         services.Configure<DeliveryRoutingOptions>(configuration.GetSection(DeliveryRoutingOptions.SectionName));

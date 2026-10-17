@@ -80,8 +80,9 @@ before the short quote save.
 currency and expiry. Raw provider-derived distance and duration are not persisted in PostgreSQL, logs, or quote API
 responses; the distance-derived commercial charge remains part of the immutable financial breakdown. Retrieval never
 reroutes, re-zones or reprices and remains readable after the temporary route cache expires. Expiration derives through
-`TimeProvider`; no job mutates expired rows. `Consume` is Phase 4-ready only: it requires an unexpired quote, permits an
-idempotent retry for the same delivery and rejects another consumer. PostgreSQL `xmin` is mapped as the quote row-version
-so competing Phase 4 consumers cannot both save successfully. Phase 4 should consume and create the Delivery in
-one transaction, construct the existing `DeliveryCharge`, and add `VehicleCategoryId` to Delivery as the narrow
-fulfillment-facing extension; Phase 3 exposes no booking or consumption endpoint.
+`TimeProvider`; no job mutates expired rows. `Consume` requires an unexpired quote, permits an
+idempotent retry for the same delivery and rejects another consumer. PostgreSQL `xmin` is mapped as the quote row-version,
+so competing consumers cannot both save successfully. Phase 4 now consumes the quote while creating its Delivery and
+durable idempotency result in one transaction. It constructs the existing `DeliveryCharge`, copies item and address
+snapshots without routing or repricing, and records the quoted `VehicleCategoryId` and unique `DeliveryQuoteId` on
+Delivery. The booking API is described in [[deliveries]].

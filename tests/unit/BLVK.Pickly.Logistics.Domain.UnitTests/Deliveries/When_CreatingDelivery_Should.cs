@@ -28,6 +28,8 @@ public sealed class When_CreatingDelivery_Should
         delivery.StatusHistory.Count.ShouldBe(1);
         delivery.StatusHistory.Single().PreviousStatus.ShouldBeNull();
         delivery.StatusHistory.Single().NewStatus.ShouldBe(expectedStatus);
+        delivery.DeliveryQuoteId.ShouldNotBe(Guid.Empty);
+        delivery.VehicleCategoryId.ShouldNotBe(Guid.Empty);
     }
 
     [Fact]
@@ -88,6 +90,8 @@ public sealed class When_CreatingDelivery_Should
     [Fact]
     public void RejectScheduledDeliveryWithoutPickupTime() =>
         Should.Throw<ArgumentException>(() => Delivery.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             "PKY-2026-0002",
             DeliveryType.Scheduled,

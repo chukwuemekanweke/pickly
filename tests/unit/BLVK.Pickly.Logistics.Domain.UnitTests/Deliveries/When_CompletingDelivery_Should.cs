@@ -119,7 +119,7 @@ public sealed class When_CompletingDelivery_Should
     {
         var pickup = DeliveryTestFactory.Address("Original pickup");
         var delivery = Domain.Deliveries.Entities.Delivery.Create(
-            Guid.CreateVersion7(), "PKY-2026-0004",
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), "PKY-2026-0004",
             DeliveryType.Instant, DeliveryOrderType.PayOnDelivery,
             pickup, DeliveryTestFactory.Address("Dropoff"),
             Domain.Deliveries.ValueObjects.DeliveryRecipient.Create("Ada", "+2348012345678"),

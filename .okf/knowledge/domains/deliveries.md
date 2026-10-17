@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Deliveries Domain Foundation
-description: Delivery aggregate and sender-owned saved pickup locations, including address snapshots, lifecycle transitions, default-location consistency, and persistence boundaries
+description: Delivery booking and aggregate lifecycle, including quote consumption, idempotency, snapshots, scheduling, tracking identifiers, and sender-owned pickup locations
 resource: okf://knowledge/domains/deliveries
 tags:
     - constraint
@@ -84,10 +84,28 @@ evidence references have database uniqueness constraints. Status history uses re
 hard deletion of a delivery cannot silently cascade into its history.
 
 Phase 3 pricing, routing, zones, vehicle recommendations and immutable quotes are described in
-[[delivery-pricing-and-quotes]]. Future phases own quote consumption into a Delivery, provider verification,
-rider discovery, cash-collection records, proof generation, remittance/reconciliation, and read
-models. They must call the aggregate's existing transition methods after validating their own
-evidence; they must not introduce a generic status setter or treat delivery status as financial truth.
+[[delivery-pricing-and-quotes]]. Phase 4 booking is `POST /api/v1/deliveries`; it derives the sender from
+`ActorContext.StakeholderId`, copies the quote's immutable address, parcel, charge, currency and vehicle snapshots,
+adds private drop-off instructions only to the Delivery snapshot, consumes the quote, and commits both aggregates
+with a durable `DeliveryBookingConfirmation` in one PostgreSQL transaction. `GET /api/v1/deliveries/{deliveryId}`
+is sender-scoped and uses not-found semantics across ownership boundaries.
+
+`DeliveryQuoteId` is unique on Delivery, `ConsumedByDeliveryId` is a unique quote reference, and quote `xmin`
+optimistic concurrency prevents two writers from consuming one quote. The confirmation table adds unique quote,
+delivery, and `(SenderId, Operation, KeyHash)` boundaries; it stores SHA-256 key/request hashes rather than raw keys
+or payloads. Matching retries return the original delivery even after quote expiry; different payloads conflict.
+Tracking IDs use a cryptographically random `PKL-XXXXXXXX` alphabet and retain database uniqueness, with bounded
+retries that replace only the tracking ID and preserve the Delivery identifier and idempotency context.
+
+Scheduled booking requires a still-future quote pickup time and computes eligibility as
+`max(booking time, pickup time - Deliveries:Dispatch:LeadTime)`. Instant deliveries store neither timestamp.
+Booking never calls routing, geocoding or pricing and emits no payment or dispatch side effect.
+
+Phase 5 may initiate Pay Before Delivery payment only for the already-created Delivery. It must treat provider
+responses as attempts and use verified provider evidence before calling `ConfirmVerifiedPrepaidPayment`; booking
+itself never marks payment paid or activates fulfillment. Later phases own rider discovery, cash collection, proof,
+remittance and public tracking. They must call existing aggregate transitions and must not introduce a generic status
+setter or treat delivery status as financial truth.
 
 ## Saved pickup locations
 

@@ -20,6 +20,8 @@ internal static class DeliveryTestFactory
         string trackingId = "PKY-2026-0001") =>
         Delivery.Create(
             senderId ?? Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             trackingId,
             deliveryType,
             orderType,

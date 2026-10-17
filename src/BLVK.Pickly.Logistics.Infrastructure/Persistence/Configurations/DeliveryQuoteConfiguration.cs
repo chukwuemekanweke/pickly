@@ -11,7 +11,15 @@ public sealed class DeliveryQuoteConfiguration : IEntityTypeConfiguration<Delive
 {
     public void Configure(EntityTypeBuilder<DeliveryQuote> builder)
     {
-        builder.ToTable("DeliveryQuotes", SchemaNames.Deliveries, table => { table.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\""); table.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0"); });
+        builder.ToTable("DeliveryQuotes", SchemaNames.Deliveries, table =>
+        {
+            table.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\"");
+            table.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0");
+            table.HasCheckConstraint(
+                "CK_DeliveryQuotes_Consumption",
+                "(\"ConsumptionStatus\" = 1 AND \"ConsumedByDeliveryId\" IS NULL AND \"ConsumedAtUtc\" IS NULL) OR " +
+                "(\"ConsumptionStatus\" = 2 AND \"ConsumedByDeliveryId\" IS NOT NULL AND \"ConsumedAtUtc\" IS NOT NULL)");
+        });
         builder.HasKey(x => x.Id);
         builder.Property(x => x.DeliveryType).HasConversion<int>().IsRequired();
         builder.Property(x => x.OrderType).HasConversion<int>().IsRequired();
@@ -37,6 +45,11 @@ public sealed class DeliveryQuoteConfiguration : IEntityTypeConfiguration<Delive
         builder.Navigation(x => x.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasIndex(x => new { x.SenderId, x.CreatedAtUtc }).HasFilter("\"IsDeleted\" = FALSE");
         builder.HasIndex(x => x.ConsumedByDeliveryId).IsUnique().HasFilter("\"ConsumedByDeliveryId\" IS NOT NULL");
+        builder.HasOne<Delivery>()
+            .WithMany()
+            .HasForeignKey(nameof(DeliveryQuote.ConsumedByDeliveryId), nameof(DeliveryQuote.Id))
+            .HasPrincipalKey(nameof(Delivery.Id), nameof(Delivery.DeliveryQuoteId))
+            .OnDelete(DeleteBehavior.Restrict);
     }
 
     private static void ConfigureAddress(OwnedNavigationBuilder<DeliveryQuote, DeliveryAddress> owned, string prefix)
