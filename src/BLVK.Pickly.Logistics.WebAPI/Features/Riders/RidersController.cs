@@ -53,6 +53,7 @@ public sealed class RidersController(
             UpdateRiderLocationStatus.NotRider => Forbid(),
             UpdateRiderLocationStatus.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
             UpdateRiderLocationStatus.StaleLocation => Problem(409, "stale_rider_location", "Stale location", "A newer rider location has already been accepted."),
+            UpdateRiderLocationStatus.TemporarilyUnavailable => TemporarilyUnavailable(),
             _ => Problem(400, "invalid_rider_location", "Invalid rider location", "The coordinates or capture time are invalid.")
         };
     }
@@ -70,6 +71,7 @@ public sealed class RidersController(
             SetRiderAvailabilityStatus.NotRider => Forbid(),
             SetRiderAvailabilityStatus.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
             SetRiderAvailabilityStatus.StaleLocation => Problem(409, "stale_rider_location", "Fresh location required", "A fresh rider location is required before becoming available."),
+            SetRiderAvailabilityStatus.TemporarilyUnavailable => TemporarilyUnavailable(),
             _ => Problem(409, "rider_status_conflict", "Rider status conflict", "The requested availability conflicts with an active assignment.")
         };
     }
@@ -112,6 +114,7 @@ public sealed class RidersController(
             AcceptRiderOfferStatus.NotRider or AcceptRiderOfferStatus.Forbidden => Forbid(),
             AcceptRiderOfferStatus.NotFound => NotFound(),
             AcceptRiderOfferStatus.Expired => Problem(409, "offer_expired", "Offer expired", "The delivery offer has expired."),
+            AcceptRiderOfferStatus.TemporarilyUnavailable => TemporarilyUnavailable(),
             _ => Problem(409, "assignment_conflict", "Assignment conflict", "The offer, delivery, or rider is no longer eligible for assignment.")
         };
     }
@@ -127,6 +130,7 @@ public sealed class RidersController(
             RejectRiderOfferStatus.NotRider or RejectRiderOfferStatus.Forbidden => Forbid(),
             RejectRiderOfferStatus.NotFound => NotFound(),
             RejectRiderOfferStatus.Expired => Problem(409, "offer_expired", "Offer expired", "The delivery offer has expired."),
+            RejectRiderOfferStatus.TemporarilyUnavailable => TemporarilyUnavailable(),
             _ => Conflict()
         };
     }
@@ -151,4 +155,11 @@ public sealed class RidersController(
 
     private static ObjectResult Problem(int status, string code, string title, string detail) =>
         AuthenticationProblemDetails.Create(status, code, title, detail);
+
+    private static ObjectResult TemporarilyUnavailable() =>
+        Problem(
+            StatusCodes.Status503ServiceUnavailable,
+            "rider_operation_temporarily_unavailable",
+            "Rider operation temporarily unavailable",
+            "The operation could not complete because of concurrent database activity. Please retry.");
 }

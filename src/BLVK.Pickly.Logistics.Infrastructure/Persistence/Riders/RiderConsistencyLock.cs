@@ -5,26 +5,42 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Persistence.Riders;
 
 internal sealed class RiderConsistencyLock(AppDbContext dbContext) : IRiderConsistencyLock
 {
-    private const string MatchingProcessorLockKey = "rider-matching-processor";
-
     public Task AcquireRiderAsync(Guid riderStakeholderId, CancellationToken cancellationToken) =>
-        AcquireKeyAsync($"rider:{riderStakeholderId:D}", cancellationToken);
+        AcquireKeyAsync(RiderKey(riderStakeholderId), cancellationToken);
 
-    public async Task AcquireAssignmentAsync(
+    public Task AcquireDeliveryAsync(Guid deliveryId, CancellationToken cancellationToken) =>
+        AcquireKeyAsync(DeliveryKey(deliveryId), cancellationToken);
+
+    public Task<bool> TryAcquireDeliveryAsync(Guid deliveryId, CancellationToken cancellationToken)
+    {
+        var key = DeliveryKey(deliveryId);
+        return dbContext.Database
+            .SqlQuery<bool>($"SELECT pg_try_advisory_xact_lock(hashtextextended({key}, 0)) AS \"Value\"")
+            .SingleAsync(cancellationToken);
+    }
+
+    public Task AcquireAssignmentAsync(
         Guid deliveryId,
+        Guid riderStakeholderId,
+        CancellationToken cancellationToken) =>
+        AcquireDeliveriesThenRiderAsync([deliveryId], riderStakeholderId, cancellationToken);
+
+    public async Task AcquireDeliveriesThenRiderAsync(
+        IReadOnlyCollection<Guid> deliveryIds,
         Guid riderStakeholderId,
         CancellationToken cancellationToken)
     {
-        var keys = new[] { $"delivery:{deliveryId:D}", $"rider:{riderStakeholderId:D}" }
-            .OrderBy(value => value, StringComparer.Ordinal);
-        foreach (var key in keys)
+        foreach (var deliveryId in deliveryIds.Distinct().Order())
         {
-            await AcquireKeyAsync(key, cancellationToken);
+            await AcquireDeliveryAsync(deliveryId, cancellationToken);
         }
+
+        await AcquireRiderAsync(riderStakeholderId, cancellationToken);
     }
 
-    public Task AcquireMatchingProcessorAsync(CancellationToken cancellationToken) =>
-        AcquireKeyAsync(MatchingProcessorLockKey, cancellationToken);
+    private static string RiderKey(Guid riderStakeholderId) => $"rider:{riderStakeholderId:D}";
+
+    private static string DeliveryKey(Guid deliveryId) => $"delivery:{deliveryId:D}";
 
     private Task<int> AcquireKeyAsync(string key, CancellationToken cancellationToken) =>
         dbContext.Database.ExecuteSqlInterpolatedAsync(

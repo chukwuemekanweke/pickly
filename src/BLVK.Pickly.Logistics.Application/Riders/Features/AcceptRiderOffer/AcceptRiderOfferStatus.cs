@@ -8,5 +8,6 @@ public enum AcceptRiderOfferStatus
     Forbidden = 4,
     NotFound = 5,
     Expired = 6,
-    Conflict = 7
+    Conflict = 7,
+    TemporarilyUnavailable = 8
 }

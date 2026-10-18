@@ -23,15 +23,16 @@ public sealed class RiderMatchingProcessor(
                 using var scope = serviceScopeFactory.CreateScope();
                 var handler = scope.ServiceProvider.GetRequiredService<ProcessRiderMatchingHandler>();
                 var result = await handler.HandleAsync(new(), stoppingToken);
-                if (result.ScheduledDispatchesOpened + result.MatchingAttempts + result.OffersExpired > 0)
+                if (result.ScheduledDispatchesOpened + result.MatchingAttempts + result.OffersExpired + result.FailedOperations > 0)
                 {
                     logger.LogInformation(
-                        "Rider matching iteration opened {ScheduledDispatchCount} dispatches, expired {ExpiredOfferCount} offers, attempted {MatchingAttemptCount} matches, created {CreatedOfferCount} offers, and found no candidate {NoCandidateCount} times.",
+                        "Rider matching iteration opened {ScheduledDispatchCount} dispatches, expired {ExpiredOfferCount} offers, attempted {MatchingAttemptCount} matches, created {CreatedOfferCount} offers, found no candidate {NoCandidateCount} times, and isolated {FailedOperationCount} failed operations.",
                         result.ScheduledDispatchesOpened,
                         result.OffersExpired,
                         result.MatchingAttempts,
                         result.OffersCreated,
-                        result.NoCandidateAttempts);
+                        result.NoCandidateAttempts,
+                        result.FailedOperations);
                 }
             }
             catch (Exception exception)

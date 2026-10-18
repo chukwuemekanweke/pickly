@@ -17,6 +17,7 @@ public sealed class DeliveryMatchingSessionConfiguration : IEntityTypeConfigurat
         builder.Property(session => session.AttemptCount).IsRequired();
         builder.Property(session => session.NextAttemptAtUtc).IsRequired();
         builder.HasIndex(session => session.DeliveryId)
+            .HasDatabaseName("IX_DeliveryMatchingSessions_DeliveryId")
             .IsUnique()
             .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
         builder.HasIndex(session => new { session.Status, session.NextAttemptAtUtc })

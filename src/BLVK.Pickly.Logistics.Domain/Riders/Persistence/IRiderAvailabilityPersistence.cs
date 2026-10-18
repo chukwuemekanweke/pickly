@@ -4,6 +4,10 @@ namespace BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 public interface IRiderAvailabilityPersistence
 {
+    Task<IReadOnlyCollection<Guid>> ListPendingOfferDeliveryIdsAsync(
+        Guid riderProfileId,
+        CancellationToken cancellationToken);
+
     Task<RiderAvailabilityState> LoadAsync(
         RiderProfile profile,
         CancellationToken cancellationToken);

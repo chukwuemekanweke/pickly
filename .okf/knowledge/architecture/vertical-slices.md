@@ -68,6 +68,9 @@ Command/query reference (copy these, not a new shape):
   transactional use case, e.g. `IDeliveryBookingPersistence`, `IRiderOfferAcceptancePersistence`) over a broad store
   owning unrelated operations. Transactions, row/advisory locks, isolation levels and provider-specific SQL stay in
   Infrastructure; restructuring must never weaken them.
+- Do not infer that every handler needs a matching persistence interface. Straightforward aggregate access uses the
+  existing `IRepository<T>` and specification pattern. A dedicated port must earn its place through atomic
+  multi-aggregate coordination, provider-specific SQL/PostGIS/locking, a complex projection, or bounded bulk work.
 - A dedicated handler must own the use case, not merely forward it. Eligibility rules, workflow branching, aggregate
   transitions, retry/expiry decisions and application result selection belong in the handler or a reusable Domain/
   Application policy. Infrastructure ports expose data-access facts and database capabilities; they must not return

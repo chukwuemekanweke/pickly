@@ -15,7 +15,18 @@ public sealed class When_ValidatingRiderMatchingOptions_Should
     [Fact]
     public void AcceptValidBoundedPolicy() => Should.NotThrow(() => Valid().Validate());
 
-    private static RiderMatchingOptions Valid(int maximumConcurrentAssignmentsPerRider = 1) => new()
+    [Fact]
+    public void RejectNegativeTransactionRetryCount() =>
+        Should.Throw<InvalidOperationException>(() => Valid(maximumTransactionRetryCount: -1).Validate());
+
+    [Fact]
+    public void RejectNegativeTransactionRetryDelay() =>
+        Should.Throw<InvalidOperationException>(() => Valid(transactionRetryBaseDelay: TimeSpan.FromMilliseconds(-1)).Validate());
+
+    private static RiderMatchingOptions Valid(
+        int maximumConcurrentAssignmentsPerRider = 1,
+        int maximumTransactionRetryCount = 3,
+        TimeSpan? transactionRetryBaseDelay = null) => new()
     {
         LocationFreshness = TimeSpan.FromMinutes(2),
         MaximumFutureLocationClockSkew = TimeSpan.FromSeconds(30),
@@ -28,6 +39,8 @@ public sealed class When_ValidatingRiderMatchingOptions_Should
         RetryBackoff = TimeSpan.FromSeconds(30),
         MatchingScanBatchSize = 50,
         ScheduledDispatchScanBatchSize = 50,
-        MaximumConcurrentAssignmentsPerRider = maximumConcurrentAssignmentsPerRider
+        MaximumConcurrentAssignmentsPerRider = maximumConcurrentAssignmentsPerRider,
+        MaximumTransactionRetryCount = maximumTransactionRetryCount,
+        TransactionRetryBaseDelay = transactionRetryBaseDelay ?? TimeSpan.FromMilliseconds(25)
     };
 }

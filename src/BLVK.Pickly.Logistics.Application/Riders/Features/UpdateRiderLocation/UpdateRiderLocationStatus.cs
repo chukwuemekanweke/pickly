@@ -7,5 +7,6 @@ public enum UpdateRiderLocationStatus
     NotRider = 3,
     ProfileInactive = 4,
     StaleLocation = 5,
-    InvalidLocation = 6
+    InvalidLocation = 6,
+    TemporarilyUnavailable = 7
 }

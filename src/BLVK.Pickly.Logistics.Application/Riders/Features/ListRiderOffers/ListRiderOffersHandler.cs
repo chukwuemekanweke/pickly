@@ -5,7 +5,6 @@ namespace BLVK.Pickly.Logistics.Application.Riders.Features.ListRiderOffers;
 public sealed class ListRiderOffersHandler(
     RiderActorResolver actorResolver,
     IRiderOfferReader reader,
-    IRiderTransactionFactory transactionFactory,
     TimeProvider timeProvider)
 {
     public async Task<ListRiderOffersResult> HandleAsync(
@@ -25,18 +24,9 @@ public sealed class ListRiderOffersHandler(
             return new(ListRiderOffersStatus.ProfileInactive);
         }
 
-        var now = timeProvider.GetUtcNow();
-        await using var transaction = await transactionFactory.BeginAsync(
-            RiderTransactionIsolation.ReadCommitted,
-            cancellationToken);
-        var expired = await reader.ListExpiredAsync(resolved.Profile.Id, now, cancellationToken);
-        foreach (var offer in expired)
-        {
-            offer.Expire(now);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-        var offers = await reader.ListActiveSnapshotsAsync(resolved.Profile.Id, now, cancellationToken);
+        // Read-only: timed-out offers are filtered here and transitioned (with session backoff) by the Jobs expiry
+        // step, or by acceptance/rejection when the rider acts on one first.
+        var offers = await reader.ListActiveSnapshotsAsync(resolved.Profile.Id, timeProvider.GetUtcNow(), cancellationToken);
         return new(ListRiderOffersStatus.Success, offers);
     }
 }

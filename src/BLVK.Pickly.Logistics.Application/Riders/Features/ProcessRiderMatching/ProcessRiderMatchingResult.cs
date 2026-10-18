@@ -5,4 +5,5 @@ public sealed record ProcessRiderMatchingResult(
     int OffersExpired,
     int MatchingAttempts,
     int OffersCreated,
-    int NoCandidateAttempts);
+    int NoCandidateAttempts,
+    int FailedOperations = 0);

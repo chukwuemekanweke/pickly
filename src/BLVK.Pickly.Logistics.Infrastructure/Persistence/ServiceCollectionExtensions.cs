@@ -43,7 +43,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDeliveryBookingPersistence, DeliveryBookingPersistence>();
         services.AddScoped<ILocationRegistrationStore, LocationRegistrationStore>();
         services.AddScoped<ILocationResolutionLease, LocationResolutionLease>();
-        services.AddScoped<IRiderActorReader, RiderActorReader>();
         services.AddScoped<IRiderTransactionFactory, RiderTransactionFactory>();
         services.AddScoped<IRiderConsistencyLock, RiderConsistencyLock>();
         services.AddScoped<RiderGeographyQueries>();
@@ -53,7 +52,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRiderStatusReader, RiderStatusReader>();
         services.AddScoped<IRiderOfferReader, RiderOfferReader>();
         services.AddScoped<IRiderOfferAcceptancePersistence, RiderOfferAcceptancePersistence>();
-        services.AddScoped<IRiderOfferRejectionPersistence, RiderOfferRejectionPersistence>();
         services.AddScoped<IRiderActiveDeliveryReader, RiderActiveDeliveryReader>();
         services.AddScoped<ISenderDeliveryAssignmentReader, SenderDeliveryAssignmentReader>();
         services.AddScoped<IRiderMatchingPersistence, RiderMatchingPersistence>();

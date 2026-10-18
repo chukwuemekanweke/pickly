@@ -16,6 +16,7 @@ internal sealed class RiderMatchingMetrics : IRiderMatchingTelemetry
     private static readonly Counter<long> OffersRejected = Meter.CreateCounter<long>("pickly.riders.offers.rejected");
     private static readonly Counter<long> AssignmentConflicts = Meter.CreateCounter<long>("pickly.riders.assignments.conflicts");
     private static readonly Counter<long> StaleLocations = Meter.CreateCounter<long>("pickly.riders.locations.stale");
+    private static readonly Counter<long> ProcessingFailures = Meter.CreateCounter<long>("pickly.riders.matching.processing_failures");
 
     public void RecordProcessing(
         int scheduledDispatchesOpened,
@@ -35,4 +36,5 @@ internal sealed class RiderMatchingMetrics : IRiderMatchingTelemetry
     public void RecordOfferRejected() => OffersRejected.Add(1);
     public void RecordAssignmentConflict() => AssignmentConflicts.Add(1);
     public void RecordStaleLocation() => StaleLocations.Add(1);
+    public void RecordProcessingFailures(int count) => ProcessingFailures.Add(count);
 }

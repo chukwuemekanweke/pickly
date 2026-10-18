@@ -5,8 +5,13 @@ namespace BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 public interface IRiderOfferAcceptancePersistence
 {
-    Task<RiderOfferPreview?> FindPreviewAsync(Guid offerId, CancellationToken cancellationToken);
+    Task<Delivery?> FindAcceptedDeliveryAsync(
+        Guid offerId,
+        Guid riderProfileId,
+        Guid riderStakeholderId,
+        CancellationToken cancellationToken);
 
+    /// <summary>Loads tracked acceptance state; the Delivery row stays locked until the transaction ends.</summary>
     Task<RiderOfferAcceptanceState> LoadAsync(
         Guid offerId,
         Guid riderProfileId,
@@ -32,8 +37,6 @@ public interface IRiderOfferAcceptancePersistence
 
     void AddStatusHistory(DeliveryStatusHistory history);
 }
-
-public sealed record RiderOfferPreview(Guid DeliveryId, Guid RiderProfileId);
 
 public sealed record RiderOfferAcceptanceState(
     RiderDeliveryOffer? Offer,

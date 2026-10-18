@@ -1,6 +1,9 @@
+using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Riders;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
+using BLVK.Pickly.Logistics.Domain.Riders.Specifications;
 using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Application.Riders.Features.RejectRiderOffer;
@@ -9,7 +12,8 @@ public sealed class RejectRiderOfferHandler(
     RiderActorResolver actorResolver,
     IRiderTransactionFactory transactionFactory,
     IRiderConsistencyLock consistencyLock,
-    IRiderOfferRejectionPersistence persistence,
+    IRepository<RiderDeliveryOffer> offers,
+    IRepository<DeliveryMatchingSession> sessions,
     IRiderMatchingTelemetry telemetry,
     IOptions<RiderMatchingOptions> options,
     TimeProvider timeProvider)
@@ -26,7 +30,9 @@ public sealed class RejectRiderOfferHandler(
                 : RejectRiderOfferStatus.NotRider);
         }
 
-        var preview = await persistence.FindPreviewAsync(command.OfferId, cancellationToken);
+        var preview = await offers.FirstOrDefaultAsync(
+            new RiderDeliveryOfferByIdSpecification(command.OfferId),
+            cancellationToken);
         if (preview is null)
         {
             return new(RejectRiderOfferStatus.NotFound);
@@ -37,62 +43,66 @@ public sealed class RejectRiderOfferHandler(
             return new(RejectRiderOfferStatus.Forbidden);
         }
 
-        await using var transaction = await transactionFactory.BeginAsync(
-            RiderTransactionIsolation.ReadCommitted,
-            cancellationToken);
-        await consistencyLock.AcquireAssignmentAsync(
-            preview.DeliveryId,
-            resolved.Profile.StakeholderId,
-            cancellationToken);
-        var state = await persistence.LoadAsync(command.OfferId, cancellationToken);
-        if (state.Offer is null)
+        try
         {
-            return new(RejectRiderOfferStatus.NotFound);
-        }
+            return await transactionFactory.ExecuteAsync(
+                RiderTransactionIsolation.ReadCommitted,
+                new(nameof(RejectRiderOfferHandler), command.OfferId),
+                async (transaction, token) =>
+                {
+                    await consistencyLock.AcquireAssignmentAsync(
+                        preview.DeliveryId,
+                        resolved.Profile.StakeholderId,
+                        token);
+                    var offer = await offers.GetByIdAsync(command.OfferId, token);
+                    if (offer is null)
+                    {
+                        return new RejectRiderOfferResult(RejectRiderOfferStatus.NotFound);
+                    }
 
-        if (state.Offer.RiderProfileId != resolved.Profile.Id)
-        {
-            return new(RejectRiderOfferStatus.Forbidden);
-        }
+                    if (offer.RiderProfileId != resolved.Profile.Id)
+                    {
+                        return new RejectRiderOfferResult(RejectRiderOfferStatus.Forbidden);
+                    }
 
-        if (state.Offer.Status == RiderDeliveryOfferStatus.Rejected)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return new(RejectRiderOfferStatus.Success);
-        }
+                    if (offer.Status == RiderDeliveryOfferStatus.Rejected)
+                    {
+                        await transaction.CommitAsync(token);
+                        return new RejectRiderOfferResult(RejectRiderOfferStatus.Success);
+                    }
 
-        if (state.Offer.Status != RiderDeliveryOfferStatus.Pending)
-        {
-            return new(state.Offer.Status == RiderDeliveryOfferStatus.Expired
-                ? RejectRiderOfferStatus.Expired
-                : RejectRiderOfferStatus.Conflict);
-        }
+                    if (offer.Status != RiderDeliveryOfferStatus.Pending)
+                    {
+                        return new RejectRiderOfferResult(offer.Status == RiderDeliveryOfferStatus.Expired
+                            ? RejectRiderOfferStatus.Expired
+                            : RejectRiderOfferStatus.Conflict);
+                    }
 
-        var now = timeProvider.GetUtcNow();
-        if (now >= state.Offer.ExpiresAtUtc)
-        {
-            state.Offer.Expire(now);
-        }
-        else
-        {
-            state.Offer.Reject(now);
-        }
+                    var now = timeProvider.GetUtcNow();
+                    var session = await sessions.GetByIdAsync(offer.MatchingSessionId, token);
+                    if (now >= offer.ExpiresAtUtc)
+                    {
+                        RiderOfferRelease.Expire(offer, session, now, options.Value);
+                    }
+                    else
+                    {
+                        RiderOfferRelease.Reject(offer, session, now, options.Value);
+                    }
 
-        if (state.MatchingSession?.Status == DeliveryMatchingSessionStatus.Active)
-        {
-            state.MatchingSession.RecordAttempt(
-                now,
-                now + options.Value.RetryBackoff,
-                state.MatchingSession.SearchRadiusMeters);
-        }
+                    await transaction.CommitAsync(token);
+                    if (offer.Status == RiderDeliveryOfferStatus.Rejected)
+                    {
+                        telemetry.RecordOfferRejected();
+                        return new RejectRiderOfferResult(RejectRiderOfferStatus.Success);
+                    }
 
-        await transaction.CommitAsync(cancellationToken);
-        if (state.Offer.Status == RiderDeliveryOfferStatus.Rejected)
-        {
-            telemetry.RecordOfferRejected();
-            return new(RejectRiderOfferStatus.Success);
+                    return new RejectRiderOfferResult(RejectRiderOfferStatus.Expired);
+                },
+                cancellationToken);
         }
-
-        return new(RejectRiderOfferStatus.Expired);
+        catch (RiderTransientPersistenceException)
+        {
+            return new(RejectRiderOfferStatus.TemporarilyUnavailable);
+        }
     }
 }

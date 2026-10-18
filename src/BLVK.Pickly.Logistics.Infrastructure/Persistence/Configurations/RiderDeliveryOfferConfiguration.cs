@@ -18,9 +18,11 @@ public sealed class RiderDeliveryOfferConfiguration : IEntityTypeConfiguration<R
         builder.Property(offer => offer.OfferedAtUtc).IsRequired();
         builder.Property(offer => offer.ExpiresAtUtc).IsRequired();
         builder.HasIndex(offer => offer.DeliveryId)
+            .HasDatabaseName("IX_RiderDeliveryOffers_DeliveryId")
             .IsUnique()
             .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
         builder.HasIndex(offer => offer.RiderProfileId)
+            .HasDatabaseName("IX_RiderDeliveryOffers_RiderProfileId")
             .IsUnique()
             .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
         builder.HasIndex(offer => new { offer.Status, offer.ExpiresAtUtc })

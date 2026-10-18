@@ -66,6 +66,21 @@ PostGIS and EF queries. Rider handlers own offer expiry/acceptance/rejection, av
 assignment eligibility, aggregate transitions and operation-specific results. Unit tests exercise those decisions with
 mocked ports; integration tests exercise PostGIS, locking, uniqueness and atomic commits.
 
+`RiderTransactionFactory.ExecuteAsync` is a rider-specific transaction executor, not a generic unit of work. It retries
+the complete callback only for PostgreSQL serialization failures (`40001`) and deadlocks (`40P01`), starts a new
+transaction and clears EF tracking for each bounded attempt, applies configured exponential backoff with jitter, and
+logs retry/exhaustion context. Only the named rider matching/assignment unique indexes are translated to
+`RiderPersistenceConflictException`; unrelated unique violations propagate. A transient connection failure during
+commit becomes `RiderCommitOutcomeUnknownException` so callers can verify an idempotent result instead of assuming the
+commit failed.
+
+Lock-then-reread units should run read committed. Under `SERIALIZABLE`/`REPEATABLE READ`, PostgreSQL fixes the
+snapshot when the first statement starts; when that statement is `pg_advisory_xact_lock`, the snapshot predates the
+lock wait and later reads miss what the previous holder committed. When a locked unit must also update a row that
+other writers change without that advisory lock, take a row lock (`SELECT ... FOR UPDATE`) on it before loading it
+instead of escalating to serializable (rider acceptance does this for `Delivery`); lock queuing replaces `40001`
+retries under contention.
+
 ## Delivery booking transaction
 
 `DeliveryBookingPersistence` is the narrow infrastructure transaction boundary for quote confirmation. The Application

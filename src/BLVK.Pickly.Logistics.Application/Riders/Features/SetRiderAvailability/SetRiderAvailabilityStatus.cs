@@ -7,5 +7,6 @@ public enum SetRiderAvailabilityStatus
     NotRider = 3,
     ProfileInactive = 4,
     StaleLocation = 5,
-    Conflict = 6
+    Conflict = 6,
+    TemporarilyUnavailable = 7
 }

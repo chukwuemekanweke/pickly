@@ -16,6 +16,8 @@ public sealed class RiderMatchingOptions
     public int MatchingScanBatchSize { get; init; }
     public int ScheduledDispatchScanBatchSize { get; init; }
     public int MaximumConcurrentAssignmentsPerRider { get; init; }
+    public int MaximumTransactionRetryCount { get; init; } = 3;
+    public TimeSpan TransactionRetryBaseDelay { get; init; } = TimeSpan.FromMilliseconds(25);
 
     public void Validate()
     {
@@ -23,7 +25,8 @@ public sealed class RiderMatchingOptions
             InitialSearchRadiusMeters <= 0 || MaximumSearchRadiusMeters < InitialSearchRadiusMeters ||
             SearchRadiusExpansionMeters < 0 || MaximumCandidatesPerRound <= 0 || OfferTimeout <= TimeSpan.Zero ||
             MaximumAttemptsPerCycle <= 0 || RetryBackoff <= TimeSpan.Zero || MatchingScanBatchSize <= 0 ||
-            ScheduledDispatchScanBatchSize <= 0)
+            ScheduledDispatchScanBatchSize <= 0 || MaximumTransactionRetryCount < 0 ||
+            TransactionRetryBaseDelay < TimeSpan.Zero)
         {
             throw new InvalidOperationException("Rider matching configuration contains invalid bounds.");
         }

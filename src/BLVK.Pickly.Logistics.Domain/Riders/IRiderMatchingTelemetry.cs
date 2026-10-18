@@ -7,4 +7,5 @@ public interface IRiderMatchingTelemetry
     void RecordOfferRejected();
     void RecordAssignmentConflict();
     void RecordStaleLocation();
+    void RecordProcessingFailures(int count);
 }

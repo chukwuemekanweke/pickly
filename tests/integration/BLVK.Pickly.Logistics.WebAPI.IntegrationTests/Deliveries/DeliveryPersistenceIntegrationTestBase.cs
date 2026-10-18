@@ -9,6 +9,7 @@ using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Configurations;
 using BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NetTopologySuite.Geometries;
 using Shouldly;
@@ -38,7 +39,10 @@ public abstract class DeliveryPersistenceIntegrationTestBase(ContainersFixture f
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var tenant = Tenant.Create(Guid.CreateVersion7(), $"Delivery Test {suffix}", $"delivery-{suffix}");
         var stakeholderType = StakeholderType.Create(tenant.Id, "Sender", $"sender-{suffix}");
-        var currency = Currency.Create($"X{suffix[..2]}".ToUpperInvariant(), $"Test Currency {suffix}", true);
+        var currency = Currency.Create(
+            await UnusedCurrencyCodeAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>()),
+            $"Test Currency {suffix}",
+            true);
         var user = AppUser.Create($"delivery-{suffix}@example.com");
         (await identityService.CreateAsync(user, "P@ssw0rd123!")).Succeeded.ShouldBeTrue();
         var sender = Stakeholder.Create(
@@ -121,6 +125,20 @@ public abstract class DeliveryPersistenceIntegrationTestBase(ContainersFixture f
             DeliveryCharge.Create(source.Charge.Amount, source.Charge.CurrencyId),
             [DeliveryItem.Create("Duplicate", 1, 1m)],
             Now);
+
+    // Currency codes are three characters wide; random codes collide once a test run creates dozens of deliveries.
+    private static async Task<string> UnusedCurrencyCodeAsync(AppDbContext dbContext)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        while (true)
+        {
+            var code = string.Concat(Enumerable.Range(0, 3).Select(_ => alphabet[Random.Shared.Next(alphabet.Length)]));
+            if (!await dbContext.Set<Currency>().IgnoreQueryFilters().AnyAsync(currency => currency.CurrencyCode == code))
+            {
+                return code;
+            }
+        }
+    }
 
     private static DeliveryAddress Address(string line) =>
         DeliveryAddress.Create(line, "Gate 1", "Lagos", "Lagos", "NG", 6.5244m, 3.3792m);

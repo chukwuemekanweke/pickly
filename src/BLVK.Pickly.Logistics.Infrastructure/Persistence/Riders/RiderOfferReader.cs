@@ -1,4 +1,3 @@
-using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
@@ -8,17 +7,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Persistence.Riders;
 
 internal sealed class RiderOfferReader(AppDbContext dbContext) : IRiderOfferReader
 {
-    public async Task<IReadOnlyList<RiderDeliveryOffer>> ListExpiredAsync(
-        Guid riderProfileId,
-        DateTimeOffset utcNow,
-        CancellationToken cancellationToken) =>
-        await dbContext.RiderDeliveryOffers
-            .Where(offer =>
-                offer.RiderProfileId == riderProfileId &&
-                offer.Status == RiderDeliveryOfferStatus.Pending &&
-                offer.ExpiresAtUtc <= utcNow)
-            .ToListAsync(cancellationToken);
-
     public async Task<IReadOnlyCollection<RiderOfferSnapshot>> ListActiveSnapshotsAsync(
         Guid riderProfileId,
         DateTimeOffset utcNow,

@@ -20,11 +20,19 @@ internal sealed class RiderOfferAcceptancePersistence(
         DeliveryStatus.InTransit
     ];
 
-    public async Task<RiderOfferPreview?> FindPreviewAsync(Guid offerId, CancellationToken cancellationToken) =>
-        await dbContext.RiderDeliveryOffers
-            .AsNoTracking()
-            .Where(offer => offer.Id == offerId)
-            .Select(offer => new RiderOfferPreview(offer.DeliveryId, offer.RiderProfileId))
+    public async Task<Delivery?> FindAcceptedDeliveryAsync(
+        Guid offerId,
+        Guid riderProfileId,
+        Guid riderStakeholderId,
+        CancellationToken cancellationToken) =>
+        await (from offer in dbContext.RiderDeliveryOffers.AsNoTracking()
+            join delivery in dbContext.Deliveries.AsNoTracking().Include(item => item.Items)
+                on offer.DeliveryId equals delivery.Id
+            where offer.Id == offerId &&
+                offer.RiderProfileId == riderProfileId &&
+                offer.Status == RiderDeliveryOfferStatus.Accepted &&
+                delivery.RiderId == riderStakeholderId
+            select delivery)
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<RiderOfferAcceptanceState> LoadAsync(
@@ -40,6 +48,7 @@ internal sealed class RiderOfferAcceptancePersistence(
             return new(null, null, null, null);
         }
 
+        await LockDeliveryRowAsync(offer.DeliveryId, cancellationToken);
         var delivery = await dbContext.Deliveries
             .Include(item => item.Items)
             .SingleOrDefaultAsync(item => item.Id == offer.DeliveryId, cancellationToken);
@@ -115,4 +124,17 @@ internal sealed class RiderOfferAcceptancePersistence(
 
     public void AddStatusHistory(DeliveryStatusHistory history) =>
         dbContext.DeliveryStatusHistory.Add(history);
+
+    // Delivery is also written by non-rider modules that do not take rider advisory locks; the row lock makes
+    // the following read-committed load observe their latest commit and blocks them until assignment commits.
+    private async Task LockDeliveryRowAsync(Guid deliveryId, CancellationToken cancellationToken)
+    {
+        var entityType = dbContext.Model.FindEntityType(typeof(Delivery))!;
+        var table = entityType.GetSchema() is { } schema
+            ? $"\"{schema}\".\"{entityType.GetTableName()}\""
+            : $"\"{entityType.GetTableName()}\"";
+        // The identifier comes from the EF model; the delivery id stays a parameter.
+        var sql = "SELECT 1 FROM " + table + " WHERE \"Id\" = {0} FOR UPDATE";
+        await dbContext.Database.ExecuteSqlRawAsync(sql, [deliveryId], cancellationToken);
+    }
 }

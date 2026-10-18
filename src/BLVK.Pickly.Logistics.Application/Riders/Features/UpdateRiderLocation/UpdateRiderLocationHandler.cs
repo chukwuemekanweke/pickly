@@ -38,33 +38,44 @@ public sealed class UpdateRiderLocationHandler(
                 : UpdateRiderLocationStatus.NotRider);
         }
 
-        await using var transaction = await transactionFactory.BeginAsync(
-            RiderTransactionIsolation.ReadCommitted,
-            cancellationToken);
-        await consistencyLock.AcquireRiderAsync(resolved.Profile!.StakeholderId, cancellationToken);
-        resolved = await actorResolver.ResolveAsync(command.ActorContext, trackProfile: true, cancellationToken);
-        if (resolved.Status != RiderActorResolutionStatus.Success)
+        try
         {
-            return new(UpdateRiderLocationStatus.NotRider);
-        }
+            return await transactionFactory.ExecuteAsync(
+                RiderTransactionIsolation.ReadCommitted,
+                new(nameof(UpdateRiderLocationHandler), resolved.Profile!.StakeholderId),
+                async (transaction, token) =>
+                {
+                    await consistencyLock.AcquireRiderAsync(resolved.Profile.StakeholderId, token);
+                    var tracked = await actorResolver.ResolveAsync(command.ActorContext, trackProfile: true, token);
+                    if (tracked.Status != RiderActorResolutionStatus.Success)
+                    {
+                        return new UpdateRiderLocationResult(UpdateRiderLocationStatus.NotRider);
+                    }
 
-        var profile = resolved.Profile!;
-        if (!profile.IsApproved)
+                    var profile = tracked.Profile!;
+                    if (!profile.IsApproved)
+                    {
+                        return new UpdateRiderLocationResult(UpdateRiderLocationStatus.ProfileInactive);
+                    }
+
+                    var location = await persistence.FindAsync(profile.Id, token);
+                    var isNew = location is null;
+                    location ??= RiderCurrentLocation.Create(profile.Id, captured, now);
+                    if (!isNew && !location.TryAdvance(captured, now))
+                    {
+                        telemetry.RecordStaleLocation();
+                        return new UpdateRiderLocationResult(UpdateRiderLocationStatus.StaleLocation);
+                    }
+
+                    persistence.TrackPosition(location, command.Latitude, command.Longitude, isNew);
+                    await transaction.CommitAsync(token);
+                    return new UpdateRiderLocationResult(UpdateRiderLocationStatus.Success);
+                },
+                cancellationToken);
+        }
+        catch (RiderTransientPersistenceException)
         {
-            return new(UpdateRiderLocationStatus.ProfileInactive);
+            return new(UpdateRiderLocationStatus.TemporarilyUnavailable);
         }
-
-        var location = await persistence.FindAsync(profile.Id, cancellationToken);
-        var isNew = location is null;
-        location ??= RiderCurrentLocation.Create(profile.Id, captured, now);
-        if (!isNew && !location.TryAdvance(captured, now))
-        {
-            telemetry.RecordStaleLocation();
-            return new(UpdateRiderLocationStatus.StaleLocation);
-        }
-
-        persistence.TrackPosition(location, command.Latitude, command.Longitude, isNew);
-        await transaction.CommitAsync(cancellationToken);
-        return new(UpdateRiderLocationStatus.Success);
     }
 }

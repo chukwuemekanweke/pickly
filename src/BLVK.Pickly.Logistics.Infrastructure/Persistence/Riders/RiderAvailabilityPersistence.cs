@@ -15,6 +15,15 @@ internal sealed class RiderAvailabilityPersistence(AppDbContext dbContext) : IRi
         DeliveryStatus.InTransit
     ];
 
+    public async Task<IReadOnlyCollection<Guid>> ListPendingOfferDeliveryIdsAsync(
+        Guid riderProfileId,
+        CancellationToken cancellationToken) =>
+        await dbContext.RiderDeliveryOffers
+            .AsNoTracking()
+            .Where(offer => offer.RiderProfileId == riderProfileId && offer.Status == RiderDeliveryOfferStatus.Pending)
+            .Select(offer => offer.DeliveryId)
+            .ToListAsync(cancellationToken);
+
     public async Task<RiderAvailabilityState> LoadAsync(
         RiderProfile profile,
         CancellationToken cancellationToken)

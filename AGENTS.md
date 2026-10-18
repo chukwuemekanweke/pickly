@@ -57,6 +57,9 @@ processes holding DLL locks and cause transient build failures.
   transitions. Infrastructure owns database mechanics only: efficient queries/projections, tracked loading, transaction
   and advisory-lock implementation, provider-specific SQL, and provider-error translation. Persistence implementations
   must not decide use-case outcomes or return application status codes; see `.okf/knowledge/infrastructure/persistence.md`.
+- Use `IRepository<T>` plus specifications for straightforward aggregate access. Add a specialized persistence port only
+  for atomic multi-aggregate work, provider-specific queries/locking, complex projections, or bounded bulk processing;
+  do not create one merely to mirror each handler.
 - Public and persisted enums use explicit one-based values; append new values and never renumber existing ones.
 - An idempotency key is permanently bound to its original operation and outcome; retries never redirect to a newer attempt.
 - Ambiguous or unresolved financial outcomes block new charges and automated fulfillment until an explicit review resolves them.
