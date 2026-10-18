@@ -1,4 +1,5 @@
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
+using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries;
 
@@ -19,9 +20,13 @@ public sealed record DeliveryResponse(
     DeliveryAddressResponse DropOffAddress,
     IReadOnlyCollection<DeliveryItemResponse> Items,
     DateTimeOffset? ScheduledPickupAtUtc,
-    DateTimeOffset? DispatchEligibleAtUtc)
+    DateTimeOffset? DispatchEligibleAtUtc,
+    DeliveryAssignmentResponse? Assignment = null)
 {
-    public static DeliveryResponse From(Delivery delivery, string currencyCode) =>
+    public static DeliveryResponse From(
+        Delivery delivery,
+        string currencyCode,
+        SenderAssignmentSnapshot? assignment = null) =>
         new(
             delivery.Id,
             delivery.DeliveryQuoteId,
@@ -39,9 +44,25 @@ public sealed record DeliveryResponse(
             DeliveryAddressResponse.From(delivery.DropOffAddress),
             delivery.Items.Select(item => new DeliveryItemResponse(item.Description, item.Quantity, item.WeightKg)).ToArray(),
             delivery.ScheduledPickupAtUtc,
-            delivery.DispatchEligibleAtUtc);
+            delivery.DispatchEligibleAtUtc,
+            assignment is null
+                ? null
+                : new(
+                    assignment.MatchingStatus,
+                    assignment.HasActiveOffer,
+                    assignment.RiderId,
+                    assignment.RiderName,
+                    assignment.RiderAvatarUrl,
+                    assignment.AssignedAtUtc));
 }
 
 public sealed record DeliveryChargeResponse(decimal Amount, string CurrencyCode);
 public sealed record DeliveryRecipientResponse(string Name, string PhoneNumber);
 public sealed record DeliveryItemResponse(string Description, int Quantity, decimal WeightKg);
+public sealed record DeliveryAssignmentResponse(
+    string MatchingStatus,
+    bool HasActiveOffer,
+    Guid? RiderId,
+    string? RiderName,
+    string? RiderAvatarUrl,
+    DateTimeOffset? AssignedAtUtc);

@@ -57,6 +57,7 @@ using BLVK.Pickly.Logistics.Application.Payments.Features.ReconcilePayments;
 using BLVK.Pickly.Logistics.Application.Providers.Features.ActivateProvider;
 using BLVK.Pickly.Logistics.Application.ReferenceData.Features.GetCountries;
 using BLVK.Pickly.Logistics.Application.ReferenceData.Features.GetLanguages;
+using BLVK.Pickly.Logistics.Application.Riders;
 using BLVK.Pickly.Logistics.Application.Stakeholders.Features.CompleteAvatarUpload;
 using BLVK.Pickly.Logistics.Application.Stakeholders.Features.CreateAvatarUpload;
 using BLVK.Pickly.Logistics.Application.Stakeholders.Features.GetPreferences;
@@ -146,6 +147,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SelectLocationCandidateHandler>();
         services.AddScoped<GetLocationHandler>();
         services.AddScoped<GetNearbyLocationsHandler>();
+        services.AddScoped<RiderOperationsService>();
 
         return services;
     }

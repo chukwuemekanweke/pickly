@@ -7,6 +7,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Locations.Persistence;
 using BLVK.Pickly.Logistics.Domain.Locations.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Payments.ReadModels;
+using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDeliveryBookingPersistence, DeliveryBookingPersistence>();
         services.AddScoped<ILocationRegistrationStore, LocationRegistrationStore>();
         services.AddScoped<ILocationResolutionLease, LocationResolutionLease>();
+        services.AddScoped<IRiderOperationsStore, RiderOperationsStore>();
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
 
         return services;

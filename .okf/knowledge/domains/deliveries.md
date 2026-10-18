@@ -111,7 +111,8 @@ Phase 5 may initiate Pay Before Delivery payment only for the already-created De
 responses as attempts and use verified provider evidence before calling `ConfirmVerifiedPrepaidPayment`; booking
 itself never marks payment paid or activates fulfillment. Later phases own rider discovery, cash collection, proof,
 remittance and public tracking. They must call existing aggregate transitions and must not introduce a generic status
-setter or treat delivery status as financial truth.
+setter or treat delivery status as financial truth. Phase 6 rider discovery, offers, scheduled-dispatch recovery and
+atomic assignment are described in [[rider-matching]].
 
 Phase 5 exposes sender-scoped `POST` and `GET /api/v1/deliveries/{deliveryId}/payments`. Initiation derives the exact
 charge from Delivery, reserves `PaymentTransaction` plus `DeliveryPaymentAttempt` under a PostgreSQL advisory lock,

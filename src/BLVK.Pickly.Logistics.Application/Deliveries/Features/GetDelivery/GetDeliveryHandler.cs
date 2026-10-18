@@ -2,10 +2,14 @@ using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDelivery;
 
-public sealed class GetDeliveryHandler(IRepository<Delivery> deliveries, IRepository<Currency> currencies)
+public sealed class GetDeliveryHandler(
+    IRepository<Delivery> deliveries,
+    IRepository<Currency> currencies,
+    IRiderOperationsStore? riderOperations = null)
 {
     public async Task<GetDeliveryResult> HandleAsync(GetDeliveryQuery query, CancellationToken cancellationToken)
     {
@@ -23,6 +27,11 @@ public sealed class GetDeliveryHandler(IRepository<Delivery> deliveries, IReposi
         }
 
         var currency = await currencies.GetByIdAsync(delivery.Charge.CurrencyId, cancellationToken);
-        return new(GetDeliveryStatus.Success, DeliveryResponse.From(delivery, currency?.CurrencyCode ?? string.Empty));
+        var assignment = riderOperations is null
+            ? null
+            : await riderOperations.GetSenderAssignmentAsync(delivery.Id, cancellationToken);
+        return new(
+            GetDeliveryStatus.Success,
+            DeliveryResponse.From(delivery, currency?.CurrencyCode ?? string.Empty, assignment));
     }
 }
