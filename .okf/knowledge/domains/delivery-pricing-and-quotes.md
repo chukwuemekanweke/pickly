@@ -45,7 +45,8 @@ capacity, code and id. Quote creation always repeats eligibility, routing and pr
 `geometry(MultiPolygon,4326)` so NetTopologySuite stays outside Domain. The GiST-backed lookup constructs points
 longitude-first and uses `ST_Covers`, including boundary points. Active/effective matches order by descending priority.
 A unique top priority wins; equal top priorities are rejected as ambiguous. There is no nearest-zone fallback and the
-migration seeds no invented boundaries.
+migration seeds no invented boundaries. Enugu zones (`ENU-*`, draft Voronoi cells over OSM neighbourhood points,
+non-overlapping with unique priorities) are seeded by post-deploy script 0004; see [[database-seeding]].
 
 ## Routing and reuse
 
@@ -71,7 +72,9 @@ become an assumed production policy.
 
 `DeliveryPricingPolicy` is an immutable effective-dated version using the Payments `CurrencyId`, with optional
 delivery/order applicability, base fee, per-kilometre distance rate, per-kilogram weight rate, and required vehicle and
-directional zone-pair rules. No production rates are seeded. Explicit zero is valid. Pure decimal calculation rounds
+directional zone-pair rules. Vehicle categories (`MOTORCYCLE` 10 kg, `CAR` 50 kg, `VAN` 300 kg, all `driving`) are
+an automatic post-deploy script. The first tariff, `ENU-V1` (NGN), is an insert-only post-deploy script (0006) with all 100
+directional Enugu zone rules; a version is immutable once created, so tariff changes are new versions. Explicit zero is valid. Pure decimal calculation rounds
 variable components to two decimals away from zero and checked-sums all five components. No complete policy is
 pricing-unavailable; multiple complete policies are a configuration error.
 

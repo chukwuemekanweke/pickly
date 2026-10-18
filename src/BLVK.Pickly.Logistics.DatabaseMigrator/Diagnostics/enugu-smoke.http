@@ -1,0 +1,270 @@
+# Enugu booking-to-assignment smoke tests (VS Code REST Client syntax; JetBrains HTTP Client can import it).
+# Uses only existing WebAPI endpoints. Credentials come from a local, untracked .env next to this file:
+#   PICKLY_BASE_URL=https://staging-api.example.com
+#   PICKLY_SENDER_EMAIL=piklytech+sender1@gmail.com     PICKLY_SENDER_PASSWORD=...
+#   PICKLY_RIDER_EMAIL=piklytech+rider1@gmail.com        PICKLY_RIDER_PASSWORD=<shared test password>
+# Access tokens live 5 minutes (Jwt:LifetimeMinutes); rerun the sign-in request when a call returns 401.
+# Sign-in is limited to 5 requests per 2 minutes per IP.
+
+@baseUrl = {{$dotenv PICKLY_BASE_URL}}
+@tenantId = 1203d9d1-2a6b-48ef-9cc1-e561a23aff72
+
+########################################################################################################
+# 0. One-off sender provisioning (the 18 test riders are created by deployment; see README.md)
+########################################################################################################
+
+### 0.1 Register an account (repeat per test identity); the OTP is emailed by the Consumer via Mailtrap
+POST {{baseUrl}}/api/v1/authentication/registrations
+X-Tenant-Id: {{tenantId}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv PICKLY_SENDER_EMAIL}}",
+  "password": "{{$dotenv PICKLY_SENDER_PASSWORD}}",
+  "confirmPassword": "{{$dotenv PICKLY_SENDER_PASSWORD}}"
+}
+
+### 0.2 Confirm the email with the OTP from the inbox (5 digits while FeatureManagement:IsMVP=true)
+POST {{baseUrl}}/api/v1/authentication/email-confirmations
+X-Tenant-Id: {{tenantId}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv PICKLY_SENDER_EMAIL}}",
+  "otp": "00000"
+}
+
+########################################################################################################
+# Test A - PayOnDelivery, Independence Layout -> UNEC, motorcycle
+# Expected price: 1200 + 250 x route km + 50 x 3.5 kg (=175) + MOTORCYCLE 0 + IND->UWA zone 200
+########################################################################################################
+
+### A1 Sign in as the sender
+# @name sender
+POST {{baseUrl}}/api/v1/authentication/sessions
+X-Tenant-Id: {{tenantId}}
+Content-Type: application/json
+
+{ "email": "{{$dotenv PICKLY_SENDER_EMAIL}}", "password": "{{$dotenv PICKLY_SENDER_PASSWORD}}" }
+
+@senderToken = {{sender.response.body.$.accessToken}}
+
+### A2 Find the seeded pickup street (registry result has a locationId; no Mapbox registration needed)
+# @name pickupSearch
+GET {{baseUrl}}/api/v1/locations/search?q=Independence%20Avenue&countryCode=NG&limit=5
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+
+### A3 Save it as a sender-owned pickup location (the returned id is the quote's pickupLocationId)
+# @name pickup
+POST {{baseUrl}}/api/v1/pickup-locations
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "locationId": "{{pickupSearch.response.body.$.items[0].locationId}}",
+  "label": "Enugu smoke test - Independence Avenue",
+  "additionalDirections": "Smoke test, no real parcel"
+}
+
+### A4 Find the seeded destination landmark
+# @name dropOffSearch
+GET {{baseUrl}}/api/v1/locations/search?q=University%20of%20Nigeria%20Enugu%20Campus&countryCode=NG&limit=5
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+
+### A5 Vehicle recommendations (3.5 kg => MOTORCYCLE recommended; CAR and VAN also eligible)
+# @name options
+POST {{baseUrl}}/api/v1/deliveries/vehicle-options
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "pickupLocationId": "{{pickup.response.body.$.id}}",
+  "dropOffLocationId": "{{dropOffSearch.response.body.$.items[0].locationId}}",
+  "deliveryType": "Instant",
+  "orderType": "PayOnDelivery",
+  "items": [ { "description": "Documents", "quantity": 1, "weightKg": 3.5 } ]
+}
+
+### A6 Create the quote for the recommended vehicle
+# @name quote
+POST {{baseUrl}}/api/v1/delivery-quotes
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "pickupLocationId": "{{pickup.response.body.$.id}}",
+  "dropOffLocationId": "{{dropOffSearch.response.body.$.items[0].locationId}}",
+  "deliveryType": "Instant",
+  "orderType": "PayOnDelivery",
+  "vehicleCategoryId": "{{options.response.body.$.recommendedVehicleCategoryId}}",
+  "items": [ { "description": "Documents", "quantity": 1, "weightKg": 3.5 } ]
+}
+
+### A7 Verify ENU-V1: baseFee 1200.00, weightCharge 175.00, vehicleCharge 0.00, zoneCharge 200.00,
+###    originZone ENU-IND, destinationZone ENU-UWA, distanceCharge = 250 x Mapbox km (2 dp, away from zero)
+GET {{baseUrl}}/api/v1/delivery-quotes/{{quote.response.body.$.quoteId}}
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+
+### A8 Book the delivery from the quote (replaying returns 200 with the same delivery)
+# @name delivery
+POST {{baseUrl}}/api/v1/deliveries
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "quoteId": "{{quote.response.body.$.quoteId}}",
+  "recipient": { "name": "Smoke Test Recipient", "phoneNumber": "+2348000000000" },
+  "dropOffInstructions": "Smoke test"
+}
+
+### A9 Expect status PendingAssignment (rerun after A14 to see RiderAssigned and assignment.riderName)
+GET {{baseUrl}}/api/v1/deliveries/{{delivery.response.body.$.deliveryId}}
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+
+### A10 Sign in as piklytech+rider1@gmail.com (eligible, MOTORCYCLE, ENU-IND)
+# @name rider
+POST {{baseUrl}}/api/v1/authentication/sessions
+X-Tenant-Id: {{tenantId}}
+Content-Type: application/json
+
+{ "email": "{{$dotenv PICKLY_RIDER_EMAIL}}", "password": "{{$dotenv PICKLY_RIDER_PASSWORD}}" }
+
+@riderToken = {{rider.response.body.$.accessToken}}
+
+### A11 Report a fresh position at Okpara Square (seeded OSM way/1421633152); fresh for 2 minutes
+PUT {{baseUrl}}/api/v1/riders/me/location
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{riderToken}}
+Content-Type: application/json
+
+{ "latitude": 6.4410453, "longitude": 7.5191522, "capturedAtUtc": "{{$datetime iso8601}}" }
+
+### A12 Enable availability (409 stale_rider_location => repeat A11 first)
+PUT {{baseUrl}}/api/v1/riders/me/availability
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{riderToken}}
+Content-Type: application/json
+
+{ "isAvailable": true }
+
+### A13 Within one Jobs poll (Jobs:Riders:Matching:PollInterval, 10 s) the offer appears
+# @name offers
+GET {{baseUrl}}/api/v1/riders/me/delivery-offers
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{riderToken}}
+
+### A14 Accept within Riders:Matching:OfferTimeout (30 s); expired offers are re-offered by Jobs
+POST {{baseUrl}}/api/v1/riders/me/delivery-offers/{{offers.response.body.$[0].offerId}}/accept
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{riderToken}}
+
+### A15 Rider view of the assignment (status RiderAssigned, recipient details now visible)
+GET {{baseUrl}}/api/v1/riders/me/active-delivery
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{riderToken}}
+
+### A16 Rider status: hasActiveDelivery true, pendingOfferCount 0
+GET {{baseUrl}}/api/v1/riders/me/status
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{riderToken}}
+
+########################################################################################################
+# Test B - PayBeforeDelivery (sandbox provider). Re-run A1-A5 first, then:
+########################################################################################################
+
+### B1 Quote with orderType PayBeforeDelivery
+# @name prepaidQuote
+POST {{baseUrl}}/api/v1/delivery-quotes
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "pickupLocationId": "{{pickup.response.body.$.id}}",
+  "dropOffLocationId": "{{dropOffSearch.response.body.$.items[0].locationId}}",
+  "deliveryType": "Instant",
+  "orderType": "PayBeforeDelivery",
+  "vehicleCategoryId": "{{options.response.body.$.recommendedVehicleCategoryId}}",
+  "items": [ { "description": "Documents", "quantity": 1, "weightKg": 3.5 } ]
+}
+
+### B2 Book it; expect status AwaitingPayment and no rider offers yet
+# @name prepaidDelivery
+POST {{baseUrl}}/api/v1/deliveries
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "quoteId": "{{prepaidQuote.response.body.$.quoteId}}",
+  "recipient": { "name": "Smoke Test Recipient", "phoneNumber": "+2348000000000" }
+}
+
+### B3 Initiate payment. paymentProviderId comes from:
+###    SELECT "Id", "ProviderKey" FROM payments."PaymentProviders" WHERE "IsActive";
+###    Credo returns paymentInstruction.paymentLink (complete the sandbox checkout in a browser);
+###    SafeHaven returns a virtual account to pay into from the sandbox.
+POST {{baseUrl}}/api/v1/deliveries/{{prepaidDelivery.response.body.$.deliveryId}}/payments
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Idempotency-Key: smoke-{{prepaidDelivery.response.body.$.deliveryId}}
+Content-Type: application/json
+
+{ "paymentProviderId": "00000000-0000-0000-0000-000000000000" }
+
+### B4 After the provider webhook is verified: paymentStatus Paid, attempt status Succeeded
+GET {{baseUrl}}/api/v1/deliveries/{{prepaidDelivery.response.body.$.deliveryId}}/payments
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+
+### B5 Delivery now PendingAssignment; repeat A11-A15 with an available eligible rider
+GET {{baseUrl}}/api/v1/deliveries/{{prepaidDelivery.response.body.$.deliveryId}}
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+
+########################################################################################################
+# Test D - Scheduled dispatch (Deliveries:Dispatch:LeadTime = 30 min)
+########################################################################################################
+
+### D1 Scheduled PayOnDelivery quote 35 minutes ahead => dispatch eligible ~5 minutes from now
+# @name scheduledQuote
+POST {{baseUrl}}/api/v1/delivery-quotes
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "pickupLocationId": "{{pickup.response.body.$.id}}",
+  "dropOffLocationId": "{{dropOffSearch.response.body.$.items[0].locationId}}",
+  "deliveryType": "Scheduled",
+  "orderType": "PayOnDelivery",
+  "scheduledPickupAtUtc": "{{$datetime iso8601 35 m}}",
+  "vehicleCategoryId": "{{options.response.body.$.recommendedVehicleCategoryId}}",
+  "items": [ { "description": "Documents", "quantity": 1, "weightKg": 3.5 } ]
+}
+
+### D2 Book; expect AwaitingDispatch with dispatchEligibleAtUtc = scheduledPickupAtUtc - 30 min
+# @name scheduledDelivery
+POST {{baseUrl}}/api/v1/deliveries
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+  "quoteId": "{{scheduledQuote.response.body.$.quoteId}}",
+  "recipient": { "name": "Smoke Test Recipient", "phoneNumber": "+2348000000000" }
+}
+
+### D3 Poll: AwaitingDispatch (no offers even with an available rider) until dispatchEligibleAtUtc,
+###    then PendingAssignment and an offer within one Jobs poll
+GET {{baseUrl}}/api/v1/deliveries/{{scheduledDelivery.response.body.$.deliveryId}}
+X-Tenant-Id: {{tenantId}}
+Authorization: Bearer {{senderToken}}
