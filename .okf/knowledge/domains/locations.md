@@ -55,6 +55,13 @@ permanent provenance) and
 `Location.RegisterLandmark` (internally curated, always `Public`). There is deliberately no API that accepts
 client-supplied coordinates; landmarks are created by internal operations, never from failed geocoding.
 
+Curated reference locations (Enugu: post-deploy `0005.enugu-locations.postdeploy.sql`) use the
+`RegisterProviderResolved` shape with `ResolutionSource = InternallyRegistered` and an OpenStreetMap provenance
+reference (`Provider = 'openstreetmap'`, `FeatureId = way/<id>|node/<id>`, ODbL permits permanent storage with
+attribution). The OSM reference is their idempotency key; a seed row is skipped when a usable location with the same
+normalized identity already exists, so seeding never duplicates a Mapbox-registered location. Names used in more
+than one locality are excluded rather than merged. See [[database-seeding]].
+
 ## Spatial storage (PostGIS)
 
 - Coordinates map to `geography(Point,4326)` through `GeographicCoordinatesConverter` — the only place that applies

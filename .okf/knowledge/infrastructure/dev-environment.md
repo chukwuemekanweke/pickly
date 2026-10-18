@@ -34,6 +34,11 @@ status: stable
   extension; cloud databases must have PostGIS available (see [[locations]]).
 - Mapbox is configured through `MAPBOX_ACCESS_TOKEN` and `MAPBOX_PERMANENT_STORAGE_ENABLED` (placeholders in
   `docker-compose.env.example.sh`); leave the flag `false` unless the account permits permanent geocoding storage.
+  Compose maps the one token to both `Locations__Mapbox__AccessToken` (geocoding) and
+  `Deliveries__Routing__Mapbox__AccessToken` (quote routing). An empty routing token does not fail startup; quotes
+  then fail as routing-unavailable.
+- Payment provider options (`Payments:Credo`, `Payments:SafeHaven`) are not wired in compose; sandbox values are
+  supplied as WebAPI environment variables when prepaid flows are tested (see [[database-seeding]] runbook).
 
 ## Constraint
 

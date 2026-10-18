@@ -54,9 +54,11 @@ wrappers created merely to mirror handlers.
 
 `RiderProfile` is rider-only operational data associated one-to-one with an existing `Stakeholder` and scoped to the
 same tenant. A usable rider must have a verified Stakeholder whose StakeholderType key is `rider`, an approved profile,
-and an exact active `VehicleCategoryId`; the generic Stakeholder is not extended with dispatch state. Phase 6B may
-provision test riders by creating the normal Identity user, verified Stakeholder and `rider` StakeholderType, then a
-`RiderProfile`, approval, and `RiderServiceZone` records through these domain factories and normal EF persistence.
+and an exact active `VehicleCategoryId`; the generic Stakeholder is not extended with dispatch state. There is no
+rider onboarding API and no application path that marks a Stakeholder verified or assigns the `rider` type: the
+`rider` StakeholderType is an automatic post-deploy seed, and staging test riders are registered through the normal
+signup/email-confirmation API and then converted by the staging-only SQL fixture script, which mirrors
+`RiderProfile.Create`/`Approve`/`ChangeVehicleCategory` and `Stakeholder.MarkVerified` (see [[database-seeding]]).
 
 The persisted availability value expresses rider intent (`Offline`, `Available`, or `Paused`). `Busy` is derived from
 an authoritative active Delivery in `RiderAssigned`, `PickedUp`, or `InTransit`; clients cannot set it. Enabling
@@ -157,13 +159,17 @@ to `RiderPersistenceConflictException` and a business conflict without retry. Un
 reclassified. Acceptance is replay-safe, and an ambiguous commit is verified by re-reading the accepted offer and
 assigned delivery before returning success.
 
-## Phase 6B prerequisites
+## Deployment fixtures (Phase 6B)
 
-Phase 6B must provision normal tenant/country/currency records, a `rider` StakeholderType, verified rider users and
-Stakeholders, approved RiderProfiles with exact active VehicleCategories, RiderServiceZones referencing approved
-DeliveryZone polygons, and fresh simulated RiderCurrentLocations. It must also provide delivery pricing/zone/vehicle
-configuration and environment-specific `Riders:Matching`, database, Redis, payment-sandbox and messaging settings.
-Production rider identities, coordinates, zones and rates are deliberately not seeded by Phase 6.
+Rider presence is never seeded: positions expire after `LocationFreshness`, so testers report location and enable
+availability through the rider APIs. Post-deploy `0007.test-rider-accounts` creates MVP dummy rider accounts
+`piklytech+rider1..18@gmail.com` in every environment (confirmed login, verified `rider` stakeholder, profile, zones):
+eligible riders per Enugu zone plus wrong-vehicle, missing-service-zone, unapproved, offline, stale-location and
+active-assignment cases. It never resets an existing account, skips (never fails on) accounts with sender activity,
+tags rows `system:test-rider-fixture`, and is removed before launch with
+`Diagnostics/remove-test-rider-accounts.sql` after deleting 0007. `DatabaseMigrator/Diagnostics/rider-matching-diagnostics.sql` evaluates every rider against a delivery in the
+same rule order as `RiderMatchingPersistence` and reports the first failing rule. Production rider identities are
+never seeded. See [[database-seeding]].
 
 ## Observability
 
