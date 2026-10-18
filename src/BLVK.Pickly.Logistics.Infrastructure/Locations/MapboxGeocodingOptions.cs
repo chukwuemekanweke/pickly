@@ -4,8 +4,8 @@ public sealed class MapboxGeocodingOptions
 {
     public const string SectionName = "Locations:Mapbox";
 
-    public string BaseUrl { get; init; } = null!;
-    public string AccessToken { get; init; } = null!;
+    public required string BaseUrl { get; init; }
+    public required string AccessToken { get; init; }
 
     public TimeSpan Timeout { get; init; }
     public int MaxRetries { get; init; }

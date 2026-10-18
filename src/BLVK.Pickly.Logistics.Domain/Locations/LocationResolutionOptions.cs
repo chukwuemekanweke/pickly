@@ -5,7 +5,7 @@ public sealed class LocationResolutionOptions
     public const string SectionName = "Locations:Resolution";
 
     /// <summary>ISO 3166-1 alpha-2 countries Pickly currently serves. Resolution outside them is refused.</summary>
-    public IReadOnlyList<string> SupportedCountryCodes { get; init; } = null!;
+    public required IReadOnlyList<string> SupportedCountryCodes { get; init; }
 
     public int MaxProviderCandidates { get; init; }
     public TimeSpan CandidateSelectionLifetime { get; init; }

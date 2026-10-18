@@ -64,8 +64,16 @@ internal sealed class LocationsControllerTestContext
     public ICurrentActor CurrentActor { get; }
     public LocationResolutionOptions Settings { get; } = new()
     {
+        SupportedCountryCodes = ["NG"],
+        MaxProviderCandidates = 5,
+        CandidateSelectionLifetime = TimeSpan.FromMinutes(10),
+        ResolutionLeaseDuration = TimeSpan.FromSeconds(30),
         ResolutionLeaseWaitTimeout = TimeSpan.Zero,
-        ResolutionLeasePollInterval = TimeSpan.FromMilliseconds(50)
+        ResolutionLeasePollInterval = TimeSpan.FromMilliseconds(50),
+        LandmarkFallbackRadiusMeters = 3000,
+        LandmarkFallbackLimit = 10,
+        MaxNearbyRadiusMeters = 10000,
+        MaxResults = 25
     };
 
     public LocationsController CreateController()

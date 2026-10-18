@@ -42,6 +42,7 @@ public sealed partial class When_GettingNearbyLocations_WithAnchorLocation_Shoul
 
     private static readonly LocationResolutionOptions ResolutionOptions = new()
     {
+        SupportedCountryCodes = ["NG"],
         MaxNearbyRadiusMeters = 10000,
         MaxResults = 25
     };

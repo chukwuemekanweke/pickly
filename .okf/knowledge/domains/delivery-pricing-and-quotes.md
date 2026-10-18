@@ -63,6 +63,10 @@ hard-limited to 24 hours; reads never refresh the timestamp or TTL. A bounded ow
 across instances, while an in-process gate remains the documented Redis-outage degradation. Direction and landmarks
 remain distinct.
 
+Delivery dispatch, quote-lifetime, and routing options contain no operational C# defaults. Their configuration
+sections are required at startup and validated, so a missing section or omitted positive duration cannot silently
+become an assumed production policy.
+
 ## Pricing and quotes
 
 `DeliveryPricingPolicy` is an immutable effective-dated version using the Payments `CurrencyId`, with optional

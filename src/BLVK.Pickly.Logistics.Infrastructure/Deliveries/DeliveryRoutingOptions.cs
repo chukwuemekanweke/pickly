@@ -3,8 +3,8 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Deliveries;
 public sealed class DeliveryRoutingOptions
 {
     public const string SectionName = "Deliveries:Routing:Mapbox";
-    public string BaseUrl { get; init; } = null!;
-    public string AccessToken { get; init; } = null!;
+    public required string BaseUrl { get; init; }
+    public required string AccessToken { get; init; }
     public TimeSpan Timeout { get; init; }
     public int MaxRetries { get; init; }
     public TimeSpan MaximumCacheAge { get; init; }
@@ -12,9 +12,9 @@ public sealed class DeliveryRoutingOptions
     public TimeSpan CoordinationWaitTimeout { get; init; }
     public TimeSpan CoordinationPollInterval { get; init; }
     public TimeSpan DefaultRateLimitRetryAfter { get; init; }
-    public string ServiceAreaTimeZone { get; init; } = null!;
-    public string ScheduleVersion { get; init; } = null!;
-    public IReadOnlyList<RoutingWindowOptions> Windows { get; init; } = null!;
+    public required string ServiceAreaTimeZone { get; init; }
+    public required string ScheduleVersion { get; init; }
+    public required IReadOnlyList<RoutingWindowOptions> Windows { get; init; }
 
     public void Validate()
     {
@@ -55,10 +55,10 @@ public sealed class DeliveryRoutingOptions
 
 public sealed class RoutingWindowOptions
 {
-    public string Id { get; init; } = null!;
+    public required string Id { get; init; }
     public TimeSpan Start { get; init; }
     public TimeSpan End { get; init; }
-    public IReadOnlyList<DayOfWeek> ApplicableDays { get; init; } = null!;
+    public required IReadOnlyList<DayOfWeek> ApplicableDays { get; init; }
 
     internal IEnumerable<(TimeSpan Start, TimeSpan End)> RangesFor(DayOfWeek day, DayOfWeek previous)
     {

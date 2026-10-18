@@ -12,6 +12,7 @@ public sealed class When_ValidatingNearbyRequest_WithConfiguredLimits_Should
     {
         var validator = new GetNearbyLocationsRequestValidator(Options.Create(new LocationResolutionOptions
         {
+            SupportedCountryCodes = ["NG"],
             MaxNearbyRadiusMeters = 750,
             MaxResults = 4
         }));

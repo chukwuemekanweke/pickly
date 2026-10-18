@@ -120,7 +120,8 @@ Search Box results do not carry the same storage rights and must not be persiste
 - Only canonical streets and distinct landmarks are registered, and both are `Public`. Premises and areas are never
   persisted; private building numbers and access directions remain sender-specific metadata.
 - Search and registration use the per-user `LocationResolutionPolicy` rate limit; query length, radius, limits and
-  supported countries are bounded (`LocationResolutionOptions`).
+  supported countries are bounded (`LocationResolutionOptions`). Location-resolution and Mapbox operational options
+  contain no C# policy defaults; both configuration sections are required and validated during service registration.
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT
   EXISTS postgis`, which needs sufficient privileges on managed services (pre-create it otherwise).
 
