@@ -12,7 +12,7 @@ public sealed partial class When_ManagingSharedLocations_WithPostgis_Should
         using var resolve = await Client.PostAsJsonAsync($"{EndpointUrl.Locations.V1}/resolve", new { });
         using var selection = await Client.PostAsJsonAsync($"{EndpointUrl.Locations.V1}/resolve/selections", new { });
 
-        resolve.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        resolve.StatusCode.ShouldBe(HttpStatusCode.MethodNotAllowed);
         selection.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 }

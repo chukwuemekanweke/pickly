@@ -11,10 +11,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddLocationServices(this IServiceCollection services, IConfiguration configuration)
     {
         var resolutionOptions = configuration.GetSection(LocationResolutionOptions.SectionName).Get<LocationResolutionOptions>()
-            ?? new LocationResolutionOptions();
+            ?? throw new InvalidOperationException($"Configuration section '{LocationResolutionOptions.SectionName}' is required.");
         resolutionOptions.Validate();
         var mapboxOptions = configuration.GetSection(MapboxGeocodingOptions.SectionName).Get<MapboxGeocodingOptions>()
-            ?? new MapboxGeocodingOptions();
+            ?? throw new InvalidOperationException($"Configuration section '{MapboxGeocodingOptions.SectionName}' is required.");
         mapboxOptions.Validate();
 
         services.Configure<LocationResolutionOptions>(configuration.GetSection(LocationResolutionOptions.SectionName));

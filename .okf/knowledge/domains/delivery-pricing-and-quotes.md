@@ -63,6 +63,10 @@ hard-limited to 24 hours; reads never refresh the timestamp or TTL. A bounded ow
 across instances, while an in-process gate remains the documented Redis-outage degradation. Direction and landmarks
 remain distinct.
 
+Delivery dispatch, quote-lifetime, and routing options contain no operational C# defaults. Their configuration
+sections are required at startup and validated, so a missing section or omitted positive duration cannot silently
+become an assumed production policy.
+
 ## Pricing and quotes
 
 `DeliveryPricingPolicy` is an immutable effective-dated version using the Payments `CurrencyId`, with optional
@@ -80,8 +84,10 @@ before the short quote save.
 currency and expiry. Raw provider-derived distance and duration are not persisted in PostgreSQL, logs, or quote API
 responses; the distance-derived commercial charge remains part of the immutable financial breakdown. Retrieval never
 reroutes, re-zones or reprices and remains readable after the temporary route cache expires. Expiration derives through
-`TimeProvider`; no job mutates expired rows. `Consume` is Phase 4-ready only: it requires an unexpired quote, permits an
-idempotent retry for the same delivery and rejects another consumer. PostgreSQL `xmin` is mapped as the quote row-version
-so competing Phase 4 consumers cannot both save successfully. Phase 4 should consume and create the Delivery in
-one transaction, construct the existing `DeliveryCharge`, and add `VehicleCategoryId` to Delivery as the narrow
-fulfillment-facing extension; Phase 3 exposes no booking or consumption endpoint.
+`TimeProvider`; no job mutates expired rows. `Consume` requires an unexpired quote, permits an
+idempotent retry for the same delivery and rejects another consumer. PostgreSQL `xmin` is mapped as the quote row-version,
+so competing consumers cannot both save successfully. Phase 4 consumes the quote while creating its Delivery in one
+transaction. It constructs the existing `DeliveryCharge`, copies item and address snapshots without routing or
+repricing, and records the quoted `VehicleCategoryId` and unique `DeliveryQuoteId` on Delivery. `DeliveryQuoteId` is
+the natural booking identifier: retries return the already-created Delivery without modifying it. The booking API is
+described in [[deliveries]].

@@ -73,14 +73,27 @@ public sealed class DeliveryQuote : Entity, IAggregateRoot
 
     public static DeliveryQuote Create(Guid senderId, Guid pickupLocationId, Guid dropOffLocationId, DeliveryAddress pickupAddress, DeliveryAddress dropOffAddress, DeliveryType deliveryType, DeliveryOrderType orderType, DateTimeOffset? scheduledPickupAtUtc, VehicleCategory vehicle, DeliveryZoneReadModels zones, DeliveryPricingPolicy policy, DeliveryPricingBreakdown pricing, IEnumerable<(string Description, int Quantity, decimal WeightKg)> items, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
     {
-        if (senderId == Guid.Empty || pickupLocationId == Guid.Empty || dropOffLocationId == Guid.Empty) throw new ArgumentException("Sender and locations are required.");
-        if (!Enum.IsDefined(deliveryType) || !Enum.IsDefined(orderType)) throw new ArgumentOutOfRangeException(nameof(deliveryType));
-        if (deliveryType == DeliveryType.Scheduled && (scheduledPickupAtUtc is null || scheduledPickupAtUtc <= createdAtUtc)) throw new ArgumentException("A future pickup time is required for scheduled delivery.", nameof(scheduledPickupAtUtc));
-        if (deliveryType == DeliveryType.Instant && scheduledPickupAtUtc is not null) throw new ArgumentException("Instant delivery cannot have a scheduled pickup time.", nameof(scheduledPickupAtUtc));
-        if (expiresAtUtc <= createdAtUtc) throw new ArgumentOutOfRangeException(nameof(expiresAtUtc));
+        if (senderId == Guid.Empty || pickupLocationId == Guid.Empty || dropOffLocationId == Guid.Empty) 
+            throw new ArgumentException("Sender and locations are required.");
+
+        if (!Enum.IsDefined(deliveryType) || !Enum.IsDefined(orderType)) 
+            throw new ArgumentOutOfRangeException(nameof(deliveryType));
+
+        if (deliveryType == DeliveryType.Scheduled && (scheduledPickupAtUtc is null || scheduledPickupAtUtc <= createdAtUtc)) 
+            throw new ArgumentException("A future pickup time is required for scheduled delivery.", nameof(scheduledPickupAtUtc));
+
+        if (deliveryType == DeliveryType.Instant && scheduledPickupAtUtc is not null) 
+            throw new ArgumentException("Instant delivery cannot have a scheduled pickup time.", nameof(scheduledPickupAtUtc));
+
+        if (expiresAtUtc <= createdAtUtc) 
+            throw new ArgumentOutOfRangeException(nameof(expiresAtUtc));
+
         var snapshots = items?.ToArray() ?? throw new ArgumentNullException(nameof(items));
         var totalWeight = DeliveryPricingCalculator.CalculateTotalWeight(snapshots.Select(x => (x.Quantity, x.WeightKg)));
-        if (!vehicle.CanCarry(totalWeight)) throw new ArgumentException("Vehicle cannot carry the shipment.", nameof(vehicle));
+
+        if (!vehicle.CanCarry(totalWeight)) 
+            throw new ArgumentException("Vehicle cannot carry the shipment.", nameof(vehicle));
+       
         var quote = new DeliveryQuote(senderId, pickupLocationId, dropOffLocationId, pickupAddress, dropOffAddress, deliveryType, orderType, scheduledPickupAtUtc, vehicle, zones, policy, pricing, createdAtUtc, expiresAtUtc) { TotalWeightKg = totalWeight };
         quote._items.AddRange(snapshots.Select(x => DeliveryQuoteItem.Create(quote.Id, x.Description, x.Quantity, x.WeightKg)));
         return quote;
@@ -88,13 +101,18 @@ public sealed class DeliveryQuote : Entity, IAggregateRoot
 
     public void Consume(Guid deliveryId, DateTimeOffset utcNow)
     {
-        if (deliveryId == Guid.Empty) throw new ArgumentException("Delivery is required.", nameof(deliveryId));
+        if (deliveryId == Guid.Empty) 
+            throw new ArgumentException("Delivery is required.", nameof(deliveryId));
+
         if (ConsumptionStatus == DeliveryQuoteConsumptionStatus.Consumed)
         {
             if (ConsumedByDeliveryId == deliveryId) return;
             throw new AggregateStateException("Quote has already been consumed.");
         }
-        if (IsExpired(utcNow)) throw new AggregateStateException("Quote has expired.");
+
+        if (IsExpired(utcNow)) 
+            throw new AggregateStateException("Quote has expired.");
+
         ConsumptionStatus = DeliveryQuoteConsumptionStatus.Consumed;
         ConsumedByDeliveryId = deliveryId;
         ConsumedAtUtc = utcNow.ToUniversalTime();

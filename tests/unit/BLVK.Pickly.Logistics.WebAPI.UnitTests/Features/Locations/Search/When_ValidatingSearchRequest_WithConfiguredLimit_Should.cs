@@ -12,6 +12,7 @@ public sealed class When_ValidatingSearchRequest_WithConfiguredLimit_Should
     {
         var validator = new SearchLocationsRequestValidator(Options.Create(new LocationResolutionOptions
         {
+            SupportedCountryCodes = ["NG"],
             MaxResults = 4
         }));
 

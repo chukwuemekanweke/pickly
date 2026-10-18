@@ -25,10 +25,12 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.StartGoogleAuthe
 using BLVK.Pickly.Logistics.Application.Authentication.Features.VerifyTwoFactorEnrollment;
 using BLVK.Pickly.Logistics.Application.Authentication.Stakeholders;
 using BLVK.Pickly.Logistics.Application.Common.FileUploads;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreateDelivery;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreateDeliveryQuote;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreatePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.DeletePickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDefaultPickupLocation;
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDelivery;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDeliveryQuote;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetPickupLocation;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetVehicleOptions;
@@ -129,6 +131,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<GetVehicleOptionsHandler>();
         services.AddScoped<CreateDeliveryQuoteHandler>();
         services.AddScoped<GetDeliveryQuoteHandler>();
+        services.AddScoped<CreateDeliveryHandler>();
+        services.AddScoped<GetDeliveryHandler>();
         services.AddScoped<LocationCandidateRegistrar>();
         services.AddScoped<LocationRegistryMatcher>();
         services.AddScoped<ProviderLocationResolver>();

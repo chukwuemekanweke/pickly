@@ -722,6 +722,9 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("DeliveredAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("DeliveryQuoteId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("DeliveryType")
                         .HasColumnType("integer");
 
@@ -770,11 +773,17 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid>("VehicleCategoryId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CashCollectionId")
                         .IsUnique()
                         .HasFilter("\"CashCollectionId\" IS NOT NULL");
+
+                    b.HasIndex("DeliveryQuoteId")
+                        .IsUnique();
 
                     b.HasIndex("PaymentTransactionId")
                         .IsUnique()
@@ -786,6 +795,8 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
                     b.HasIndex("TrackingId")
                         .IsUnique();
+
+                    b.HasIndex("VehicleCategoryId");
 
                     b.HasIndex("SenderId", "CreatedAtUtc")
                         .HasFilter("\"IsDeleted\" = FALSE");
@@ -932,7 +943,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("ConsumedAtUtc")
@@ -1062,11 +1072,15 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
                     b.HasIndex("VehicleCategoryId");
 
+                    b.HasIndex("ConsumedByDeliveryId", "Id");
+
                     b.HasIndex("SenderId", "CreatedAtUtc")
                         .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.ToTable("DeliveryQuotes", "deliveries", t =>
                         {
+                            t.HasCheckConstraint("CK_DeliveryQuotes_Consumption", "(\"ConsumptionStatus\" = 1 AND \"ConsumedByDeliveryId\" IS NULL AND \"ConsumedAtUtc\" IS NULL) OR (\"ConsumptionStatus\" = 2 AND \"ConsumedByDeliveryId\" IS NOT NULL AND \"ConsumedAtUtc\" IS NOT NULL)");
+
                             t.HasCheckConstraint("CK_DeliveryQuotes_Expiry", "\"ExpiresAtUtc\" > \"IssuedAtUtc\"");
 
                             t.HasCheckConstraint("CK_DeliveryQuotes_Total", "\"TotalAmount\" >= 0");
@@ -3158,9 +3172,21 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.Delivery", b =>
                 {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", null)
+                        .WithMany()
+                        .HasForeignKey("DeliveryQuoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("BLVK.Pickly.Logistics.Domain.Stakeholders.Entities.Stakeholder", null)
                         .WithMany()
                         .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.VehicleCategory", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3393,6 +3419,12 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .HasForeignKey("VehicleCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.Delivery", null)
+                        .WithMany()
+                        .HasForeignKey("ConsumedByDeliveryId", "Id")
+                        .HasPrincipalKey("Id", "DeliveryQuoteId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.OwnsOne("BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects.DeliveryAddress", "DropOffAddress", b1 =>
                         {

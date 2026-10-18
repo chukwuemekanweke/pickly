@@ -52,7 +52,18 @@ internal sealed class MapboxGeocodingTestContext
         ["Locations:Mapbox:BaseUrl"] = "https://api.mapbox.test/",
         ["Locations:Mapbox:AccessToken"] = AccessToken,
         ["Locations:Mapbox:Timeout"] = "00:00:05",
-        ["Locations:Mapbox:MaxRetries"] = "2"
+        ["Locations:Mapbox:MaxRetries"] = "2",
+        ["Locations:Mapbox:DefaultRateLimitRetryAfter"] = "00:00:30",
+        ["Locations:Resolution:SupportedCountryCodes:0"] = "NG",
+        ["Locations:Resolution:MaxProviderCandidates"] = "5",
+        ["Locations:Resolution:CandidateSelectionLifetime"] = "00:10:00",
+        ["Locations:Resolution:ResolutionLeaseDuration"] = "00:00:30",
+        ["Locations:Resolution:ResolutionLeaseWaitTimeout"] = "00:00:08",
+        ["Locations:Resolution:ResolutionLeasePollInterval"] = "00:00:00.250",
+        ["Locations:Resolution:LandmarkFallbackRadiusMeters"] = "3000",
+        ["Locations:Resolution:LandmarkFallbackLimit"] = "10",
+        ["Locations:Resolution:MaxNearbyRadiusMeters"] = "10000",
+        ["Locations:Resolution:MaxResults"] = "25"
     };
 
     public List<HttpRequestMessage> Requests { get; } = [];

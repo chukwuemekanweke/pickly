@@ -7,6 +7,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using NetTopologySuite.Geometries;
 using Shouldly;
 
 namespace BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries.PickupLocations;
@@ -27,8 +28,35 @@ public sealed partial class When_ManagingPickupLocations_WithAuthenticatedSender
             await currencyRepository.AddAsync(currency);
             await unitOfWork.SaveChangesAsync();
 
+            var token = Guid.CreateVersion7().ToString("N")[..8];
+            var vehicle = VehicleCategory.Create($"V{token}", "Snapshot van", null, 50m, "driving");
+            var zone = DeliveryZone.Create($"Z{token}", "Snapshot zone", "NG", 1, TimeProvider.System.GetUtcNow().AddDays(-1));
+            var policy = DeliveryPricingPolicy.Create($"p-{token}", currency.Id, 1000m, 0m, 0m, TimeProvider.System.GetUtcNow().AddDays(-1));
+            var quote = DeliveryQuote.Create(
+                _stakeholderId,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                DomainAddress("1 Original Road"),
+                DomainAddress("2 Destination Road"),
+                DeliveryType.Instant,
+                DeliveryOrderType.PayOnDelivery,
+                null,
+                vehicle,
+                new(zone.Id, zone.Code, zone.Id, zone.Code),
+                policy,
+                new(1000m, 0m, 0m, 0m, 0m),
+                [("Parcel", 1, 1m)],
+                TimeProvider.System.GetUtcNow(),
+                TimeProvider.System.GetUtcNow().AddMinutes(15));
+            var writeDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            writeDb.AddRange(vehicle, zone, policy, quote);
+            writeDb.Entry(zone).Property<MultiPolygon>("Boundary").CurrentValue = Boundary();
+            await writeDb.SaveChangesAsync();
+
             var delivery = Delivery.Create(
                 _stakeholderId,
+                quote.Id,
+                vehicle.Id,
                 $"PKY-{Guid.CreateVersion7():N}",
                 DeliveryType.Instant,
                 DeliveryOrderType.PayOnDelivery,
@@ -68,5 +96,13 @@ public sealed partial class When_ManagingPickupLocations_WithAuthenticatedSender
         var deliveryType = dbContext.Model.FindEntityType(typeof(Delivery));
         deliveryType!.GetForeignKeys().ShouldNotContain(foreignKey =>
             foreignKey.PrincipalEntityType.ClrType == typeof(SavedPickupLocation));
+    }
+
+    private static MultiPolygon Boundary()
+    {
+        var factory = new GeometryFactory(new PrecisionModel(), 4326);
+        var ring = factory.CreateLinearRing(
+            [new(3.30, 6.45), new(3.45, 6.45), new(3.45, 6.60), new(3.30, 6.60), new(3.30, 6.45)]);
+        return factory.CreateMultiPolygon([factory.CreatePolygon(ring)]);
     }
 }

@@ -4,12 +4,12 @@ public sealed class MapboxGeocodingOptions
 {
     public const string SectionName = "Locations:Mapbox";
 
-    public string BaseUrl { get; init; } = "https://api.mapbox.com/";
-    public string AccessToken { get; init; } = string.Empty;
+    public required string BaseUrl { get; init; }
+    public required string AccessToken { get; init; }
 
-    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(8);
-    public int MaxRetries { get; init; } = 2;
-    public TimeSpan DefaultRateLimitRetryAfter { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan Timeout { get; init; }
+    public int MaxRetries { get; init; }
+    public TimeSpan DefaultRateLimitRetryAfter { get; init; }
 
     public void Validate()
     {

@@ -48,3 +48,12 @@ status: stable
 
 New entities need an explicit `IEntityTypeConfiguration<T>` — do not rely on EF Core conventions alone for anything with non-trivial constraints, indexes, or owned types. New aggregates need a
 specification-based query path rather than ad hoc LINQ scattered across handlers.
+
+## Delivery booking transaction
+
+`DeliveryBookingPersistence` is the narrow infrastructure transaction boundary for quote confirmation. The Application
+handler prepares a tracked quote and new Delivery; Infrastructure adds the Delivery, saves quote consumption, and commits
+both in one EF Core transaction. Quote `xmin` plus the unfiltered unique index on `Delivery.DeliveryQuoteId` are the final
+concurrency safeguards. On quote concurrency or that specific uniqueness race, the change tracker is cleared and the
+sender-scoped Delivery is resolved by `(SenderId, DeliveryQuoteId)`. A tracking-ID-only unique violation receives a
+bounded retry with the same Delivery ID; unrelated uniqueness and database failures propagate after rollback.

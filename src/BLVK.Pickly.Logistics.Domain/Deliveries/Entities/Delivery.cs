@@ -18,6 +18,8 @@ public sealed class Delivery : Entity, IAggregateRoot
 
     private Delivery(
         Guid senderId,
+        Guid deliveryQuoteId,
+        Guid vehicleCategoryId,
         string trackingId,
         DeliveryType deliveryType,
         DeliveryOrderType orderType,
@@ -29,6 +31,8 @@ public sealed class Delivery : Entity, IAggregateRoot
         DateTimeOffset? dispatchEligibleAtUtc)
     {
         SenderId = senderId;
+        DeliveryQuoteId = deliveryQuoteId;
+        VehicleCategoryId = vehicleCategoryId;
         TrackingId = trackingId;
         DeliveryType = deliveryType;
         OrderType = orderType;
@@ -43,6 +47,8 @@ public sealed class Delivery : Entity, IAggregateRoot
     }
 
     public Guid SenderId { get; private set; }
+    public Guid DeliveryQuoteId { get; private set; }
+    public Guid VehicleCategoryId { get; private set; }
     public string TrackingId { get; private set; } = string.Empty;
     public DeliveryType DeliveryType { get; private set; }
     public DeliveryOrderType OrderType { get; private set; }
@@ -80,6 +86,8 @@ public sealed class Delivery : Entity, IAggregateRoot
 
     public static Delivery Create(
         Guid senderId,
+        Guid deliveryQuoteId,
+        Guid vehicleCategoryId,
         string trackingId,
         DeliveryType deliveryType,
         DeliveryOrderType orderType,
@@ -93,6 +101,8 @@ public sealed class Delivery : Entity, IAggregateRoot
         DateTimeOffset? dispatchEligibleAtUtc = null)
     {
         EnsureRequiredId(senderId, nameof(senderId));
+        EnsureRequiredId(deliveryQuoteId, nameof(deliveryQuoteId));
+        EnsureRequiredId(vehicleCategoryId, nameof(vehicleCategoryId));
         ArgumentNullException.ThrowIfNull(pickupAddress);
         ArgumentNullException.ThrowIfNull(dropOffAddress);
         ArgumentNullException.ThrowIfNull(recipient);
@@ -142,6 +152,8 @@ public sealed class Delivery : Entity, IAggregateRoot
 
         var delivery = new Delivery(
             senderId,
+            deliveryQuoteId,
+            vehicleCategoryId,
             normalizedTrackingId,
             deliveryType,
             orderType,
@@ -172,6 +184,11 @@ public sealed class Delivery : Entity, IAggregateRoot
             "delivery_creation"));
 
         return delivery;
+    }
+
+    public void ReplaceTrackingIdAfterCollision(string trackingId)
+    {
+        TrackingId = NormalizeTrackingId(trackingId);
     }
 
     public void AddItem(DeliveryItem item)

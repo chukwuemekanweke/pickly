@@ -13,8 +13,11 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
     {
         builder.ToTable("Deliveries", SchemaNames.Deliveries);
         builder.HasKey(delivery => delivery.Id);
+        builder.HasAlternateKey(delivery => new { delivery.Id, delivery.DeliveryQuoteId });
 
         builder.Property(delivery => delivery.SenderId).IsRequired();
+        builder.Property(delivery => delivery.DeliveryQuoteId).IsRequired();
+        builder.Property(delivery => delivery.VehicleCategoryId).IsRequired();
         builder.Property(delivery => delivery.TrackingId).HasMaxLength(40).IsRequired();
         builder.Property(delivery => delivery.DeliveryType).HasConversion<int>().IsRequired();
         builder.Property(delivery => delivery.OrderType).HasConversion<int>().IsRequired();
@@ -22,6 +25,7 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
         builder.Property(delivery => delivery.PaymentStatus).HasConversion<int>().IsRequired();
 
         builder.HasIndex(delivery => delivery.TrackingId).IsUnique();
+        builder.HasIndex(delivery => delivery.DeliveryQuoteId).IsUnique();
         builder.HasIndex(delivery => delivery.PaymentTransactionId)
             .IsUnique()
             .HasFilter("\"PaymentTransactionId\" IS NOT NULL");
@@ -39,6 +43,16 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
         builder.HasOne<Stakeholder>()
             .WithMany()
             .HasForeignKey(delivery => delivery.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<DeliveryQuote>()
+            .WithMany()
+            .HasForeignKey(delivery => delivery.DeliveryQuoteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<VehicleCategory>()
+            .WithMany()
+            .HasForeignKey(delivery => delivery.VehicleCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.OwnsOne(delivery => delivery.PickupAddress, owned => ConfigureAddress(owned, "Pickup"));
