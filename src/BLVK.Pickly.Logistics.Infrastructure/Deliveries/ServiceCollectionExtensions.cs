@@ -10,7 +10,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDeliveryServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IDeliveryTrackingIdGenerator, DeliveryTrackingIdGenerator>();
-        var options = configuration.GetSection(DeliveryRoutingOptions.SectionName).Get<DeliveryRoutingOptions>() ?? new DeliveryRoutingOptions();
+        var options = configuration.GetSection(DeliveryRoutingOptions.SectionName).Get<DeliveryRoutingOptions>()
+            ?? throw new InvalidOperationException($"Configuration section '{DeliveryRoutingOptions.SectionName}' is required.");
         options.Validate();
         services.Configure<DeliveryRoutingOptions>(configuration.GetSection(DeliveryRoutingOptions.SectionName));
         services.AddHttpClient<IDeliveryRouteProvider, MapboxDeliveryRouteProvider>(client => { client.BaseAddress = new Uri(options.BaseUrl); client.Timeout = options.Timeout; })

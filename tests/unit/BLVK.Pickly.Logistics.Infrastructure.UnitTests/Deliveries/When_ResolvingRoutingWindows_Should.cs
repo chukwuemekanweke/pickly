@@ -36,22 +36,33 @@ public sealed class When_ResolvingRoutingWindows_Should
     [Fact]
     public void RejectRetentionBeyondTwentyFourHours()
     {
-        Should.Throw<InvalidOperationException>(() => new DeliveryRoutingOptions { MaximumCacheAge = TimeSpan.FromHours(25), Windows = Options().Windows }.Validate());
+        Should.Throw<InvalidOperationException>(() => Options(maximumCacheAge: TimeSpan.FromHours(25)).Validate());
     }
 
     [Fact]
     public void RejectMissingCoverage()
     {
-        var options = new DeliveryRoutingOptions
-        {
-            Windows = [new() { Id = "morning", Start = TimeSpan.FromHours(9), End = TimeSpan.FromHours(12), ApplicableDays = Enum.GetValues<DayOfWeek>() }]
-        };
+        var options = Options(
+            [new() { Id = "morning", Start = TimeSpan.FromHours(9), End = TimeSpan.FromHours(12), ApplicableDays = Enum.GetValues<DayOfWeek>() }]);
         Should.Throw<InvalidOperationException>(options.Validate);
     }
 
-    private static DeliveryRoutingOptions Options() => new()
+    private static DeliveryRoutingOptions Options(
+        IReadOnlyList<RoutingWindowOptions>? windows = null,
+        TimeSpan? maximumCacheAge = null) => new()
     {
-        Windows =
+        BaseUrl = "https://api.mapbox.com/",
+        AccessToken = "test-token",
+        Timeout = TimeSpan.FromSeconds(8),
+        MaxRetries = 2,
+        MaximumCacheAge = maximumCacheAge ?? TimeSpan.FromHours(24),
+        CoordinationLeaseDuration = TimeSpan.FromSeconds(15),
+        CoordinationWaitTimeout = TimeSpan.FromSeconds(20),
+        CoordinationPollInterval = TimeSpan.FromMilliseconds(100),
+        DefaultRateLimitRetryAfter = TimeSpan.FromSeconds(30),
+        ServiceAreaTimeZone = "Africa/Lagos",
+        ScheduleVersion = "v1",
+        Windows = windows ??
         [
             Window("early", 0, 9), Window("morning", 9, 12), Window("afternoon", 12, 15),
             Window("evening-peak", 15, 18), Window("night", 18, 21), Window("late", 21, 0)

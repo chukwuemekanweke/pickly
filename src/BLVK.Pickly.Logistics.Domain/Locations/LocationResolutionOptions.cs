@@ -5,24 +5,24 @@ public sealed class LocationResolutionOptions
     public const string SectionName = "Locations:Resolution";
 
     /// <summary>ISO 3166-1 alpha-2 countries Pickly currently serves. Resolution outside them is refused.</summary>
-    public IReadOnlyList<string> SupportedCountryCodes { get; init; } = ["NG"];
+    public IReadOnlyList<string> SupportedCountryCodes { get; init; } = null!;
 
-    public int MaxProviderCandidates { get; init; } = 5;
-    public TimeSpan CandidateSelectionLifetime { get; init; } = TimeSpan.FromMinutes(10);
-    public TimeSpan ResolutionLeaseDuration { get; init; } = TimeSpan.FromSeconds(30);
-    public TimeSpan ResolutionLeaseWaitTimeout { get; init; } = TimeSpan.FromSeconds(8);
-    public TimeSpan ResolutionLeasePollInterval { get; init; } = TimeSpan.FromMilliseconds(250);
-    public int LandmarkFallbackRadiusMeters { get; init; } = 3000;
-    public int LandmarkFallbackLimit { get; init; } = 10;
-    public int MaxNearbyRadiusMeters { get; init; } = 10000;
-    public int MaxResults { get; init; } = 25;
+    public int MaxProviderCandidates { get; init; }
+    public TimeSpan CandidateSelectionLifetime { get; init; }
+    public TimeSpan ResolutionLeaseDuration { get; init; }
+    public TimeSpan ResolutionLeaseWaitTimeout { get; init; }
+    public TimeSpan ResolutionLeasePollInterval { get; init; }
+    public int LandmarkFallbackRadiusMeters { get; init; }
+    public int LandmarkFallbackLimit { get; init; }
+    public int MaxNearbyRadiusMeters { get; init; }
+    public int MaxResults { get; init; }
 
     public bool IsSupportedCountry(string countryCode) =>
         SupportedCountryCodes.Any(code => string.Equals(code, countryCode?.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public void Validate()
     {
-        if (SupportedCountryCodes.Count == 0 || SupportedCountryCodes.Any(code => code is not { Length: 2 }))
+        if (SupportedCountryCodes is not { Count: > 0 } || SupportedCountryCodes.Any(code => code is not { Length: 2 }))
             throw new InvalidOperationException("Locations:Resolution:SupportedCountryCodes must contain two-letter ISO codes.");
         if (MaxProviderCandidates is < 1 or > 10)
             throw new InvalidOperationException("Locations:Resolution:MaxProviderCandidates must be between 1 and 10.");

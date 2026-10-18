@@ -4,13 +4,13 @@ public sealed class DeliveryDispatchOptions
 {
     public const string SectionName = "Deliveries:Dispatch";
 
-    public TimeSpan LeadTime { get; set; } = TimeSpan.FromMinutes(30);
+    public TimeSpan LeadTime { get; init; }
 
     public void Validate()
     {
-        if (LeadTime < TimeSpan.Zero)
+        if (LeadTime <= TimeSpan.Zero)
         {
-            throw new InvalidOperationException("Delivery dispatch lead time cannot be negative.");
+            throw new InvalidOperationException("Deliveries:Dispatch:LeadTime must be greater than zero.");
         }
     }
 }

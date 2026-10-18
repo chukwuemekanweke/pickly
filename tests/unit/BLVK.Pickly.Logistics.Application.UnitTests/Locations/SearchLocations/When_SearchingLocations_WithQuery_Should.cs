@@ -71,6 +71,20 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
         _lease,
         _cache,
         new ResolveLocationTelemetry(_telemetry),
-        Options.Create(new LocationResolutionOptions()),
+        Options.Create(ResolutionOptions()),
         TimeProvider.System);
+
+    private static LocationResolutionOptions ResolutionOptions() => new()
+    {
+        SupportedCountryCodes = ["NG"],
+        MaxProviderCandidates = 5,
+        CandidateSelectionLifetime = TimeSpan.FromMinutes(10),
+        ResolutionLeaseDuration = TimeSpan.FromSeconds(30),
+        ResolutionLeaseWaitTimeout = TimeSpan.FromSeconds(8),
+        ResolutionLeasePollInterval = TimeSpan.FromMilliseconds(250),
+        LandmarkFallbackRadiusMeters = 3000,
+        LandmarkFallbackLimit = 10,
+        MaxNearbyRadiusMeters = 10000,
+        MaxResults = 25
+    };
 }

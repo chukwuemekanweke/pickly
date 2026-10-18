@@ -106,7 +106,7 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
                 _currencies,
                 _persistence,
                 tracking,
-                Options.Create(new DeliveryDispatchOptions()),
+                Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
                 new FixedTimeProvider(Now));
             var get = new GetDeliveryHandler(_deliveries, _currencies);
             var actor = Substitute.For<ICurrentActor>();

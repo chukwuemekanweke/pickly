@@ -35,12 +35,18 @@ public sealed partial class When_GettingNearbyLocations_WithAnchorLocation_Shoul
         captured.ExcludeLocationId.ShouldBe(anchor.Id);
         captured.Anchor.Latitude.ShouldBe(anchor.Latitude);
         captured.Anchor.Longitude.ShouldBe(anchor.Longitude);
-        captured.RadiusMeters.ShouldBe(new LocationResolutionOptions().MaxNearbyRadiusMeters);
-        captured.Limit.ShouldBe(new LocationResolutionOptions().MaxResults);
+        captured.RadiusMeters.ShouldBe(ResolutionOptions.MaxNearbyRadiusMeters);
+        captured.Limit.ShouldBe(ResolutionOptions.MaxResults);
         captured.LocationType.ShouldBe(LocationType.Landmark);
     }
 
-    private GetNearbyLocationsHandler Handler() => new(_repository, Options.Create(new LocationResolutionOptions()));
+    private static readonly LocationResolutionOptions ResolutionOptions = new()
+    {
+        MaxNearbyRadiusMeters = 10000,
+        MaxResults = 25
+    };
+
+    private GetNearbyLocationsHandler Handler() => new(_repository, Options.Create(ResolutionOptions));
 
     private static LocationReadModel ReadModel(Guid id, LocationType type) =>
         new(

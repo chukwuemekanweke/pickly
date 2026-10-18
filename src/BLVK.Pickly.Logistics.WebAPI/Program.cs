@@ -60,10 +60,12 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddHealthChecks();
 builder.Services.AddApiDocumentation();
 builder.Services.AddApplication();
-var quoteOptions = builder.Configuration.GetSection(DeliveryQuoteOptions.SectionName).Get<DeliveryQuoteOptions>() ?? new DeliveryQuoteOptions();
+var quoteOptions = builder.Configuration.GetSection(DeliveryQuoteOptions.SectionName).Get<DeliveryQuoteOptions>()
+    ?? throw new InvalidOperationException($"Configuration section '{DeliveryQuoteOptions.SectionName}' is required.");
 quoteOptions.Validate();
 builder.Services.Configure<DeliveryQuoteOptions>(builder.Configuration.GetSection(DeliveryQuoteOptions.SectionName));
-var dispatchOptions = builder.Configuration.GetSection(DeliveryDispatchOptions.SectionName).Get<DeliveryDispatchOptions>() ?? new DeliveryDispatchOptions();
+var dispatchOptions = builder.Configuration.GetSection(DeliveryDispatchOptions.SectionName).Get<DeliveryDispatchOptions>()
+    ?? throw new InvalidOperationException($"Configuration section '{DeliveryDispatchOptions.SectionName}' is required.");
 dispatchOptions.Validate();
 builder.Services.Configure<DeliveryDispatchOptions>(builder.Configuration.GetSection(DeliveryDispatchOptions.SectionName));
 builder.Services.AddPostgresWritePersistence(builder.Configuration);

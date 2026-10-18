@@ -1,5 +1,4 @@
 using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
-using BLVK.Pickly.Logistics.Domain.Locations;
 using BLVK.Pickly.Logistics.Domain.Locations.ReadModels;
 using Shouldly;
 
@@ -20,6 +19,6 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
 
         captured.ShouldNotBeNull();
         captured.Terms.Count.ShouldBe(LocationSearchTerms.MaxTerms);
-        captured.Limit.ShouldBe(new LocationResolutionOptions().MaxResults);
+        captured.Limit.ShouldBe(ResolutionOptions().MaxResults);
     }
 }

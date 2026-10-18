@@ -3,18 +3,18 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Deliveries;
 public sealed class DeliveryRoutingOptions
 {
     public const string SectionName = "Deliveries:Routing:Mapbox";
-    public string BaseUrl { get; init; } = "https://api.mapbox.com/";
-    public string AccessToken { get; init; } = string.Empty;
-    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(8);
-    public int MaxRetries { get; init; } = 2;
-    public TimeSpan MaximumCacheAge { get; init; } = TimeSpan.FromHours(24);
-    public TimeSpan CoordinationLeaseDuration { get; init; } = TimeSpan.FromSeconds(15);
-    public TimeSpan CoordinationWaitTimeout { get; init; } = TimeSpan.FromSeconds(20);
-    public TimeSpan CoordinationPollInterval { get; init; } = TimeSpan.FromMilliseconds(100);
-    public TimeSpan DefaultRateLimitRetryAfter { get; init; } = TimeSpan.FromSeconds(30);
-    public string ServiceAreaTimeZone { get; init; } = "Africa/Lagos";
-    public string ScheduleVersion { get; init; } = "v1";
-    public IReadOnlyList<RoutingWindowOptions> Windows { get; init; } = [];
+    public string BaseUrl { get; init; } = null!;
+    public string AccessToken { get; init; } = null!;
+    public TimeSpan Timeout { get; init; }
+    public int MaxRetries { get; init; }
+    public TimeSpan MaximumCacheAge { get; init; }
+    public TimeSpan CoordinationLeaseDuration { get; init; }
+    public TimeSpan CoordinationWaitTimeout { get; init; }
+    public TimeSpan CoordinationPollInterval { get; init; }
+    public TimeSpan DefaultRateLimitRetryAfter { get; init; }
+    public string ServiceAreaTimeZone { get; init; } = null!;
+    public string ScheduleVersion { get; init; } = null!;
+    public IReadOnlyList<RoutingWindowOptions> Windows { get; init; } = null!;
 
     public void Validate()
     {
@@ -23,6 +23,8 @@ public sealed class DeliveryRoutingOptions
         if (MaxRetries is < 0 or > 3) throw new InvalidOperationException("Routing retries must be between zero and three.");
         if (MaximumCacheAge <= TimeSpan.Zero || MaximumCacheAge > TimeSpan.FromHours(24)) throw new InvalidOperationException("Routing cache age must be greater than zero and no more than 24 hours.");
         if (CoordinationLeaseDuration <= TimeSpan.Zero || CoordinationWaitTimeout <= TimeSpan.Zero || CoordinationPollInterval <= TimeSpan.Zero) throw new InvalidOperationException("Routing coordination durations must be positive.");
+        if (DefaultRateLimitRetryAfter <= TimeSpan.Zero) throw new InvalidOperationException("A positive default routing rate-limit retry delay is required.");
+        if (string.IsNullOrWhiteSpace(ServiceAreaTimeZone)) throw new InvalidOperationException("A routing service-area time zone is required.");
         if (string.IsNullOrWhiteSpace(ScheduleVersion)) throw new InvalidOperationException("A routing schedule version is required.");
         _ = TimeZoneInfo.FindSystemTimeZoneById(ServiceAreaTimeZone);
         ValidateWindows();
@@ -30,7 +32,7 @@ public sealed class DeliveryRoutingOptions
 
     private void ValidateWindows()
     {
-        if (Windows.Count == 0 || Windows.Any(x => string.IsNullOrWhiteSpace(x.Id) || x.Start == x.End || x.ApplicableDays.Count == 0)) throw new InvalidOperationException("Routing windows must have an id, distinct start/end times and applicable days.");
+        if (Windows is not { Count: > 0 } || Windows.Any(x => string.IsNullOrWhiteSpace(x.Id) || x.Start == x.End || x.ApplicableDays is not { Count: > 0 })) throw new InvalidOperationException("Routing windows must have an id, distinct start/end times and applicable days.");
         if (Windows.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != Windows.Count) throw new InvalidOperationException("Routing window ids must be unique.");
         foreach (var day in Enum.GetValues<DayOfWeek>())
         {
@@ -53,10 +55,10 @@ public sealed class DeliveryRoutingOptions
 
 public sealed class RoutingWindowOptions
 {
-    public string Id { get; init; } = string.Empty;
+    public string Id { get; init; } = null!;
     public TimeSpan Start { get; init; }
     public TimeSpan End { get; init; }
-    public IReadOnlyList<DayOfWeek> ApplicableDays { get; init; } = [];
+    public IReadOnlyList<DayOfWeek> ApplicableDays { get; init; } = null!;
 
     internal IEnumerable<(TimeSpan Start, TimeSpan End)> RangesFor(DayOfWeek day, DayOfWeek previous)
     {
