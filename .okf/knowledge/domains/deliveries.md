@@ -26,6 +26,8 @@ code_refs:
     - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddSharedLocationRegistry*
     - src/BLVK.Pickly.Logistics.Application/Deliveries/**
     - src/BLVK.Pickly.Logistics.WebAPI/Features/Deliveries/**
+    - src/BLVK.Pickly.Logistics.Consumer/Payments/ConfirmDeliveryPaymentHandler.cs
+    - src/BLVK.Pickly.Logistics.Contracts/Commands/Payments/ConfirmDeliveryPaymentCommand.cs
     - tests/unit/BLVK.Pickly.Logistics.Domain.UnitTests/Deliveries/**
     - tests/unit/BLVK.Pickly.Logistics.Application.UnitTests/Deliveries/**
     - tests/integration/BLVK.Pickly.Logistics.WebAPI.IntegrationTests/Deliveries/**
@@ -41,8 +43,10 @@ for ownership scoping. Tenant membership is derived through the owning `Stakehol
 
 Pickup/drop-off addresses, recipient contact data, and the agreed charge are immutable snapshots.
 They do not refer to mutable saved-location or recipient-account records. Delivery charges store the
-existing Payments-domain `Currency` identifier; provider payment attempts remain owned by
-`PaymentTransaction`, and Delivery stores only the trusted successful transaction reference.
+existing Payments-domain `Currency` identifier. Provider payment lifecycle remains owned by generic
+`PaymentTransaction`; delivery-owned `DeliveryPaymentAttempt` associates each historical attempt to one Delivery.
+`PaymentTransaction` has no delivery-specific identity. Delivery stores the trusted successful transaction reference
+and the currently authoritative attempt correlation.
 
 ## Creation and dispatch
 
@@ -108,6 +112,18 @@ responses as attempts and use verified provider evidence before calling `Confirm
 itself never marks payment paid or activates fulfillment. Later phases own rider discovery, cash collection, proof,
 remittance and public tracking. They must call existing aggregate transitions and must not introduce a generic status
 setter or treat delivery status as financial truth.
+
+Phase 5 exposes sender-scoped `POST` and `GET /api/v1/deliveries/{deliveryId}/payments`. Initiation derives the exact
+charge from Delivery, reserves `PaymentTransaction` plus `DeliveryPaymentAttempt` under a PostgreSQL advisory lock,
+commits them before provider I/O, and reuses the stable merchant reference for ambiguous retries. The association has
+a unique `PaymentTransactionId` and a per-delivery idempotency-key constraint; a delivery may retain many failed,
+expired or incomplete attempts. `ActivePaymentTransactionId` prevents an older failure from resetting a newer attempt.
+
+Provider success continues through the generic outbox event. `SuccessfulPaymentConfirmedHandler` routes
+`DeliveryPayment` to `ConfirmDeliveryPaymentCommand`; its consumer reloads the attempt, Delivery and persisted
+PaymentTransaction, validates intent, ownership, exact verified amount/currency and association, then invokes
+`ConfirmVerifiedPrepaidPayment`. Duplicate application is idempotent. Late payment after cancellation and an extra
+successful transaction remain visible on the attempt as operational exceptions; Phase 5 does not refund.
 
 ## Saved pickup locations
 

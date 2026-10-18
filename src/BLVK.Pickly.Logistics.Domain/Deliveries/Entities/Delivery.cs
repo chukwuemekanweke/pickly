@@ -62,6 +62,7 @@ public sealed class Delivery : Entity, IAggregateRoot
     public DateTimeOffset? DispatchEligibleAtUtc { get; private set; }
     public Guid? RiderId { get; private set; }
     public Guid? PaymentTransactionId { get; private set; }
+    public Guid? ActivePaymentTransactionId { get; private set; }
     public DateTimeOffset? PaymentSatisfiedAtUtc { get; private set; }
     public Guid? CashCollectionId { get; private set; }
     public Guid? ProofOfDeliveryId { get; private set; }
@@ -222,6 +223,13 @@ public sealed class Delivery : Entity, IAggregateRoot
         PaymentStatus = DeliveryPaymentStatus.Processing;
     }
 
+    public void BeginPrepaidPaymentAttempt(Guid paymentTransactionId)
+    {
+        EnsureRequiredId(paymentTransactionId, nameof(paymentTransactionId));
+        MarkPrepaidPaymentProcessing();
+        ActivePaymentTransactionId = paymentTransactionId;
+    }
+
     public void RecordPrepaidPaymentAttemptFailed()
     {
         EnsurePrepaidOrder();
@@ -231,6 +239,19 @@ public sealed class Delivery : Entity, IAggregateRoot
         }
 
         PaymentStatus = DeliveryPaymentStatus.Pending;
+        ActivePaymentTransactionId = null;
+    }
+
+    public bool RecordPrepaidPaymentAttemptFailed(Guid paymentTransactionId)
+    {
+        EnsureRequiredId(paymentTransactionId, nameof(paymentTransactionId));
+        if (ActivePaymentTransactionId != paymentTransactionId || PaymentStatus != DeliveryPaymentStatus.Processing)
+        {
+            return false;
+        }
+
+        RecordPrepaidPaymentAttemptFailed();
+        return true;
     }
 
     public void ConfirmVerifiedPrepaidPayment(
@@ -266,6 +287,7 @@ public sealed class Delivery : Entity, IAggregateRoot
         }
 
         PaymentTransactionId = paymentTransactionId;
+        ActivePaymentTransactionId = null;
         PaymentStatus = DeliveryPaymentStatus.Paid;
         PaymentSatisfiedAtUtc = verifiedAtUtc.ToUniversalTime();
         TransitionTo(

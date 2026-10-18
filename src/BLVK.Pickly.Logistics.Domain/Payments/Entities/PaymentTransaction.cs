@@ -45,6 +45,9 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
     public Guid InitiatedByUserId { get; private set; }
     public Guid StakeholderId { get; private set; }
     public Guid TenantId { get; private set; }
+    public decimal? VerifiedAmount { get; private set; }
+    public Guid? VerifiedCurrencyId { get; private set; }
+    public DateTimeOffset? ProviderVerifiedAtUtc { get; private set; }
     public string? FailureReason { get; private set; }
     public string? StatusChangeReason { get; private set; }
     public DateTimeOffset? ExpiresAtUtc { get; private set; }
@@ -115,13 +118,42 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
         FailureReason = null;
     }
 
+    public void ConfirmVerifiedSettlement(
+        string? providerReference,
+        decimal verifiedAmount,
+        Guid verifiedCurrencyId,
+        DateTimeOffset verifiedAtUtc,
+        string? statusChangeReason)
+    {
+        if (verifiedAmount <= 0 || verifiedCurrencyId == Guid.Empty)
+        {
+            throw new ArgumentException("Verified settlement amount and currency are required.");
+        }
+
+        if (HasReachedTerminalState() &&
+            (PaymentIntent != PaymentIntent.DeliveryPayment || PaymentStatus == PaymentStatus.Succeeded))
+        {
+            EnsureCanTransitionFrom(PaymentStatus.Initiated);
+        }
+
+        ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
+        PaymentStatus = PaymentStatus.Succeeded;
+        VerifiedAmount = verifiedAmount;
+        VerifiedCurrencyId = verifiedCurrencyId;
+        ProviderVerifiedAtUtc = verifiedAtUtc.ToUniversalTime();
+        StatusChangeReason = statusChangeReason;
+        CompletedAtUtc = verifiedAtUtc.ToUniversalTime();
+        FailedAtUtc = null;
+        FailureReason = null;
+    }
+
     public void MarkFailed(
         string? providerReference,
         string? failureReason,
         string? statusChangeReason,
         DateTimeOffset failedAtUtc)
     {
-        EnsureCanTransitionFrom(PaymentStatus.Initiated);
+        EnsureCanTransitionFrom(PaymentStatus.PendingInitiation, PaymentStatus.Initiated);
         ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
         PaymentStatus = PaymentStatus.Failed;
         FailureReason = failureReason;
@@ -134,7 +166,7 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
         string? failureReason,
         string? statusChangeReason)
     {
-        EnsureCanTransitionFrom(PaymentStatus.Initiated);
+        EnsureCanTransitionFrom(PaymentStatus.PendingInitiation, PaymentStatus.Initiated);
         ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
         PaymentStatus = PaymentStatus.Expired;
         FailureReason = failureReason;

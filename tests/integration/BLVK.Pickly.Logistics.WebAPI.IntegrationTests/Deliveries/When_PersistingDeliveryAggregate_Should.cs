@@ -1,7 +1,9 @@
+using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
+using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +56,26 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
     }
 
     [Fact]
+    public async Task PersistMultipleAttemptsAndEnforceUniquePaymentTransactionAssociation()
+    {
+        var (delivery, currencyId) = await PersistDeliveryAsync($"PKY-{Guid.NewGuid():N}");
+        using var scope = CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var firstPayment = CreatePaymentTransaction(delivery.SenderId, currencyId);
+        var secondPayment = CreatePaymentTransaction(delivery.SenderId, currencyId);
+        dbContext.AddRange(
+            firstPayment,
+            secondPayment,
+            DeliveryPaymentAttempt.Create(delivery.Id, firstPayment.Id, "first-attempt"),
+            DeliveryPaymentAttempt.Create(delivery.Id, secondPayment.Id, "second-attempt"));
+        await dbContext.SaveChangesAsync();
+
+        dbContext.Add(DeliveryPaymentAttempt.Create(delivery.Id, firstPayment.Id, "duplicate-association"));
+
+        await Should.ThrowAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+    }
+
+    [Fact]
     public void ConfigureExpectedSchemaIndexesAndRelationships()
     {
         using var scope = CreateScope();
@@ -68,5 +90,22 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
         deliveryType.GetIndexes().ShouldContain(index =>
             index.Properties.Select(property => property.Name)
                 .SequenceEqual(new[] { nameof(Delivery.SenderId), nameof(Delivery.CreatedAtUtc) }));
+
+        var attemptType = dbContext.Model.FindEntityType(typeof(DeliveryPaymentAttempt));
+        attemptType.ShouldNotBeNull();
+        attemptType.GetIndexes().ShouldContain(index =>
+            index.IsUnique && index.Properties.Single().Name == nameof(DeliveryPaymentAttempt.PaymentTransactionId));
     }
+
+    private static PaymentTransaction CreatePaymentTransaction(Guid stakeholderId, Guid currencyId) =>
+        PaymentTransaction.Create(
+            $"delivery_{Guid.CreateVersion7():N}",
+            PaymentIntent.DeliveryPayment,
+            Guid.CreateVersion7(),
+            1234.56m,
+            currencyId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            stakeholderId,
+            Guid.CreateVersion7());
 }

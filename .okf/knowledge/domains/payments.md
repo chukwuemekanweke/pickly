@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Payments Domain
-description: Payment providers (Credo, SafeHaven), wallet and wallet transactions, webhook inbox idempotency, reconciliation, and subscription activation
+description: Generic payment transactions and providers, verified settlement, webhook idempotency, reconciliation, wallet credit, subscription activation, and delivery-payment routing
 resource: okf://knowledge/domains/payments
 tags:
     - context
@@ -37,5 +37,11 @@ status: stable
   acted on — do not process a webhook payload without first checking/recording it there.
 - `ReconcilePayments` (Jobs) periodically reconciles payment state against provider truth.
 - `SuccessfulPaymentConfirmed`, `ActivateSubscriptionCommand`, `CreditWalletCommand` cross into `Consumer`/`Jobs` via `Contracts` and the outbox — see [[async-processing]].
+
+`PaymentIntent.DeliveryPayment` is a generic financial intent. `PaymentTransaction` deliberately has no `DeliveryId`
+or other business-domain foreign key. It owns provider initiation state and the provider-verified settled amount,
+currency and timestamp. The Deliveries domain owns attempt association through `DeliveryPaymentAttempt`.
+Reconciliation publishes the existing `SuccessfulPaymentConfirmed` only after provider verification establishes the
+settled amount and currency; delivery processing resolves the association by `PaymentTransactionId`.
 
 Follows the standard [[vertical-slices]] feature-folder shape and the [[unit-testing]]/[[integration-testing]] conventions. Distinct from the generic [[providers]] domain (email/file-storage provider registry).

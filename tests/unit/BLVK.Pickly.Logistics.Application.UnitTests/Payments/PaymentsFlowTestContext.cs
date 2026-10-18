@@ -7,6 +7,7 @@ using BLVK.Pickly.Logistics.Application.Payments.Features.ProcessSafeHavenWebhoo
 using BLVK.Pickly.Logistics.Application.Payments.Features.ReconcilePayments;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
@@ -23,6 +24,8 @@ internal sealed class PaymentsFlowTestContext
     public IRepository<PaymentProviderConfiguration> PaymentProviderConfigurationRepository { get; } = Substitute.For<IRepository<PaymentProviderConfiguration>>();
     public IRepository<PaymentTransaction> PaymentTransactionRepository { get; } = Substitute.For<IRepository<PaymentTransaction>>();
     public IRepository<PaymentWebhookInbox> PaymentWebhookInboxRepository { get; } = Substitute.For<IRepository<PaymentWebhookInbox>>();
+    public IRepository<Delivery> DeliveryRepository { get; } = Substitute.For<IRepository<Delivery>>();
+    public IRepository<DeliveryPaymentAttempt> DeliveryPaymentAttemptRepository { get; } = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
     public IWalletTransactionReadModelRepository WalletTransactionReadModelRepository { get; } = Substitute.For<IWalletTransactionReadModelRepository>();
     public ICustomTelemetryContext CustomTelemetryContext { get; } = Substitute.For<ICustomTelemetryContext>();
     public IEventPublisher EventPublisher { get; } = Substitute.For<IEventPublisher>();
@@ -94,6 +97,8 @@ internal sealed class PaymentsFlowTestContext
             PaymentTransactionRepository,
             CurrencyRepository,
             PaymentProviderRepository,
+            DeliveryRepository,
+            DeliveryPaymentAttemptRepository,
             PaymentProviderServices,
             EventPublisher,
             CustomTelemetryContext,

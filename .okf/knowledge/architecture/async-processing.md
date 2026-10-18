@@ -39,4 +39,9 @@ status: stable
 - New cross-process command/event types belong in `Contracts`, not defined ad hoc inside Application or Consumer.
 - Consumer handlers must be idempotent-safe against redelivery (see the message inbox pattern already used) and must mark their `Activity` as errored on failure — see [[observability]].
 
+For delivery prepayment, generic `SuccessfulPaymentConfirmed` remains unchanged. Its router emits
+`ConfirmDeliveryPaymentCommand` through the command outbox, and the command consumer resolves the delivery-owned
+`DeliveryPaymentAttempt` by `PaymentTransactionId` before applying verified payment. Neither message adds a
+`DeliveryId`; consumer inbox persistence makes routing and application safe under redelivery.
+
 See [[persistence]] for how the outbox table itself is persisted, and [[unit-testing]]/[[integration-testing]] for handler/background-service test coverage requirements.

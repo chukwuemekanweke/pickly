@@ -1,6 +1,7 @@
 using BLVK.Pickly.Logistics.Application;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using BLVK.Pickly.Logistics.Jobs.Infrastructure.BackgroundServices;
@@ -20,6 +21,8 @@ public sealed class When_ReconcilingPayments_WithConfiguredSchedule_Should
         var paymentTransactionRepository = Substitute.For<IRepository<PaymentTransaction>>();
         var currencyRepository = Substitute.For<IRepository<Currency>>();
         var paymentProviderRepository = Substitute.For<IRepository<PaymentProvider>>();
+        var deliveryRepository = Substitute.For<IRepository<Delivery>>();
+        var deliveryPaymentAttemptRepository = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
         var eventPublisher = Substitute.For<IEventPublisher>();
         var customTelemetryContext = Substitute.For<ICustomTelemetryContext>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
@@ -30,6 +33,8 @@ public sealed class When_ReconcilingPayments_WithConfiguredSchedule_Should
             .AddSingleton(paymentTransactionRepository)
             .AddSingleton(currencyRepository)
             .AddSingleton(paymentProviderRepository)
+            .AddSingleton(deliveryRepository)
+            .AddSingleton(deliveryPaymentAttemptRepository)
             .AddSingleton<IEnumerable<IPaymentProviderService>>([paymentProviderService])
             .AddSingleton(eventPublisher)
             .AddSingleton(customTelemetryContext)

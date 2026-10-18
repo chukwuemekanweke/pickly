@@ -1,9 +1,12 @@
 using BLVK.Pickly.Logistics.Contracts.Events;
+using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Exceptions;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using BLVK.Pickly.Logistics.Domain.Payments.Specifications;
@@ -14,6 +17,8 @@ public sealed class PaymentReconciliationService(
     IRepository<PaymentTransaction> paymentTransactionRepository,
     IRepository<Currency> currencyRepository,
     IRepository<PaymentProvider> paymentProviderRepository,
+    IRepository<Delivery> deliveryRepository,
+    IRepository<DeliveryPaymentAttempt> deliveryPaymentAttemptRepository,
     IEnumerable<IPaymentProviderService> paymentProviderServices,
     IEventPublisher eventPublisher,
     ICustomTelemetryContext customTelemetryContext,
@@ -67,7 +72,27 @@ public sealed class PaymentReconciliationService(
             switch (verificationResult.VerificationStatus)
             {
                 case PaymentProviderVerificationStatus.Succeeded when transaction.PaymentStatus != Contracts.Payments.PaymentStatus.Succeeded:
-                    transaction.MarkSucceeded(verificationResult.ProviderReference, verificationResult.StatusChangeReason, now);
+                    var verifiedAmount = verificationResult.VerifiedAmount ?? transaction.Amount;
+                    var verifiedCurrencyMatches = string.Equals(
+                        verificationResult.VerifiedCurrencyCode,
+                        currency.CurrencyCode,
+                        StringComparison.OrdinalIgnoreCase);
+                    if (transaction.PaymentIntent == PaymentIntent.DeliveryPayment &&
+                        (verificationResult.VerifiedAmount is null || !verifiedCurrencyMatches))
+                    {
+                        var attempt = await deliveryPaymentAttemptRepository.FirstOrDefaultAsync(
+                            new DeliveryPaymentAttemptByTransactionSpecification(transaction.Id, enableTracking: true),
+                            cancellationToken);
+                        attempt?.RecordApplicationException("Provider verification did not establish the expected amount and currency.");
+                        break;
+                    }
+
+                    transaction.ConfirmVerifiedSettlement(
+                        verificationResult.ProviderReference,
+                        verifiedAmount,
+                        transaction.CurrencyId,
+                        verificationResult.VerifiedAtUtc ?? now,
+                        verificationResult.StatusChangeReason);
                     await eventPublisher.PublishAsync(
                         new SuccessfulPaymentConfirmed
                         {
@@ -75,8 +100,8 @@ public sealed class PaymentReconciliationService(
                             MerchantReference = transaction.MerchantReference,
                             PaymentIntent = transaction.PaymentIntent,
                             PaymentProviderId = transaction.PaymentProviderId,
-                            Amount = transaction.Amount,
-                            CurrencyId = transaction.CurrencyId,
+                            Amount = verifiedAmount,
+                            CurrencyId = transaction.VerifiedCurrencyId!.Value,
                             StakeholderId = transaction.StakeholderId,
                             TenantId = transaction.TenantId,
                             FlowId = string.Empty,
@@ -94,12 +119,13 @@ public sealed class PaymentReconciliationService(
                                 transaction.MerchantReference,
                                 Contracts.Payments.PaymentStatus.Succeeded.ToString())));
                     break;
-                case PaymentProviderVerificationStatus.Failed when transaction.PaymentStatus != Contracts.Payments.PaymentStatus.Failed:
+                case PaymentProviderVerificationStatus.Failed when transaction.PaymentStatus is Contracts.Payments.PaymentStatus.PendingInitiation or Contracts.Payments.PaymentStatus.Initiated:
                     transaction.MarkFailed(
                         verificationResult.ProviderReference,
                         verificationResult.FailureReason,
                         verificationResult.StatusChangeReason,
                         now);
+                    await RecordCurrentDeliveryAttemptFailedAsync(transaction, cancellationToken);
                     customTelemetryContext.AddCustomEvent(
                         Observability.EventNames.Payments.ReconciliationFailed,
                         ObservabilityEventProperties.Create(
@@ -111,11 +137,12 @@ public sealed class PaymentReconciliationService(
                                 transaction.MerchantReference,
                                 Contracts.Payments.PaymentStatus.Failed.ToString())));
                     break;
-                case PaymentProviderVerificationStatus.Expired when transaction.PaymentStatus != Contracts.Payments.PaymentStatus.Expired:
+                case PaymentProviderVerificationStatus.Expired when transaction.PaymentStatus is Contracts.Payments.PaymentStatus.PendingInitiation or Contracts.Payments.PaymentStatus.Initiated:
                     transaction.MarkExpired(
                         verificationResult.ProviderReference,
                         verificationResult.FailureReason,
                         verificationResult.StatusChangeReason);
+                    await RecordCurrentDeliveryAttemptFailedAsync(transaction, cancellationToken);
                     customTelemetryContext.AddCustomEvent(
                         Observability.EventNames.Payments.ReconciliationFailed,
                         ObservabilityEventProperties.Create(
@@ -136,6 +163,26 @@ public sealed class PaymentReconciliationService(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new ReconcilePaymentsResult(transactions.Count);
+    }
+
+    private async Task RecordCurrentDeliveryAttemptFailedAsync(
+        PaymentTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        if (transaction.PaymentIntent != PaymentIntent.DeliveryPayment)
+        {
+            return;
+        }
+
+        var attempt = await deliveryPaymentAttemptRepository.FirstOrDefaultAsync(
+            new DeliveryPaymentAttemptByTransactionSpecification(transaction.Id), cancellationToken);
+        if (attempt is null)
+        {
+            return;
+        }
+
+        var delivery = await deliveryRepository.GetByIdAsync(attempt.DeliveryId, cancellationToken);
+        delivery?.RecordPrepaidPaymentAttemptFailed(transaction.Id);
     }
 
     private static Dictionary<string, string> CreateReconciliationProperties(

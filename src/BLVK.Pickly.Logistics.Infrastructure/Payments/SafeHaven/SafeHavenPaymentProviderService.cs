@@ -60,6 +60,9 @@ internal sealed class SafeHavenPaymentProviderService(
             return new PaymentProviderVerificationResult(
                 PaymentProviderVerificationStatus.Succeeded,
                 request.ProviderReference,
+                virtualAccount.Amount,
+                virtualAccount.CurrencyCode,
+                virtualAccount.UpdatedAt,
                 null,
                 KnownPaymentTransactionChangeReasons.ReconciliationConfirmedSuccess);
         }
