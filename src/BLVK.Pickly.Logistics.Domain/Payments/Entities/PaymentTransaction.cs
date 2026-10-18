@@ -45,6 +45,10 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
     public Guid InitiatedByUserId { get; private set; }
     public Guid StakeholderId { get; private set; }
     public Guid TenantId { get; private set; }
+    public decimal? VerifiedAmount { get; private set; }
+    public Guid? VerifiedCurrencyId { get; private set; }
+    public string? VerifiedCurrencyCode { get; private set; }
+    public DateTimeOffset? ProviderVerifiedAtUtc { get; private set; }
     public string? FailureReason { get; private set; }
     public string? StatusChangeReason { get; private set; }
     public DateTimeOffset? ExpiresAtUtc { get; private set; }
@@ -78,7 +82,7 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
             tenantId);
 
     public bool HasReachedTerminalState() =>
-        PaymentStatus is PaymentStatus.Succeeded or PaymentStatus.Failed or PaymentStatus.Cancelled or PaymentStatus.Expired;
+        PaymentStatus is PaymentStatus.Succeeded or PaymentStatus.Failed or PaymentStatus.Cancelled or PaymentStatus.Expired or PaymentStatus.Unresolved;
 
     public void MarkInitiated(
         string providerReference,
@@ -115,13 +119,89 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
         FailureReason = null;
     }
 
+    public void ConfirmVerifiedSettlement(
+        string? providerReference,
+        decimal verifiedAmount,
+        Guid verifiedCurrencyId,
+        DateTimeOffset verifiedAtUtc,
+        string? statusChangeReason,
+        string? verifiedCurrencyCode = null)
+    {
+        EnsureCanTransitionFrom(PaymentStatus.PendingInitiation, PaymentStatus.Initiated);
+        ConfirmVerifiedSettlementCore(
+            providerReference,
+            verifiedAmount,
+            verifiedCurrencyId,
+            verifiedAtUtc,
+            statusChangeReason,
+            verifiedCurrencyCode);
+    }
+
+    public void ConfirmLateVerifiedSettlement(
+        string? providerReference,
+        decimal verifiedAmount,
+        Guid verifiedCurrencyId,
+        DateTimeOffset verifiedAtUtc,
+        string? statusChangeReason,
+        string? verifiedCurrencyCode = null)
+    {
+        if (PaymentIntent != PaymentIntent.DeliveryPayment ||
+            PaymentStatus is not (PaymentStatus.Failed or PaymentStatus.Expired))
+        {
+            throw new AggregateStateException(
+                $"Payment transaction '{MerchantReference}' cannot record a late settlement from '{PaymentStatus}'.");
+        }
+
+        ConfirmVerifiedSettlementCore(
+            providerReference,
+            verifiedAmount,
+            verifiedCurrencyId,
+            verifiedAtUtc,
+            statusChangeReason,
+            verifiedCurrencyCode);
+    }
+
+    public void MarkUnresolved(
+        string? providerReference,
+        decimal? verifiedAmount,
+        Guid? verifiedCurrencyId,
+        string? verifiedCurrencyCode,
+        DateTimeOffset? verifiedAtUtc,
+        string reason,
+        string? statusChangeReason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("An unresolved settlement reason is required.", nameof(reason));
+        }
+
+        var isLateDeliverySettlement =
+            PaymentIntent == PaymentIntent.DeliveryPayment &&
+            PaymentStatus is PaymentStatus.Failed or PaymentStatus.Expired;
+        if (!isLateDeliverySettlement)
+        {
+            EnsureCanTransitionFrom(PaymentStatus.PendingInitiation, PaymentStatus.Initiated);
+        }
+
+        ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
+        PaymentStatus = PaymentStatus.Unresolved;
+        VerifiedAmount = verifiedAmount;
+        VerifiedCurrencyId = verifiedCurrencyId;
+        VerifiedCurrencyCode = NormalizeCurrencyCode(verifiedCurrencyCode);
+        ProviderVerifiedAtUtc = verifiedAtUtc?.ToUniversalTime();
+        FailureReason = reason.Trim();
+        StatusChangeReason = statusChangeReason;
+        CompletedAtUtc = null;
+        FailedAtUtc = null;
+    }
+
     public void MarkFailed(
         string? providerReference,
         string? failureReason,
         string? statusChangeReason,
         DateTimeOffset failedAtUtc)
     {
-        EnsureCanTransitionFrom(PaymentStatus.Initiated);
+        EnsureCanTransitionFrom(PaymentStatus.PendingInitiation, PaymentStatus.Initiated);
         ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
         PaymentStatus = PaymentStatus.Failed;
         FailureReason = failureReason;
@@ -134,7 +214,7 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
         string? failureReason,
         string? statusChangeReason)
     {
-        EnsureCanTransitionFrom(PaymentStatus.Initiated);
+        EnsureCanTransitionFrom(PaymentStatus.PendingInitiation, PaymentStatus.Initiated);
         ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
         PaymentStatus = PaymentStatus.Expired;
         FailureReason = failureReason;
@@ -144,6 +224,34 @@ public sealed class PaymentTransaction : Entity, IAggregateRoot
     }
 
     public void RecordStatusCheck(DateTimeOffset utcNow) => LastStatusCheckAtUtc = utcNow;
+
+    private void ConfirmVerifiedSettlementCore(
+        string? providerReference,
+        decimal verifiedAmount,
+        Guid verifiedCurrencyId,
+        DateTimeOffset verifiedAtUtc,
+        string? statusChangeReason,
+        string? verifiedCurrencyCode)
+    {
+        if (verifiedAmount != Amount || verifiedCurrencyId != CurrencyId)
+        {
+            throw new AggregateStateException("Verified settlement must exactly match the requested amount and currency.");
+        }
+
+        ProviderReference = string.IsNullOrWhiteSpace(providerReference) ? ProviderReference : providerReference.Trim();
+        PaymentStatus = PaymentStatus.Succeeded;
+        VerifiedAmount = verifiedAmount;
+        VerifiedCurrencyId = verifiedCurrencyId;
+        VerifiedCurrencyCode = NormalizeCurrencyCode(verifiedCurrencyCode);
+        ProviderVerifiedAtUtc = verifiedAtUtc.ToUniversalTime();
+        StatusChangeReason = statusChangeReason;
+        CompletedAtUtc = verifiedAtUtc.ToUniversalTime();
+        FailedAtUtc = null;
+        FailureReason = null;
+    }
+
+    private static string? NormalizeCurrencyCode(string? currencyCode) =>
+        string.IsNullOrWhiteSpace(currencyCode) ? null : currencyCode.Trim().ToUpperInvariant();
 
     private void EnsureCanTransitionFrom(params PaymentStatus[] allowedStatuses)
     {

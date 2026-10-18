@@ -2,6 +2,7 @@ using BLVK.Pickly.Logistics.Consumer.Payments;
 using BLVK.Pickly.Logistics.Contracts.Commands.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using Chidelu.Integration.Messaging.RabbitMQ.Consumer;
 
@@ -18,11 +19,15 @@ internal sealed class PaymentsConsumerTestContext
     public IRepository<WalletTransaction> WalletTransactionRepository { get; } = Substitute.For<IRepository<WalletTransaction>>();
     public IRepository<SubscriptionActivation> SubscriptionActivationRepository { get; } = Substitute.For<IRepository<SubscriptionActivation>>();
     public IRepository<MessageInbox> MessageInboxRepository { get; } = Substitute.For<IRepository<MessageInbox>>();
+    public IRepository<DeliveryPaymentAttempt> DeliveryPaymentAttemptRepository { get; } = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
+    public IRepository<PaymentTransaction> PaymentTransactionRepository { get; } = Substitute.For<IRepository<PaymentTransaction>>();
+    public IRepository<Delivery> DeliveryRepository { get; } = Substitute.For<IRepository<Delivery>>();
     public IUnitOfWork UnitOfWork { get; } = Substitute.For<IUnitOfWork>();
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 4, 25, 14, 0, 0, TimeSpan.Zero));
     public ILogger<SuccessfulPaymentConfirmedHandler> SuccessfulPaymentConfirmedLogger { get; } = Substitute.For<ILogger<SuccessfulPaymentConfirmedHandler>>();
     public ILogger<CreditWalletHandler> CreditWalletLogger { get; } = Substitute.For<ILogger<CreditWalletHandler>>();
     public ILogger<ActivateSubscriptionHandler> ActivateSubscriptionLogger { get; } = Substitute.For<ILogger<ActivateSubscriptionHandler>>();
+    public ILogger<ConfirmDeliveryPaymentHandler> ConfirmDeliveryPaymentLogger { get; } = Substitute.For<ILogger<ConfirmDeliveryPaymentHandler>>();
 
     public SuccessfulPaymentConfirmedHandler CreateSuccessfulPaymentConfirmedHandler() =>
         new(CustomTelemetryContext, CurrentActorAccessor, MessageContext, CommandSender, UnitOfWork, Clock, MessageInboxRepository, SuccessfulPaymentConfirmedLogger);
@@ -50,6 +55,19 @@ internal sealed class PaymentsConsumerTestContext
             Clock,
             MessageInboxRepository,
             ActivateSubscriptionLogger);
+
+    public ConfirmDeliveryPaymentHandler CreateConfirmDeliveryPaymentHandler() =>
+        new(
+            CustomTelemetryContext,
+            CurrentActorAccessor,
+            MessageContext,
+            DeliveryPaymentAttemptRepository,
+            PaymentTransactionRepository,
+            DeliveryRepository,
+            UnitOfWork,
+            Clock,
+            MessageInboxRepository,
+            ConfirmDeliveryPaymentLogger);
 
     public CreditWalletCommand CreateCreditWalletCommand(decimal amount, Guid currencyId)
     {

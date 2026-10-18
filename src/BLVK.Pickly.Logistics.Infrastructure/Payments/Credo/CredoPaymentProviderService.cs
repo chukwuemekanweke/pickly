@@ -69,6 +69,9 @@ internal sealed class CredoPaymentProviderService(
                 => new PaymentProviderVerificationResult(
                     PaymentProviderVerificationStatus.Succeeded,
                     NormalizeOptional(response.TransRef) ?? request.ProviderReference,
+                    response.TransAmount,
+                    NormalizeOptional(response.CurrencyCode),
+                    ParseVerifiedAt(response.TransactionDate),
                     null,
                     KnownPaymentTransactionChangeReasons.ReconciliationConfirmedSuccess),
             CredoTransactionStatuses.Failed or CredoTransactionStatuses.Declined
@@ -131,6 +134,9 @@ internal sealed class CredoPaymentProviderService(
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static DateTimeOffset? ParseVerifiedAt(string? value) =>
+        DateTimeOffset.TryParse(value, out var parsed) ? parsed.ToUniversalTime() : null;
 
     private static string NormalizeFailureReason(string? message, int status) =>
         string.IsNullOrWhiteSpace(message)

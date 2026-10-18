@@ -435,8 +435,10 @@ WITH provider_config_source AS (
     FROM (VALUES
         ('safehaven', 'NGN', 1, 2, TRUE),
         ('safehaven', 'NGN', 2, 2, TRUE),
+        ('safehaven', 'NGN', 3, 2, TRUE),
         ('credo', 'NGN', 1, 1, TRUE),
-        ('credo', 'NGN', 2, 1, TRUE)
+        ('credo', 'NGN', 2, 1, TRUE),
+        ('credo', 'NGN', 3, 1, TRUE)
     ) AS cfg("ProviderKey", "CurrencyCode", "PaymentIntent", "PaymentMethodType", "IsEnabled")
     INNER JOIN payments."PaymentProviders" pp ON pp."ProviderKey" = cfg."ProviderKey"
     INNER JOIN payments."Currencies" c ON c."CurrencyCode" = cfg."CurrencyCode"

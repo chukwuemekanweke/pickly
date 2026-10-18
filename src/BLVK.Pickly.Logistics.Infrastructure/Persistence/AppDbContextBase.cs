@@ -49,6 +49,7 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryItem> DeliveryItems => Set<DeliveryItem>();
     public DbSet<DeliveryStatusHistory> DeliveryStatusHistory => Set<DeliveryStatusHistory>();
+    public DbSet<DeliveryPaymentAttempt> DeliveryPaymentAttempts => Set<DeliveryPaymentAttempt>();
     public DbSet<SavedPickupLocation> SavedPickupLocations => Set<SavedPickupLocation>();
     public DbSet<VehicleCategory> VehicleCategories => Set<VehicleCategory>();
     public DbSet<DeliveryZone> DeliveryZones => Set<DeliveryZone>();

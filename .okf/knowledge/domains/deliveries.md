@@ -26,6 +26,8 @@ code_refs:
     - src/BLVK.Pickly.Logistics.Infrastructure/Migrations/*AddSharedLocationRegistry*
     - src/BLVK.Pickly.Logistics.Application/Deliveries/**
     - src/BLVK.Pickly.Logistics.WebAPI/Features/Deliveries/**
+    - src/BLVK.Pickly.Logistics.Consumer/Payments/ConfirmDeliveryPaymentHandler.cs
+    - src/BLVK.Pickly.Logistics.Contracts/Commands/Payments/ConfirmDeliveryPaymentCommand.cs
     - tests/unit/BLVK.Pickly.Logistics.Domain.UnitTests/Deliveries/**
     - tests/unit/BLVK.Pickly.Logistics.Application.UnitTests/Deliveries/**
     - tests/integration/BLVK.Pickly.Logistics.WebAPI.IntegrationTests/Deliveries/**
@@ -41,8 +43,10 @@ for ownership scoping. Tenant membership is derived through the owning `Stakehol
 
 Pickup/drop-off addresses, recipient contact data, and the agreed charge are immutable snapshots.
 They do not refer to mutable saved-location or recipient-account records. Delivery charges store the
-existing Payments-domain `Currency` identifier; provider payment attempts remain owned by
-`PaymentTransaction`, and Delivery stores only the trusted successful transaction reference.
+existing Payments-domain `Currency` identifier. Provider payment lifecycle remains owned by generic
+`PaymentTransaction`; delivery-owned `DeliveryPaymentAttempt` associates each historical attempt to one Delivery.
+`PaymentTransaction` has no delivery-specific identity. Delivery stores the trusted successful transaction reference
+only after the financial obligation is satisfied; it does not store an active-attempt reference.
 
 ## Creation and dispatch
 
@@ -64,8 +68,8 @@ recipient/cash for Pay On Delivery. These are not independently mutable.
 Trusted application workflows satisfy the delivery-level obligation by supplying references and
 amount/currency evidence to `ConfirmVerifiedPrepaidPayment` or `ConfirmFullCashCollection`. Both
 require the exact agreed amount and currency, and repeated confirmation with the same reference is
-idempotent. A failed provider attempt returns prepaid delivery payment state to pending rather than
-permanently failing the delivery.
+idempotent. For prepaid deliveries, `Delivery.PaymentStatus` remains pending while provider attempts are in progress;
+processing state is derived from associated transactions instead of independently mutated on Delivery.
 
 The normal fulfillment sequence is `PendingAssignment -> RiderAssigned -> PickedUp -> InTransit ->
 Delivered`. Completion requires an assigned rider, proof-of-delivery reference, and a fully satisfied
@@ -108,6 +112,29 @@ responses as attempts and use verified provider evidence before calling `Confirm
 itself never marks payment paid or activates fulfillment. Later phases own rider discovery, cash collection, proof,
 remittance and public tracking. They must call existing aggregate transitions and must not introduce a generic status
 setter or treat delivery status as financial truth.
+
+Phase 5 exposes sender-scoped `POST` and `GET /api/v1/deliveries/{deliveryId}/payments`. Initiation derives the exact
+charge from Delivery, reserves `PaymentTransaction` plus `DeliveryPaymentAttempt` under a PostgreSQL advisory lock,
+commits them before provider I/O, and reuses the stable merchant reference for ambiguous retries. Before provider I/O
+it acquires the same delivery-scoped transaction advisory lock again, re-reads current transaction state, and keeps
+the lock through the provider call and persisted `Initiated` transition. This prevents two concurrent requests,
+including requests handled by different application instances, from initializing the same reserved transaction.
+
+The association has a unique `PaymentTransactionId` and a per-delivery idempotency-key constraint; a delivery may
+retain many failed, expired or incomplete attempts. A single joined projection loads attempt, transaction, provider
+and currency data; request and history paths must not perform per-attempt lookups. Initiation first checks globally
+for any unresolved transaction and returns review-required without instructions. It then honors an exact idempotency
+key as immutable: pending initiation resumes the same reservation; initiated or succeeded replays that outcome;
+failed, expired or cancelled returns its distinct historical outcome. Only a new key considers outstanding state, in
+the explicit order `Succeeded`, `Initiated`, `PendingInitiation`; a different requested provider returns a conflict,
+while same-provider reuse does not associate the new key with the old attempt. Failed, expired and cancelled history
+otherwise permits a new attempt. Numeric enum ordering must not encode this business priority.
+
+Provider success continues through the generic outbox event. `SuccessfulPaymentConfirmedHandler` routes
+`DeliveryPayment` to `ConfirmDeliveryPaymentCommand`; its consumer reloads the attempt, Delivery and persisted
+PaymentTransaction, validates intent, ownership, exact verified amount/currency and association, then invokes
+`ConfirmVerifiedPrepaidPayment`. Duplicate application is idempotent. Late payment after cancellation and an extra
+successful transaction remain visible on the attempt as operational exceptions; Phase 5 does not refund.
 
 ## Saved pickup locations
 

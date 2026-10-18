@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<IPickupLocationConsistencyLock, PickupLocationConsistencyLock>();
+        services.AddScoped<IDeliveryPaymentInitiationConsistencyLock, PaymentInitiationConsistencyLock>();
         services.AddScoped<IDeliveryBookingPersistence, DeliveryBookingPersistence>();
         services.AddScoped<ILocationRegistrationStore, LocationRegistrationStore>();
         services.AddScoped<ILocationResolutionLease, LocationResolutionLease>();
@@ -61,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISavedPickupLocationReadModelRepository, SavedPickupLocationReadModelRepository>();
         services.AddScoped<ILocationReadModelRepository, LocationReadModelRepository>();
         services.AddScoped<IDeliveryZoneReadModelRepository, DeliveryZoneReadModelRepository>();
+        services.AddScoped<IDeliveryPaymentAttemptReadModelRepository, DeliveryPaymentAttemptReadModelRepository>();
 
         return services;
     }

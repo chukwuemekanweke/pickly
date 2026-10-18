@@ -1,11 +1,16 @@
+using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
+using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using System.Data.Common;
 
 namespace BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries;
 
@@ -54,6 +59,75 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
     }
 
     [Fact]
+    public async Task PersistMultipleAttemptsAndEnforceUniquePaymentTransactionAssociation()
+    {
+        var (delivery, currencyId) = await PersistDeliveryAsync($"PKY-{Guid.NewGuid():N}");
+        using var scope = CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var firstPayment = CreatePaymentTransaction(delivery.SenderId, currencyId);
+        var secondPayment = CreatePaymentTransaction(delivery.SenderId, currencyId);
+        dbContext.AddRange(
+            firstPayment,
+            secondPayment,
+            DeliveryPaymentAttempt.Create(delivery.Id, firstPayment.Id, "first-attempt"),
+            DeliveryPaymentAttempt.Create(delivery.Id, secondPayment.Id, "second-attempt"));
+        await dbContext.SaveChangesAsync();
+
+        var history = await dbContext.DeliveryPaymentAttempts
+            .Where(attempt => attempt.DeliveryId == delivery.Id)
+            .OrderBy(attempt => attempt.CreatedAtUtc)
+            .ToListAsync();
+        history.Count.ShouldBe(2);
+        history.Select(attempt => attempt.PaymentTransactionId)
+            .ShouldBe(new[] { firstPayment.Id, secondPayment.Id }, ignoreOrder: true);
+
+        dbContext.Add(DeliveryPaymentAttempt.Create(delivery.Id, firstPayment.Id, "duplicate-association"));
+
+        await Should.ThrowAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task LoadPaymentAttemptHistoryInOneQuery()
+    {
+        var (delivery, currencyId) = await PersistDeliveryAsync($"PKY-{Guid.NewGuid():N}");
+        string connectionString;
+        using (var scope = CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            connectionString = scope.ServiceProvider.GetRequiredService<IConfiguration>()
+                .GetConnectionString("PostgresRead")!;
+            var provider = PaymentProvider.Create("Projection Provider", $"projection-{Guid.NewGuid():N}", true);
+            var payments = Enumerable.Range(0, 20)
+                .Select(_ => CreatePaymentTransaction(delivery.SenderId, currencyId, provider.Id))
+                .ToArray();
+            dbContext.Add(provider);
+            dbContext.AddRange(payments);
+            dbContext.AddRange(payments.Select((payment, index) =>
+                DeliveryPaymentAttempt.Create(delivery.Id, payment.Id, $"history-{index}")));
+            await dbContext.SaveChangesAsync();
+        }
+
+        var counter = new QueryCountingInterceptor();
+        var writeOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.UseNetTopologySuite())
+            .Options;
+        var readOptions = new DbContextOptionsBuilder<AppReadDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.UseNetTopologySuite())
+            .AddInterceptors(counter)
+            .Options;
+        await using var writeContext = new AppDbContext(writeOptions);
+        await using var readContext = new AppReadDbContext(readOptions);
+        var repository = new DeliveryPaymentAttemptReadModelRepository(writeContext, readContext);
+
+        var history = await repository.ListHistoryAsync(delivery.Id, CancellationToken.None);
+
+        history.Count.ShouldBe(20);
+        history.ShouldAllBe(attempt => attempt.PaymentProviderName == "Projection Provider");
+        history.Select(attempt => attempt.CreatedAtUtc).ShouldBeInOrder(SortDirection.Descending);
+        counter.ReaderCount.ShouldBe(1);
+    }
+
+    [Fact]
     public void ConfigureExpectedSchemaIndexesAndRelationships()
     {
         using var scope = CreateScope();
@@ -63,10 +137,51 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
         deliveryType.ShouldNotBeNull();
         deliveryType.GetSchema().ShouldBe("deliveries");
         deliveryType.GetTableName().ShouldBe("Deliveries");
+        deliveryType.FindProperty("ActivePaymentTransactionId").ShouldBeNull();
         deliveryType.GetIndexes().ShouldContain(index =>
             index.IsUnique && index.Properties.Single().Name == nameof(Delivery.TrackingId));
         deliveryType.GetIndexes().ShouldContain(index =>
             index.Properties.Select(property => property.Name)
                 .SequenceEqual(new[] { nameof(Delivery.SenderId), nameof(Delivery.CreatedAtUtc) }));
+
+        var attemptType = dbContext.Model.FindEntityType(typeof(DeliveryPaymentAttempt));
+        attemptType.ShouldNotBeNull();
+        attemptType.GetIndexes().ShouldContain(index =>
+            index.IsUnique && index.Properties.Single().Name == nameof(DeliveryPaymentAttempt.PaymentTransactionId));
+    }
+
+    private static PaymentTransaction CreatePaymentTransaction(Guid stakeholderId, Guid currencyId) =>
+        CreatePaymentTransaction(stakeholderId, currencyId, Guid.CreateVersion7());
+
+    private static PaymentTransaction CreatePaymentTransaction(
+        Guid stakeholderId,
+        Guid currencyId,
+        Guid providerId) =>
+        PaymentTransaction.Create(
+            $"delivery_{Guid.CreateVersion7():N}",
+            PaymentIntent.DeliveryPayment,
+            providerId,
+            1234.56m,
+            currencyId,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            stakeholderId,
+            Guid.CreateVersion7());
+
+    private sealed class QueryCountingInterceptor : DbCommandInterceptor
+    {
+        private int _readerCount;
+
+        public int ReaderCount => _readerCount;
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _readerCount);
+            return ValueTask.FromResult(result);
+        }
     }
 }

@@ -4,11 +4,17 @@ using BLVK.Pickly.Logistics.Infrastructure.Payments.Credo;
 using BLVK.Pickly.Logistics.Infrastructure.Payments.SafeHaven;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Polly;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Payments;
 
 public static class ServiceCollectionExtensions
 {
+    private static readonly IAsyncPolicy<HttpResponseMessage> TransientReadRetryPolicy =
+        HttpRetryPolicies.CreateTransientRetryPolicy();
+    private static readonly IAsyncPolicy<HttpResponseMessage> NoRetryPolicy =
+        Policy.NoOpAsync<HttpResponseMessage>();
+
     public static IServiceCollection AddPaymentServices(this IServiceCollection services, IConfiguration configuration)
     {
         var safeHavenOptions = configuration.GetSection(SafeHavenOptions.SectionName).Get<SafeHavenOptions>() ?? new SafeHavenOptions();
@@ -22,13 +28,13 @@ public static class ServiceCollectionExtensions
             client.BaseAddress = new Uri(safeHavenOptions.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(10);
         })
-        .AddPolicyHandler(HttpRetryPolicies.CreateTransientRetryPolicy());
+        .AddPolicyHandler(SelectPaymentHttpPolicy);
         services.AddHttpClient(PaymentHttpClientNames.Credo, client =>
         {
             client.BaseAddress = new Uri(credoOptions.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(10);
         })
-        .AddPolicyHandler(HttpRetryPolicies.CreateTransientRetryPolicy());
+        .AddPolicyHandler(SelectPaymentHttpPolicy);
 
         services.AddScoped<ISafeHavenClient, SafeHavenClient>();
         services.AddScoped<ICredoClient, CredoClient>();
@@ -38,4 +44,9 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    internal static IAsyncPolicy<HttpResponseMessage> SelectPaymentHttpPolicy(HttpRequestMessage request) =>
+        request.Method == HttpMethod.Get || request.Method == HttpMethod.Head
+            ? TransientReadRetryPolicy
+            : NoRetryPolicy;
 }

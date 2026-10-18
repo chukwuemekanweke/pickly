@@ -11,4 +11,5 @@ public static class KnownPaymentTransactionChangeReasons
     public const string ReconciliationConfirmedRefundQueued = "reconciliation_confirmed_refund_queued";
     public const string ReconciliationConfirmedExpired = "reconciliation_confirmed_expired";
     public const string ReconciliationStillProcessing = "reconciliation_still_processing";
+    public const string ReconciliationUnresolvedSettlement = "reconciliation_unresolved_settlement";
 }

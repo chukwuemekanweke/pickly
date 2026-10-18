@@ -46,6 +46,15 @@ processes holding DLL locks and cause transient build failures.
 - Add at most one short explanatory body sentence when the subject alone is insufficient.
 - For pull-request work, retrieve the applicable OKF workflow before drafting.
 
+## Engineering invariants
+
+- Public and persisted enums use explicit one-based values; append new values and never renumber existing ones.
+- An idempotency key is permanently bound to its original operation and outcome; retries never redirect to a newer attempt.
+- Ambiguous or unresolved financial outcomes block new charges and automated fulfillment until an explicit review resolves them.
+- Keep provider evidence on the generic payment transaction and apply verified settlement to business aggregates separately.
+- Use scoped projections or bounded batch queries for related read data; do not introduce per-row repository lookups.
+- When domain, persistence, or asynchronous behavior changes, update the covering OKF concept in the same change.
+
 ## Always
 
 - Never commit or print secrets, credentials, connection strings, or API keys.

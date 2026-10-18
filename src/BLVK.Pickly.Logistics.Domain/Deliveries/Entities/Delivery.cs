@@ -211,28 +211,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         _items.Remove(item);
     }
 
-    public void MarkPrepaidPaymentProcessing()
-    {
-        EnsurePrepaidOrder();
-        if (PaymentStatus != DeliveryPaymentStatus.Pending)
-        {
-            throw new AggregateStateException($"Payment cannot start processing from '{PaymentStatus}'.");
-        }
-
-        PaymentStatus = DeliveryPaymentStatus.Processing;
-    }
-
-    public void RecordPrepaidPaymentAttemptFailed()
-    {
-        EnsurePrepaidOrder();
-        if (PaymentStatus != DeliveryPaymentStatus.Processing)
-        {
-            throw new AggregateStateException($"A payment attempt cannot fail from '{PaymentStatus}'.");
-        }
-
-        PaymentStatus = DeliveryPaymentStatus.Pending;
-    }
-
     public void ConfirmVerifiedPrepaidPayment(
         Guid paymentTransactionId,
         decimal verifiedAmount,

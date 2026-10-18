@@ -54,12 +54,14 @@ internal sealed class SafeHavenPaymentProviderService(
         var response = await client.GetVirtualAccountAsync(request.ProviderReference, cancellationToken);
         var virtualAccount = response.Data;
 
-        if (string.Equals(virtualAccount.Status, SafeHavenVirtualAccountStatuses.Completed, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(virtualAccount.Status, SafeHavenVirtualAccountStatuses.Active, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(virtualAccount.Status, SafeHavenVirtualAccountStatuses.Completed, StringComparison.OrdinalIgnoreCase))
         {
             return new PaymentProviderVerificationResult(
                 PaymentProviderVerificationStatus.Succeeded,
                 request.ProviderReference,
+                virtualAccount.Amount,
+                virtualAccount.CurrencyCode,
+                virtualAccount.UpdatedAt,
                 null,
                 KnownPaymentTransactionChangeReasons.ReconciliationConfirmedSuccess);
         }

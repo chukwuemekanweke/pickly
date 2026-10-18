@@ -76,10 +76,26 @@ public sealed class SuccessfulPaymentConfirmedHandler(
                         }));
                 break;
 
+            case PaymentIntent.DeliveryPayment:
+                await commandSender.SendAsync(
+                    new ConfirmDeliveryPaymentCommand(
+                        message.PaymentTransactionId,
+                        message.MerchantReference,
+                        message.Amount,
+                        message.CurrencyId)
+                    {
+                        StakeholderId = message.StakeholderId,
+                        TenantId = message.TenantId,
+                        FlowId = message.FlowId
+                    },
+                    cancellationToken);
+                break;
+
             default:
                 throw new CannotProcessMessageNonTransientException(
                     $"Unsupported payment intent '{message.PaymentIntent}'.");
         }
 
     }
+
 }
