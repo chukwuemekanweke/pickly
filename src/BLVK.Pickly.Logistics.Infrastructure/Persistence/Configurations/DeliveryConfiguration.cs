@@ -39,6 +39,10 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
             .HasFilter("\"IsDeleted\" = FALSE");
         builder.HasIndex(delivery => new { delivery.Status, delivery.DispatchEligibleAtUtc })
             .HasFilter("\"IsDeleted\" = FALSE");
+        builder.HasIndex(delivery => delivery.RiderId)
+            .HasDatabaseName("IX_Deliveries_RiderId")
+            .IsUnique()
+            .HasFilter("\"RiderId\" IS NOT NULL AND \"Status\" IN (4, 5, 6) AND \"IsDeleted\" = FALSE");
 
         builder.HasOne<Stakeholder>()
             .WithMany()

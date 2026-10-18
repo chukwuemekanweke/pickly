@@ -49,6 +49,38 @@ status: stable
 New entities need an explicit `IEntityTypeConfiguration<T>` — do not rely on EF Core conventions alone for anything with non-trivial constraints, indexes, or owned types. New aggregates need a
 specification-based query path rather than ad hoc LINQ scattered across handlers.
 
+Transactional use cases that need provider-specific behavior (locks, isolation levels, PostGIS SQL) get a narrow,
+purpose-specific port in `Domain/<Area>/Persistence/` with one Infrastructure implementation per port, as in
+`DeliveryBookingPersistence` and the rider ports under `Persistence/Riders/`. Shared query/lock helpers may be factored
+into an internal scoped helper that shares the same `AppDbContext`; do not merge unrelated use cases into one store.
+
+Infrastructure persistence code owns mechanics, not use-case policy. It may start/commit/roll back transactions, acquire
+locks, translate provider conflicts, maintain EF shadow properties, and execute bounded provider-specific queries. It
+returns domain aggregates, factual projections, or database outcomes to Application. It must not decide authentication/
+authorization outcomes, eligibility, freshness, expiry/retry policy, aggregate transitions, or application result
+statuses. Application handlers coordinate those facts inside the transaction abstraction and invoke domain methods.
+
+Rider operations demonstrate the split: `RiderTransactionFactory` and `RiderConsistencyLock` preserve PostgreSQL
+isolation and stable advisory-lock ordering; `RiderGeographyQueries` and purpose-specific reader/persistence ports own
+PostGIS and EF queries. Rider handlers own offer expiry/acceptance/rejection, availability, matching retry/radius policy,
+assignment eligibility, aggregate transitions and operation-specific results. Unit tests exercise those decisions with
+mocked ports; integration tests exercise PostGIS, locking, uniqueness and atomic commits.
+
+`RiderTransactionFactory.ExecuteAsync` is a rider-specific transaction executor, not a generic unit of work. It retries
+the complete callback only for PostgreSQL serialization failures (`40001`) and deadlocks (`40P01`), starts a new
+transaction and clears EF tracking for each bounded attempt, applies configured exponential backoff with jitter, and
+logs retry/exhaustion context. Only the named rider matching/assignment unique indexes are translated to
+`RiderPersistenceConflictException`; unrelated unique violations propagate. A transient connection failure during
+commit becomes `RiderCommitOutcomeUnknownException` so callers can verify an idempotent result instead of assuming the
+commit failed.
+
+Lock-then-reread units should run read committed. Under `SERIALIZABLE`/`REPEATABLE READ`, PostgreSQL fixes the
+snapshot when the first statement starts; when that statement is `pg_advisory_xact_lock`, the snapshot predates the
+lock wait and later reads miss what the previous holder committed. When a locked unit must also update a row that
+other writers change without that advisory lock, take a row lock (`SELECT ... FOR UPDATE`) on it before loading it
+instead of escalating to serializable (rider acceptance does this for `Delivery`); lock queuing replaces `40001`
+retries under contention.
+
 ## Delivery booking transaction
 
 `DeliveryBookingPersistence` is the narrow infrastructure transaction boundary for quote confirmation. The Application

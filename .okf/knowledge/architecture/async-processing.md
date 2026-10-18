@@ -56,4 +56,9 @@ bound to its original delivery attempt and persisted outcome. A delivery-scoped 
 reservation decision and a fresh-state provider-initiation phase; it does not replace the outbox/inbox guarantees for
 later settlement messages, and consumer handlers must still reload and validate authoritative financial evidence.
 
+Rider matching uses a bounded Jobs recovery scan as its durable trigger. It discovers matching-eligible deliveries
+regardless of whether eligibility came from instant cash booking, verified prepayment, scheduled dispatch, rejection or
+offer timeout. Database uniqueness prevents duplicate active sessions/offers, so matching correctness does not depend on
+an event publication or Redis lock; future event-driven wake-ups may reduce latency but must retain this recovery path.
+
 See [[persistence]] for how the outbox table itself is persisted, and [[unit-testing]]/[[integration-testing]] for handler/background-service test coverage requirements.

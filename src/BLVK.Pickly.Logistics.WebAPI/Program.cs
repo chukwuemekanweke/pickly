@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using BLVK.Pickly.Logistics.Application;
 using BLVK.Pickly.Logistics.Domain.Deliveries;
+using BLVK.Pickly.Logistics.Domain.Riders;
 using BLVK.Pickly.Logistics.Infrastructure.Authentication;
 using BLVK.Pickly.Logistics.Infrastructure.Caching;
 using BLVK.Pickly.Logistics.Infrastructure.Deliveries;
@@ -68,6 +69,10 @@ var dispatchOptions = builder.Configuration.GetSection(DeliveryDispatchOptions.S
     ?? throw new InvalidOperationException($"Configuration section '{DeliveryDispatchOptions.SectionName}' is required.");
 dispatchOptions.Validate();
 builder.Services.Configure<DeliveryDispatchOptions>(builder.Configuration.GetSection(DeliveryDispatchOptions.SectionName));
+var riderMatchingOptions = builder.Configuration.GetSection(RiderMatchingOptions.SectionName).Get<RiderMatchingOptions>()
+    ?? throw new InvalidOperationException($"Configuration section '{RiderMatchingOptions.SectionName}' is required.");
+riderMatchingOptions.Validate();
+builder.Services.Configure<RiderMatchingOptions>(builder.Configuration.GetSection(RiderMatchingOptions.SectionName));
 builder.Services.AddPostgresWritePersistence(builder.Configuration);
 builder.Services.AddPostgresReadPersistence(builder.Configuration);
 builder.Services.AddIdentityUserManagement(builder.Configuration);

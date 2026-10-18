@@ -8,6 +8,7 @@ using BLVK.Pickly.Logistics.Domain.Notifications.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Providers.Entities;
 using BLVK.Pickly.Logistics.Domain.ReferenceData.Entities;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -62,6 +63,11 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<LocationProviderReference> LocationProviderReferences => Set<LocationProviderReference>();
     public DbSet<LocationResolutionKey> LocationResolutionKeys => Set<LocationResolutionKey>();
     public DbSet<LocationResolutionLeaseRecord> LocationResolutionLeases => Set<LocationResolutionLeaseRecord>();
+    public DbSet<RiderProfile> RiderProfiles => Set<RiderProfile>();
+    public DbSet<RiderCurrentLocation> RiderCurrentLocations => Set<RiderCurrentLocation>();
+    public DbSet<RiderServiceZone> RiderServiceZones => Set<RiderServiceZone>();
+    public DbSet<DeliveryMatchingSession> DeliveryMatchingSessions => Set<DeliveryMatchingSession>();
+    public DbSet<RiderDeliveryOffer> RiderDeliveryOffers => Set<RiderDeliveryOffer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -50,3 +50,11 @@ endpoint/handler/background-service covering the most meaningful end-to-end path
 - Testcontainers back integration dependencies; shared container setup lives in the project fixture, per-test data setup/cleanup lives in the test class.
 - WebAPI auth integration tests delete the authentication records for the email used by the scenario.
 - Consumer and Jobs integration tests currently validate health endpoints and don't create application records, so cleanup there is normally limited to response/host disposal.
+- Concurrency invariants are an explicit exception to the happy-path-only default: use separate DI scopes/DbContexts
+  against the shared PostgreSQL container and assert persisted outcomes after all racers complete. Order races
+  deterministically: hold the competing advisory lock in a separate scope's transaction and poll `pg_locks` for a
+  non-granted advisory waiter instead of sleeping. Rider coverage includes concurrent processors and deliveries,
+  duplicate acceptance, availability/acceptance and availability/matching races, expiry/acceptance, filtered unique
+  constraints, forced PostgreSQL `40001` retry and retry exhaustion, and PostGIS eligibility cases.
+- The shared container accumulates rows across the sequential collection, so scans in tests use generous batch sizes
+  and generated short unique values (such as three-character currency codes) are checked for existence first.

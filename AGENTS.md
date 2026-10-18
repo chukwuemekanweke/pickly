@@ -48,6 +48,18 @@ processes holding DLL locks and cause transient build failures.
 
 ## Engineering invariants
 
+- New API operations and job units of work follow the established vertical-slice pattern: one feature folder per
+  operation with its own handler, command/query, result and status, and a thin controller that validates with
+  FluentValidation and delegates to that handler. Use `Deliveries/Features/CreateDelivery`, `GetDelivery` and
+  `DeliveryBookingsController` as references. Never consolidate endpoint use cases into a centralized application
+  service or a broad persistence store; see `.okf/knowledge/architecture/vertical-slices.md`.
+- Application handlers own use-case orchestration, business decisions, result selection, and calls to domain state
+  transitions. Infrastructure owns database mechanics only: efficient queries/projections, tracked loading, transaction
+  and advisory-lock implementation, provider-specific SQL, and provider-error translation. Persistence implementations
+  must not decide use-case outcomes or return application status codes; see `.okf/knowledge/infrastructure/persistence.md`.
+- Use `IRepository<T>` plus specifications for straightforward aggregate access. Add a specialized persistence port only
+  for atomic multi-aggregate work, provider-specific queries/locking, complex projections, or bounded bulk processing;
+  do not create one merely to mirror each handler.
 - Public and persisted enums use explicit one-based values; append new values and never renumber existing ones.
 - An idempotency key is permanently bound to its original operation and outcome; retries never redirect to a newer attempt.
 - Ambiguous or unresolved financial outcomes block new charges and automated fulfillment until an explicit review resolves them.

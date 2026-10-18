@@ -9,6 +9,7 @@ using BLVK.Pickly.Logistics.Jobs.Infrastructure.BackgroundServices;
 using BLVK.Pickly.Logistics.Jobs.Observability;
 using BLVK.Pickly.Logistics.Jobs.OutboxProcessing;
 using BLVK.Pickly.Logistics.Jobs.Payments;
+using BLVK.Pickly.Logistics.Jobs.Riders;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +31,7 @@ builder.Services.AddRabbitMqOutboxDispatching(builder.Configuration);
 builder.Services.AddOutboxMessageProcessing(builder.Configuration);
 builder.Services.AddIpAddressLocationEnrichment(builder.Configuration);
 builder.Services.AddPaymentReconciliation(builder.Configuration);
+builder.Services.AddRiderMatching(builder.Configuration);
 builder.Services.AddJobsHealthChecks();
 builder.Services.AddJobsOpenTelemetry(builder.Configuration);
 

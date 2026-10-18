@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         Validate(options.PasswordResetPolicy, nameof(RateLimitingOptions.PasswordResetPolicy));
         Validate(options.TwoFactorVerificationPolicy, nameof(RateLimitingOptions.TwoFactorVerificationPolicy));
         Validate(options.LocationResolutionPolicy, nameof(RateLimitingOptions.LocationResolutionPolicy));
+        Validate(options.RiderLocationPolicy, nameof(RateLimitingOptions.RiderLocationPolicy));
 
         services.Configure<RateLimitingOptions>(configuration.GetSection(RateLimitingOptions.SectionName));
         services.AddRateLimiter(rateLimiterOptions =>
@@ -55,6 +56,10 @@ public static class ServiceCollectionExtensions
             rateLimiterOptions.AddPolicy(
                 RateLimitingPolicyNames.LocationResolutionPolicy,
                 context => CreateFixedWindowPartition(options.LocationResolutionPolicy, ResolveAuthenticatedUserPartitionKey(context)));
+
+            rateLimiterOptions.AddPolicy(
+                RateLimitingPolicyNames.RiderLocationPolicy,
+                context => CreateFixedWindowPartition(options.RiderLocationPolicy, ResolveAuthenticatedUserPartitionKey(context)));
 
             rateLimiterOptions.OnRejected = async (context, cancellationToken) =>
             {
