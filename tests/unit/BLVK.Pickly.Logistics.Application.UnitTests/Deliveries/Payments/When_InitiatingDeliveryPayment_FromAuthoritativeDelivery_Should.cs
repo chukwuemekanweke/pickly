@@ -4,6 +4,7 @@ using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
@@ -31,6 +32,7 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         var countryCurrency = CountryCurrency.Create(countryId, currency.Id, true, true);
         var deliveryRepository = Substitute.For<IRepository<Delivery>>();
         var attemptRepository = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
+        var attemptReadModels = Substitute.For<IDeliveryPaymentAttemptReadModelRepository>();
         var paymentRepository = Substitute.For<IRepository<PaymentTransaction>>();
         var providerRepository = Substitute.For<IRepository<PaymentProvider>>();
         var configurationRepository = Substitute.For<IRepository<PaymentProviderConfiguration>>();
@@ -43,7 +45,7 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         var providerService = Substitute.For<IPaymentProviderService>();
         unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>()).Returns(databaseTransaction);
         deliveryRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Delivery>>(), Arg.Any<CancellationToken>()).Returns(delivery);
-        attemptRepository.ListAsync(Arg.Any<ISpecification<DeliveryPaymentAttempt>>(), Arg.Any<CancellationToken>()).Returns([]);
+        attemptReadModels.ListForDecisionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         stakeholderRepository.GetByIdAsync(senderId, Arg.Any<CancellationToken>()).Returns(stakeholder);
         currencyRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Currency>>(), Arg.Any<CancellationToken>()).Returns(currency);
         currencyRepository.GetByIdAsync(currency.Id, Arg.Any<CancellationToken>()).Returns(currency);
@@ -64,11 +66,38 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         DeliveryPaymentAttempt? persistedAttempt = null;
         paymentRepository.When(repository => repository.AddAsync(Arg.Any<PaymentTransaction>(), Arg.Any<CancellationToken>()))
             .Do(call => persistedPayment = call.ArgAt<PaymentTransaction>(0));
+        paymentRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ => persistedPayment);
         attemptRepository.When(repository => repository.AddAsync(Arg.Any<DeliveryPaymentAttempt>(), Arg.Any<CancellationToken>()))
             .Do(call => persistedAttempt = call.ArgAt<DeliveryPaymentAttempt>(0));
+        attemptReadModels.GetForDecisionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new DeliveryPaymentAttemptReadModel(
+                persistedAttempt!.Id,
+                delivery.Id,
+                persistedPayment!.Id,
+                persistedAttempt.IdempotencyKey,
+                null,
+                null,
+                provider.Id,
+                provider.ProviderName,
+                provider.ProviderKey,
+                persistedPayment.MerchantReference,
+                persistedPayment.PaymentStatus,
+                persistedPayment.Amount,
+                currency.Id,
+                currency.CurrencyCode,
+                null,
+                null,
+                null,
+                null,
+                persistedPayment.CreatedAtUtc,
+                null,
+                persistedPayment.PaymentMethodType,
+                persistedPayment.ProviderPayloadMetadata));
         var handler = new InitiateDeliveryPaymentHandler(
             deliveryRepository,
             attemptRepository,
+            attemptReadModels,
             paymentRepository,
             providerRepository,
             configurationRepository,
@@ -92,7 +121,7 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         persistedAttempt.DeliveryId.ShouldBe(delivery.Id);
         persistedAttempt.PaymentTransactionId.ShouldBe(persistedPayment.Id);
         delivery.PaymentStatus.ShouldBe(DeliveryPaymentStatus.Pending);
-        await databaseTransaction.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+        await databaseTransaction.Received(2).CommitAsync(Arg.Any<CancellationToken>());
     }
 
     private static Delivery CreateDelivery(Guid senderId, Guid currencyId) =>

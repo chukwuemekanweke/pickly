@@ -10,7 +10,11 @@ public enum InitiateDeliveryPaymentStatus
     NotPayable = 4,
     AlreadyPaid = 5,
     ProviderUnavailable = 6,
-    ProviderConflict = 7
+    ProviderConflict = 7,
+    PaymentRequiresReview = 8,
+    PaymentFailed = 9,
+    PaymentExpired = 10,
+    PaymentCancelled = 11
 }
 
 public sealed record InitiateDeliveryPaymentResult(

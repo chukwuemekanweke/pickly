@@ -50,7 +50,19 @@ mismatched evidence moves the transaction to the terminal `Unresolved` state, re
 `VerifiedAmount`, `VerifiedCurrencyId`/`VerifiedCurrencyCode`, timestamp and discrepancy reason, and publishes no
 success event. Unresolved transactions are excluded from automatic reconciliation and require a future explicit,
 auditable resolution workflow. Delivery-payment initiation treats them as outstanding so another charge cannot be
-created while money may have moved.
+created while money may have moved. Its API reports `PaymentRequiresReview` (HTTP 409), never success or provider
+instructions, for every request while any associated transaction is unresolved.
+
+Delivery-payment idempotency keys are immutable operation identities. An exact-key retry returns that attempt's
+persisted outcome, including distinct failed, expired and cancelled results, and is never redirected to another
+outstanding transaction. Provider initialization runs under a second delivery-scoped transaction advisory lock and
+re-reads the transaction after acquiring it; concurrent callers therefore cannot both initialize one reserved
+transaction. The provider call and local `Initiated` transition intentionally occur while that lock is held. The
+stable merchant reference supports investigation and provider-specific recovery, but is not assumed to make every
+provider API retry-safe after a process loses a successful response; such ambiguous failures remain reconciliation
+or manual-review concerns unless the provider offers lookup-by-reference semantics. Payment HTTP clients therefore
+apply automatic transient retries only to `GET`/`HEAD`; provider initialization `POST` requests are never replayed by
+the client policy.
 
 Failed and expired delivery transactions remain reconciliation-eligible for late provider settlement. Only the
 explicit delivery-only late-settlement transition may move those states to `Succeeded`, and it still requires an

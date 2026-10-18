@@ -115,13 +115,20 @@ setter or treat delivery status as financial truth.
 
 Phase 5 exposes sender-scoped `POST` and `GET /api/v1/deliveries/{deliveryId}/payments`. Initiation derives the exact
 charge from Delivery, reserves `PaymentTransaction` plus `DeliveryPaymentAttempt` under a PostgreSQL advisory lock,
-commits them before provider I/O, and reuses the stable merchant reference for ambiguous retries. The association has
-a unique `PaymentTransactionId` and a per-delivery idempotency-key constraint; a delivery may retain many failed,
-expired or incomplete attempts. Initiation loads every association and derives an outstanding attempt from its actual
-transaction status: pending initiation, initiated, succeeded awaiting application, or unresolved. The idempotency key
-wins when it identifies an earlier attempt; otherwise any outstanding financial outcome blocks creation of another
-transaction, and a different requested provider returns a conflict. Failed, expired and cancelled transactions permit
-a new attempt. The delivery-scoped advisory lock serializes this decision across application instances.
+commits them before provider I/O, and reuses the stable merchant reference for ambiguous retries. Before provider I/O
+it acquires the same delivery-scoped transaction advisory lock again, re-reads current transaction state, and keeps
+the lock through the provider call and persisted `Initiated` transition. This prevents two concurrent requests,
+including requests handled by different application instances, from initializing the same reserved transaction.
+
+The association has a unique `PaymentTransactionId` and a per-delivery idempotency-key constraint; a delivery may
+retain many failed, expired or incomplete attempts. A single joined projection loads attempt, transaction, provider
+and currency data; request and history paths must not perform per-attempt lookups. Initiation first checks globally
+for any unresolved transaction and returns review-required without instructions. It then honors an exact idempotency
+key as immutable: pending initiation resumes the same reservation; initiated or succeeded replays that outcome;
+failed, expired or cancelled returns its distinct historical outcome. Only a new key considers outstanding state, in
+the explicit order `Succeeded`, `Initiated`, `PendingInitiation`; a different requested provider returns a conflict,
+while same-provider reuse does not associate the new key with the old attempt. Failed, expired and cancelled history
+otherwise permits a new attempt. Numeric enum ordering must not encode this business priority.
 
 Provider success continues through the generic outbox event. `SuccessfulPaymentConfirmedHandler` routes
 `DeliveryPayment` to `ConfirmDeliveryPaymentCommand`; its consumer reloads the attempt, Delivery and persisted

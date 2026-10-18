@@ -6,8 +6,11 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using System.Data.Common;
 
 namespace BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries;
 
@@ -84,6 +87,47 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
     }
 
     [Fact]
+    public async Task LoadPaymentAttemptHistoryInOneQuery()
+    {
+        var (delivery, currencyId) = await PersistDeliveryAsync($"PKY-{Guid.NewGuid():N}");
+        string connectionString;
+        using (var scope = CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            connectionString = scope.ServiceProvider.GetRequiredService<IConfiguration>()
+                .GetConnectionString("PostgresRead")!;
+            var provider = PaymentProvider.Create("Projection Provider", $"projection-{Guid.NewGuid():N}", true);
+            var payments = Enumerable.Range(0, 20)
+                .Select(_ => CreatePaymentTransaction(delivery.SenderId, currencyId, provider.Id))
+                .ToArray();
+            dbContext.Add(provider);
+            dbContext.AddRange(payments);
+            dbContext.AddRange(payments.Select((payment, index) =>
+                DeliveryPaymentAttempt.Create(delivery.Id, payment.Id, $"history-{index}")));
+            await dbContext.SaveChangesAsync();
+        }
+
+        var counter = new QueryCountingInterceptor();
+        var writeOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.UseNetTopologySuite())
+            .Options;
+        var readOptions = new DbContextOptionsBuilder<AppReadDbContext>()
+            .UseNpgsql(connectionString, npgsql => npgsql.UseNetTopologySuite())
+            .AddInterceptors(counter)
+            .Options;
+        await using var writeContext = new AppDbContext(writeOptions);
+        await using var readContext = new AppReadDbContext(readOptions);
+        var repository = new DeliveryPaymentAttemptReadModelRepository(writeContext, readContext);
+
+        var history = await repository.ListHistoryAsync(delivery.Id, CancellationToken.None);
+
+        history.Count.ShouldBe(20);
+        history.ShouldAllBe(attempt => attempt.PaymentProviderName == "Projection Provider");
+        history.Select(attempt => attempt.CreatedAtUtc).ShouldBeInOrder(SortDirection.Descending);
+        counter.ReaderCount.ShouldBe(1);
+    }
+
+    [Fact]
     public void ConfigureExpectedSchemaIndexesAndRelationships()
     {
         using var scope = CreateScope();
@@ -107,14 +151,37 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
     }
 
     private static PaymentTransaction CreatePaymentTransaction(Guid stakeholderId, Guid currencyId) =>
+        CreatePaymentTransaction(stakeholderId, currencyId, Guid.CreateVersion7());
+
+    private static PaymentTransaction CreatePaymentTransaction(
+        Guid stakeholderId,
+        Guid currencyId,
+        Guid providerId) =>
         PaymentTransaction.Create(
             $"delivery_{Guid.CreateVersion7():N}",
             PaymentIntent.DeliveryPayment,
-            Guid.CreateVersion7(),
+            providerId,
             1234.56m,
             currencyId,
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             stakeholderId,
             Guid.CreateVersion7());
+
+    private sealed class QueryCountingInterceptor : DbCommandInterceptor
+    {
+        private int _readerCount;
+
+        public int ReaderCount => _readerCount;
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _readerCount);
+            return ValueTask.FromResult(result);
+        }
+    }
 }

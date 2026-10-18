@@ -2,9 +2,9 @@ namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDeliveryPayme
 
 public enum GetDeliveryPaymentsStatus
 {
-    Success,
-    NotAuthenticated,
-    NotFound
+    Success = 1,
+    NotAuthenticated = 2,
+    NotFound = 3
 }
 
 public sealed record DeliveryPaymentAttemptResponse(

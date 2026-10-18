@@ -51,4 +51,9 @@ the router nor `ConfirmDeliveryPaymentHandler` can activate downstream business 
 the transaction and validates persisted succeeded status, evidence, association, ownership and agreed charge rather
 than trusting message fields.
 
+HTTP payment-initiation idempotency is distinct from message-inbox redelivery idempotency. The request key remains
+bound to its original delivery attempt and persisted outcome. A delivery-scoped database lock serializes both the
+reservation decision and a fresh-state provider-initiation phase; it does not replace the outbox/inbox guarantees for
+later settlement messages, and consumer handlers must still reload and validate authoritative financial evidence.
+
 See [[persistence]] for how the outbox table itself is persisted, and [[unit-testing]]/[[integration-testing]] for handler/background-service test coverage requirements.

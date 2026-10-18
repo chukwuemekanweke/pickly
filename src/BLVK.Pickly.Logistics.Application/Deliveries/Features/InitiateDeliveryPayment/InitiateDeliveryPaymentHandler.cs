@@ -1,9 +1,9 @@
 using BLVK.Pickly.Logistics.Contracts.Payments;
-using BLVK.Pickly.Logistics.Domain.Common.Exceptions;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Payments;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
@@ -16,6 +16,7 @@ namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.InitiateDelivery
 public sealed class InitiateDeliveryPaymentHandler(
     IRepository<Delivery> deliveries,
     IRepository<DeliveryPaymentAttempt> deliveryPaymentAttempts,
+    IDeliveryPaymentAttemptReadModelRepository paymentAttempts,
     IRepository<PaymentTransaction> paymentTransactions,
     IRepository<PaymentProvider> paymentProviders,
     IRepository<PaymentProviderConfiguration> providerConfigurations,
@@ -36,72 +37,88 @@ public sealed class InitiateDeliveryPaymentHandler(
             return new(InitiateDeliveryPaymentStatus.NotAuthenticated);
         }
 
-        var idempotencyKey = NormalizeIdempotencyKey(command.IdempotencyKey);
+        var decision = await ReserveOrResolveAsync(
+            command,
+            senderId.Value,
+            NormalizeIdempotencyKey(command.IdempotencyKey),
+            cancellationToken);
+        if (decision.Result is not null)
+        {
+            return decision.Result;
+        }
+
+        return await InitiateReservedAttemptAsync(
+            command.DeliveryId,
+            decision.PaymentTransactionId!.Value,
+            decision.IsReplay,
+            cancellationToken);
+    }
+
+    private async Task<InitiationDecision> ReserveOrResolveAsync(
+        InitiateDeliveryPaymentCommand command,
+        Guid senderId,
+        string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         await consistencyLock.AcquireAsync(command.DeliveryId, cancellationToken);
 
         var delivery = await deliveries.FirstOrDefaultAsync(
-            new DeliveryByOwnerAndIdSpecification(senderId.Value, command.DeliveryId, enableTracking: true),
+            new DeliveryByOwnerAndIdSpecification(senderId, command.DeliveryId, enableTracking: true),
             cancellationToken);
         if (delivery is null)
         {
-            return new(InitiateDeliveryPaymentStatus.NotFound);
+            return InitiationDecision.FromResult(new(InitiateDeliveryPaymentStatus.NotFound));
         }
 
         if (delivery.OrderType != DeliveryOrderType.PayBeforeDelivery || delivery.Status != DeliveryStatus.AwaitingPayment)
         {
-            return delivery.PaymentStatus == DeliveryPaymentStatus.Paid
+            return InitiationDecision.FromResult(delivery.PaymentStatus == DeliveryPaymentStatus.Paid
                 ? new(InitiateDeliveryPaymentStatus.AlreadyPaid)
-                : new(InitiateDeliveryPaymentStatus.NotPayable);
+                : new(InitiateDeliveryPaymentStatus.NotPayable));
         }
 
         if (delivery.PaymentStatus == DeliveryPaymentStatus.Paid)
         {
-            return new(InitiateDeliveryPaymentStatus.AlreadyPaid);
+            return InitiationDecision.FromResult(new(InitiateDeliveryPaymentStatus.AlreadyPaid));
         }
 
-        var attempts = await deliveryPaymentAttempts.ListAsync(
-            new DeliveryPaymentAttemptsByDeliverySpecification(delivery.Id, enableTracking: true),
-            cancellationToken);
-        var attemptTransactions = new List<(DeliveryPaymentAttempt Attempt, PaymentTransaction Transaction)>(attempts.Count);
-        foreach (var attempt in attempts)
+        var attempts = await paymentAttempts.ListForDecisionAsync(delivery.Id, cancellationToken);
+
+        // An unresolved financial outcome always wins, including over an exact idempotency-key replay.
+        var unresolved = attempts.FirstOrDefault(attempt => attempt.PaymentStatus == PaymentStatus.Unresolved);
+        if (unresolved is not null)
         {
-            var attemptTransaction = await paymentTransactions.GetByIdAsync(attempt.PaymentTransactionId, cancellationToken)
-                ?? throw new InvalidOperationException(
-                    $"Payment transaction '{attempt.PaymentTransactionId}' was not found for delivery payment attempt '{attempt.Id}'.");
-            attemptTransactions.Add((attempt, attemptTransaction));
+            return InitiationDecision.FromResult(ToResult(unresolved, true));
         }
 
-        var existing = idempotencyKey is null
+        var exactAttempt = idempotencyKey is null
             ? null
-            : attemptTransactions
-                .FirstOrDefault(candidate => candidate.Attempt.IdempotencyKey == idempotencyKey)
-                .Transaction;
-        existing ??= attemptTransactions
-            .Where(candidate => IsOutstanding(candidate.Transaction.PaymentStatus))
-            .OrderBy(candidate => OutstandingPriority(candidate.Transaction.PaymentStatus))
-            .ThenBy(candidate => candidate.Attempt.CreatedAtUtc)
-            .Select(candidate => candidate.Transaction)
-            .FirstOrDefault();
-
-        if (existing is not null)
+            : attempts.FirstOrDefault(attempt => attempt.IdempotencyKey == idempotencyKey);
+        if (exactAttempt is not null)
         {
-            if (existing.PaymentProviderId != command.PaymentProviderId)
-            {
-                return new(InitiateDeliveryPaymentStatus.ProviderConflict);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-            if (existing.PaymentStatus != PaymentStatus.PendingInitiation)
-            {
-                var existingProvider = await paymentProviders.GetByIdAsync(existing.PaymentProviderId, cancellationToken);
-                return ToResult(existing, existingProvider?.ProviderName ?? string.Empty, true);
-            }
-
-            return await InitiateReservedAttemptAsync(existing, cancellationToken, true);
+            return exactAttempt.PaymentStatus == PaymentStatus.PendingInitiation
+                ? InitiationDecision.Initiate(exactAttempt.PaymentTransactionId, true)
+                : InitiationDecision.FromResult(ToResult(exactAttempt, true));
         }
 
-        var stakeholder = await stakeholders.GetByIdAsync(senderId.Value, cancellationToken);
+        // Explicit business order: settled-but-unapplied, provider-initialized, then reserved.
+        var outstanding = attempts.FirstOrDefault(attempt => attempt.PaymentStatus == PaymentStatus.Succeeded)
+            ?? attempts.FirstOrDefault(attempt => attempt.PaymentStatus == PaymentStatus.Initiated)
+            ?? attempts.FirstOrDefault(attempt => attempt.PaymentStatus == PaymentStatus.PendingInitiation);
+        if (outstanding is not null)
+        {
+            if (outstanding.PaymentProviderId != command.PaymentProviderId)
+            {
+                return InitiationDecision.FromResult(new(InitiateDeliveryPaymentStatus.ProviderConflict));
+            }
+
+            return outstanding.PaymentStatus == PaymentStatus.PendingInitiation
+                ? InitiationDecision.Initiate(outstanding.PaymentTransactionId, true)
+                : InitiationDecision.FromResult(ToResult(outstanding, true));
+        }
+
+        var stakeholder = await stakeholders.GetByIdAsync(senderId, cancellationToken);
         var currency = await currencies.FirstOrDefaultAsync(
             new ActiveCurrencyByIdSpecification(delivery.Charge.CurrencyId), cancellationToken);
         if (stakeholder is null || currency is null ||
@@ -109,7 +126,7 @@ public sealed class InitiateDeliveryPaymentHandler(
                 new CountryCurrencyByCountryAndCurrencySpecification(stakeholder.CountryId, delivery.Charge.CurrencyId),
                 cancellationToken) is null)
         {
-            return new(InitiateDeliveryPaymentStatus.ProviderUnavailable);
+            return InitiationDecision.FromResult(new(InitiateDeliveryPaymentStatus.ProviderUnavailable));
         }
 
         var provider = await paymentProviders.FirstOrDefaultAsync(
@@ -119,9 +136,10 @@ public sealed class InitiateDeliveryPaymentHandler(
                 new EnabledPaymentProviderConfigurationSpecification(
                     provider.Id, delivery.Charge.CurrencyId, PaymentIntent.DeliveryPayment),
                 cancellationToken) is null ||
-            providerServices.All(service => !string.Equals(service.ProviderKey, provider.ProviderKey, StringComparison.OrdinalIgnoreCase)))
+            providerServices.All(service => !string.Equals(
+                service.ProviderKey, provider.ProviderKey, StringComparison.OrdinalIgnoreCase)))
         {
-            return new(InitiateDeliveryPaymentStatus.ProviderUnavailable);
+            return InitiationDecision.FromResult(new(InitiateDeliveryPaymentStatus.ProviderUnavailable));
         }
 
         var paymentTransaction = PaymentTransaction.Create(
@@ -134,36 +152,50 @@ public sealed class InitiateDeliveryPaymentHandler(
             stakeholder.AppUserId,
             stakeholder.Id,
             stakeholder.TenantId);
-        var paymentAttempt = DeliveryPaymentAttempt.Create(delivery.Id, paymentTransaction.Id, idempotencyKey);
         await paymentTransactions.AddAsync(paymentTransaction, cancellationToken);
-        await deliveryPaymentAttempts.AddAsync(paymentAttempt, cancellationToken);
+        await deliveryPaymentAttempts.AddAsync(
+            DeliveryPaymentAttempt.Create(delivery.Id, paymentTransaction.Id, idempotencyKey), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return await InitiateReservedAttemptAsync(paymentTransaction, cancellationToken, false);
+        return InitiationDecision.Initiate(paymentTransaction.Id, false);
     }
 
     private async Task<InitiateDeliveryPaymentResult> InitiateReservedAttemptAsync(
-        PaymentTransaction paymentTransaction,
-        CancellationToken cancellationToken,
-        bool isReplay)
+        Guid deliveryId,
+        Guid paymentTransactionId,
+        bool isReplay,
+        CancellationToken cancellationToken)
     {
-        var provider = await paymentProviders.GetByIdAsync(paymentTransaction.PaymentProviderId, cancellationToken)
-            ?? throw new InvalidOperationException("The reserved payment provider no longer exists.");
-        var currency = await currencies.GetByIdAsync(paymentTransaction.CurrencyId, cancellationToken)
-            ?? throw new InvalidOperationException("The reserved payment currency no longer exists.");
+        // Keep the delivery lock through provider I/O and the local state transition. A competing
+        // caller re-reads after this transaction commits and therefore cannot initialize twice.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await consistencyLock.AcquireAsync(deliveryId, cancellationToken);
+
+        var snapshot = await paymentAttempts.GetForDecisionAsync(paymentTransactionId, cancellationToken)
+            ?? throw new InvalidOperationException($"Payment transaction '{paymentTransactionId}' is no longer associated with the delivery.");
+        if (snapshot.PaymentStatus != PaymentStatus.PendingInitiation)
+        {
+            return ToResult(snapshot, true);
+        }
+
+        var paymentTransaction = await paymentTransactions.GetByIdAsync(paymentTransactionId, cancellationToken)
+            ?? throw new InvalidOperationException($"Reserved payment transaction '{paymentTransactionId}' was not found.");
         var service = providerServices.SingleOrDefault(candidate =>
-            string.Equals(candidate.ProviderKey, provider.ProviderKey, StringComparison.OrdinalIgnoreCase))
-            ?? throw new PaymentProviderResolutionException($"No payment provider service is registered for '{provider.ProviderKey}'.");
+            string.Equals(candidate.ProviderKey, snapshot.PaymentProviderKey, StringComparison.OrdinalIgnoreCase));
+        if (service is null)
+        {
+            return ProviderUnavailable(snapshot);
+        }
 
         try
         {
             var result = await service.InitiatePaymentAsync(
                 new PaymentProviderInitiationRequest(
-                    paymentTransaction.MerchantReference,
-                    paymentTransaction.Amount,
-                    currency.CurrencyCode,
-                    paymentTransaction.PaymentIntent,
+                    snapshot.MerchantReference,
+                    snapshot.Amount,
+                    snapshot.CurrencyCode,
+                    PaymentIntent.DeliveryPayment,
                     paymentTransaction.StakeholderId,
                     paymentTransaction.TenantId,
                     paymentTransaction.CountryId),
@@ -175,24 +207,43 @@ public sealed class InitiateDeliveryPaymentHandler(
                 KnownPaymentTransactionChangeReasons.PaymentInitiated);
             paymentTransaction.SetPaymentMethodType(result.PaymentMethodType);
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            return ToResult(paymentTransaction, provider.ProviderName, isReplay);
+            await transaction.CommitAsync(cancellationToken);
+            return ToResult(paymentTransaction, snapshot.PaymentProviderName, isReplay);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new(InitiateDeliveryPaymentStatus.ProviderUnavailable, paymentTransaction.Id, paymentTransaction.MerchantReference);
+            return ProviderUnavailable(snapshot);
         }
         catch (HttpRequestException)
         {
-            return new(InitiateDeliveryPaymentStatus.ProviderUnavailable, paymentTransaction.Id, paymentTransaction.MerchantReference);
+            return ProviderUnavailable(snapshot);
         }
     }
+
+    private static InitiateDeliveryPaymentResult ProviderUnavailable(DeliveryPaymentAttemptReadModel attempt) =>
+        new(InitiateDeliveryPaymentStatus.ProviderUnavailable, attempt.PaymentTransactionId, attempt.MerchantReference);
+
+    private static InitiateDeliveryPaymentResult ToResult(
+        DeliveryPaymentAttemptReadModel attempt,
+        bool isReplay) =>
+        new(
+            ResultStatus(attempt.PaymentStatus),
+            attempt.PaymentTransactionId,
+            attempt.MerchantReference,
+            attempt.PaymentStatus,
+            attempt.PaymentProviderId,
+            attempt.PaymentProviderName,
+            attempt.ExpiresAtUtc,
+            attempt.PaymentMethodType,
+            attempt.PaymentStatus == PaymentStatus.Initiated ? attempt.ProviderPayloadMetadata : null,
+            isReplay);
 
     private static InitiateDeliveryPaymentResult ToResult(
         PaymentTransaction transaction,
         string providerName,
         bool isReplay) =>
         new(
-            InitiateDeliveryPaymentStatus.Success,
+            ResultStatus(transaction.PaymentStatus),
             transaction.Id,
             transaction.MerchantReference,
             transaction.PaymentStatus,
@@ -200,8 +251,17 @@ public sealed class InitiateDeliveryPaymentHandler(
             providerName,
             transaction.ExpiresAtUtc,
             transaction.PaymentMethodType,
-            transaction.ProviderPayloadMetadata,
+            transaction.PaymentStatus == PaymentStatus.Initiated ? transaction.ProviderPayloadMetadata : null,
             isReplay);
+
+    private static InitiateDeliveryPaymentStatus ResultStatus(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Failed => InitiateDeliveryPaymentStatus.PaymentFailed,
+        PaymentStatus.Expired => InitiateDeliveryPaymentStatus.PaymentExpired,
+        PaymentStatus.Cancelled => InitiateDeliveryPaymentStatus.PaymentCancelled,
+        PaymentStatus.Unresolved => InitiateDeliveryPaymentStatus.PaymentRequiresReview,
+        _ => InitiateDeliveryPaymentStatus.Success
+    };
 
     private static string? NormalizeIdempotencyKey(string? value)
     {
@@ -216,18 +276,14 @@ public sealed class InitiateDeliveryPaymentHandler(
             : throw new ArgumentException("Idempotency-Key cannot exceed 200 characters.", nameof(value));
     }
 
-    private static bool IsOutstanding(PaymentStatus status) =>
-        status is PaymentStatus.PendingInitiation or
-            PaymentStatus.Initiated or
-            PaymentStatus.Succeeded or
-            PaymentStatus.Unresolved;
-
-    private static int OutstandingPriority(PaymentStatus status) => status switch
+    private sealed record InitiationDecision(
+        InitiateDeliveryPaymentResult? Result,
+        Guid? PaymentTransactionId,
+        bool IsReplay)
     {
-        PaymentStatus.Unresolved => 1,
-        PaymentStatus.Succeeded => 2,
-        PaymentStatus.Initiated => 3,
-        PaymentStatus.PendingInitiation => 4,
-        _ => int.MaxValue
-    };
+        public static InitiationDecision FromResult(InitiateDeliveryPaymentResult result) => new(result, null, false);
+
+        public static InitiationDecision Initiate(Guid paymentTransactionId, bool isReplay) =>
+            new(null, paymentTransactionId, isReplay);
+    }
 }

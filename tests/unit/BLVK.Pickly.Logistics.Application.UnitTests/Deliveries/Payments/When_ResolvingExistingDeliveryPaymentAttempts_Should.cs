@@ -1,9 +1,11 @@
+using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDeliveryPayments;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.InitiateDeliveryPayment;
 using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
@@ -19,6 +21,10 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
     {
         ((int)InitiateDeliveryPaymentStatus.Success).ShouldBe(1);
         ((int)InitiateDeliveryPaymentStatus.ProviderConflict).ShouldBe(7);
+        ((int)InitiateDeliveryPaymentStatus.PaymentRequiresReview).ShouldBe(8);
+        ((int)GetDeliveryPaymentsStatus.Success).ShouldBe(1);
+        ((int)GetDeliveryPaymentsStatus.NotAuthenticated).ShouldBe(2);
+        ((int)GetDeliveryPaymentsStatus.NotFound).ShouldBe(3);
     }
 
     [Fact]
@@ -29,7 +35,7 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
 
         var result = await context.HandleAsync(context.Provider.Id, "same-key");
 
-        result.Status.ShouldBe(InitiateDeliveryPaymentStatus.Success);
+        result.Status.ShouldBe(InitiateDeliveryPaymentStatus.PaymentFailed);
         result.PaymentTransactionId.ShouldBe(existing.Id);
         result.PaymentStatus.ShouldBe(PaymentStatus.Failed);
         result.IsReplay.ShouldBeTrue();
@@ -50,17 +56,63 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
         context.AddedTransactions.ShouldBeEmpty();
     }
 
-    [Fact]
-    public async Task RejectDifferentProviderWhileFinancialOutcomeIsOutstanding()
+    [Theory]
+    [InlineData("unresolved", false)]
+    [InlineData("new-request", false)]
+    [InlineData("unresolved", true)]
+    [InlineData("new-request", true)]
+    public async Task RequireReviewForUnresolvedOutcomeRegardlessOfKeyOrProvider(
+        string requestKey,
+        bool useDifferentProvider)
     {
         var context = new InitiationContext();
         context.AddAttempt("unresolved", PaymentStatus.Unresolved);
-        var otherProvider = PaymentProvider.Create("Other", "other", true);
+        var requestedProviderId = useDifferentProvider
+            ? Guid.CreateVersion7()
+            : context.Provider.Id;
 
-        var result = await context.HandleAsync(otherProvider.Id, "new-request");
+        var result = await context.HandleAsync(requestedProviderId, requestKey);
 
-        result.Status.ShouldBe(InitiateDeliveryPaymentStatus.ProviderConflict);
+        result.Status.ShouldBe(InitiateDeliveryPaymentStatus.PaymentRequiresReview);
+        result.PaymentInstruction.ShouldBeNull();
         context.AddedTransactions.ShouldBeEmpty();
+        await context.ProviderService.DidNotReceiveWithAnyArgs()
+            .InitiatePaymentAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task KeepIdempotencyKeyBoundToItsOriginalHistoricalAttempt()
+    {
+        var context = new InitiationContext();
+        var failed = context.AddAttempt("KEY-A", PaymentStatus.Failed);
+        context.AddAttempt("KEY-B", PaymentStatus.Initiated);
+
+        var result = await context.HandleAsync(context.Provider.Id, "KEY-A");
+
+        result.Status.ShouldBe(InitiateDeliveryPaymentStatus.PaymentFailed);
+        result.PaymentTransactionId.ShouldBe(failed.Id);
+        await context.ProviderService.DidNotReceiveWithAnyArgs()
+            .InitiatePaymentAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData(PaymentStatus.Initiated, InitiateDeliveryPaymentStatus.Success)]
+    [InlineData(PaymentStatus.Succeeded, InitiateDeliveryPaymentStatus.Success)]
+    [InlineData(PaymentStatus.Failed, InitiateDeliveryPaymentStatus.PaymentFailed)]
+    [InlineData(PaymentStatus.Expired, InitiateDeliveryPaymentStatus.PaymentExpired)]
+    [InlineData(PaymentStatus.Cancelled, InitiateDeliveryPaymentStatus.PaymentCancelled)]
+    public async Task ReplayExactAttemptOutcome(
+        PaymentStatus paymentStatus,
+        InitiateDeliveryPaymentStatus expectedStatus)
+    {
+        var context = new InitiationContext();
+        var existing = context.AddAttempt("exact", paymentStatus);
+
+        var result = await context.HandleAsync(Guid.CreateVersion7(), "exact");
+
+        result.Status.ShouldBe(expectedStatus);
+        result.PaymentTransactionId.ShouldBe(existing.Id);
+        result.IsReplay.ShouldBeTrue();
     }
 
     [Theory]
@@ -107,25 +159,30 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
         context.AddedTransactions.ShouldBeEmpty();
     }
 
-    [Fact]
-    public async Task SerializeConcurrentRequestsAndReserveOnlyOneTransaction()
+    [Theory]
+    [InlineData("same-request", "same-request")]
+    [InlineData("first-request", "second-request")]
+    public async Task SerializeConcurrentRequestsAndCallProviderOnlyOnce(string firstKey, string secondKey)
     {
         var context = new InitiationContext();
         context.EnableSerializedConsistencyLock();
 
         var results = await Task.WhenAll(
-            context.HandleAsync(context.Provider.Id, "first-request"),
-            context.HandleAsync(context.Provider.Id, "second-request"));
+            context.HandleAsync(context.Provider.Id, firstKey),
+            context.HandleAsync(context.Provider.Id, secondKey));
 
         context.AddedTransactions.Count.ShouldBe(1);
         context.AddedAttempts.Count.ShouldBe(1);
         results.Select(result => result.PaymentTransactionId).Distinct().Count().ShouldBe(1);
+        await context.ProviderService.Received(1)
+            .InitiatePaymentAsync(Arg.Any<PaymentProviderInitiationRequest>(), Arg.Any<CancellationToken>());
     }
 
     private sealed class InitiationContext
     {
         private readonly IRepository<Delivery> _deliveryRepository = Substitute.For<IRepository<Delivery>>();
         private readonly IRepository<DeliveryPaymentAttempt> _attemptRepository = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
+        private readonly IDeliveryPaymentAttemptReadModelRepository _attemptReadModels = Substitute.For<IDeliveryPaymentAttemptReadModelRepository>();
         private readonly IRepository<PaymentTransaction> _paymentRepository = Substitute.For<IRepository<PaymentTransaction>>();
         private readonly IRepository<PaymentProvider> _providerRepository = Substitute.For<IRepository<PaymentProvider>>();
         private readonly IRepository<PaymentProviderConfiguration> _configurationRepository = Substitute.For<IRepository<PaymentProviderConfiguration>>();
@@ -163,8 +220,15 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
 
             _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>()).Returns(_databaseTransaction);
             _deliveryRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Delivery>>(), Arg.Any<CancellationToken>()).Returns(Delivery);
-            _attemptRepository.ListAsync(Arg.Any<ISpecification<DeliveryPaymentAttempt>>(), Arg.Any<CancellationToken>())
-                .Returns(_ => Attempts);
+            _attemptReadModels.ListForDecisionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Attempts.Select(Project).ToArray());
+            _attemptReadModels.GetForDecisionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    var transactionId = call.ArgAt<Guid>(0);
+                    var attempt = Attempts.SingleOrDefault(candidate => candidate.PaymentTransactionId == transactionId);
+                    return attempt is null ? null : Project(attempt);
+                });
             _paymentRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .Returns(call => Transactions.SingleOrDefault(transaction => transaction.Id == call.ArgAt<Guid>(0)));
             _providerRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -197,6 +261,7 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
             _handler = new InitiateDeliveryPaymentHandler(
                 _deliveryRepository,
                 _attemptRepository,
+                _attemptReadModels,
                 _paymentRepository,
                 _providerRepository,
                 _configurationRepository,
@@ -248,6 +313,9 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
 
             switch (status)
             {
+                case PaymentStatus.Succeeded:
+                    transaction.MarkSucceeded("provider-reference", "succeeded", DateTimeOffset.UtcNow);
+                    break;
                 case PaymentStatus.Failed:
                     transaction.MarkFailed("provider-reference", "failed", "failed", DateTimeOffset.UtcNow);
                     break;
@@ -258,11 +326,43 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
                     transaction.MarkUnresolved(
                         "provider-reference", 100m, null, "USD", DateTimeOffset.UtcNow, "mismatch", "unresolved");
                     break;
+                case PaymentStatus.Cancelled:
+                    typeof(PaymentTransaction).GetProperty(nameof(PaymentTransaction.PaymentStatus))!
+                        .SetValue(transaction, PaymentStatus.Cancelled);
+                    break;
             }
 
             Transactions.Add(transaction);
             Attempts.Add(DeliveryPaymentAttempt.Create(Delivery.Id, transaction.Id, key));
             return transaction;
+        }
+
+        private DeliveryPaymentAttemptReadModel Project(DeliveryPaymentAttempt attempt)
+        {
+            var transaction = Transactions.Single(candidate => candidate.Id == attempt.PaymentTransactionId);
+            return new(
+                attempt.Id,
+                attempt.DeliveryId,
+                transaction.Id,
+                attempt.IdempotencyKey,
+                attempt.AppliedAtUtc,
+                attempt.ApplicationException,
+                transaction.PaymentProviderId,
+                Provider.ProviderName,
+                Provider.ProviderKey,
+                transaction.MerchantReference,
+                transaction.PaymentStatus,
+                transaction.Amount,
+                transaction.CurrencyId,
+                Currency.CurrencyCode,
+                transaction.VerifiedAmount,
+                transaction.VerifiedCurrencyId,
+                transaction.VerifiedCurrencyCode,
+                transaction.FailureReason,
+                transaction.CreatedAtUtc,
+                transaction.ExpiresAtUtc,
+                transaction.PaymentMethodType,
+                transaction.ProviderPayloadMetadata);
         }
 
         public Task<InitiateDeliveryPaymentResult> HandleAsync(Guid providerId, string key) =>
