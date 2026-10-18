@@ -26,17 +26,18 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                 scale: 2,
                 nullable: true);
 
+            migrationBuilder.AddColumn<string>(
+                name: "VerifiedCurrencyCode",
+                schema: "payments",
+                table: "PaymentTransactions",
+                type: "character varying(10)",
+                maxLength: 10,
+                nullable: true);
+
             migrationBuilder.AddColumn<Guid>(
                 name: "VerifiedCurrencyId",
                 schema: "payments",
                 table: "PaymentTransactions",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "ActivePaymentTransactionId",
-                schema: "deliveries",
-                table: "Deliveries",
                 type: "uuid",
                 nullable: true);
 
@@ -79,12 +80,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Deliveries_ActivePaymentTransactionId",
-                schema: "deliveries",
-                table: "Deliveries",
-                column: "ActivePaymentTransactionId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_DeliveryPaymentAttempts_DeliveryId",
                 schema: "deliveries",
                 table: "DeliveryPaymentAttempts",
@@ -106,16 +101,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Deliveries_PaymentTransactions_ActivePaymentTransactionId",
-                schema: "deliveries",
-                table: "Deliveries",
-                column: "ActivePaymentTransactionId",
-                principalSchema: "payments",
-                principalTable: "PaymentTransactions",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
                 name: "FK_Deliveries_PaymentTransactions_PaymentTransactionId",
                 schema: "deliveries",
                 table: "Deliveries",
@@ -130,11 +115,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_Deliveries_PaymentTransactions_ActivePaymentTransactionId",
-                schema: "deliveries",
-                table: "Deliveries");
-
-            migrationBuilder.DropForeignKey(
                 name: "FK_Deliveries_PaymentTransactions_PaymentTransactionId",
                 schema: "deliveries",
                 table: "Deliveries");
@@ -142,11 +122,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
             migrationBuilder.DropTable(
                 name: "DeliveryPaymentAttempts",
                 schema: "deliveries");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Deliveries_ActivePaymentTransactionId",
-                schema: "deliveries",
-                table: "Deliveries");
 
             migrationBuilder.DropColumn(
                 name: "ProviderVerifiedAtUtc",
@@ -159,14 +134,14 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                 table: "PaymentTransactions");
 
             migrationBuilder.DropColumn(
-                name: "VerifiedCurrencyId",
+                name: "VerifiedCurrencyCode",
                 schema: "payments",
                 table: "PaymentTransactions");
 
             migrationBuilder.DropColumn(
-                name: "ActivePaymentTransactionId",
-                schema: "deliveries",
-                table: "Deliveries");
+                name: "VerifiedCurrencyId",
+                schema: "payments",
+                table: "PaymentTransactions");
         }
     }
 }

@@ -44,4 +44,16 @@ currency and timestamp. The Deliveries domain owns attempt association through `
 Reconciliation publishes the existing `SuccessfulPaymentConfirmed` only after provider verification establishes the
 settled amount and currency; delivery processing resolves the association by `PaymentTransactionId`.
 
+Provider-reported success is not sufficient to satisfy any payment intent. Reconciliation requires an actual
+provider-confirmed amount and currency that exactly match the requested `Amount` and `CurrencyId`. Missing or
+mismatched evidence moves the transaction to the terminal `Unresolved` state, retains the available
+`VerifiedAmount`, `VerifiedCurrencyId`/`VerifiedCurrencyCode`, timestamp and discrepancy reason, and publishes no
+success event. Unresolved transactions are excluded from automatic reconciliation and require a future explicit,
+auditable resolution workflow. Delivery-payment initiation treats them as outstanding so another charge cannot be
+created while money may have moved.
+
+Failed and expired delivery transactions remain reconciliation-eligible for late provider settlement. Only the
+explicit delivery-only late-settlement transition may move those states to `Succeeded`, and it still requires an
+exact amount/currency match. Wallet and subscription transactions retain ordinary terminal-state protections.
+
 Follows the standard [[vertical-slices]] feature-folder shape and the [[unit-testing]]/[[integration-testing]] conventions. Distinct from the generic [[providers]] domain (email/file-storage provider registry).

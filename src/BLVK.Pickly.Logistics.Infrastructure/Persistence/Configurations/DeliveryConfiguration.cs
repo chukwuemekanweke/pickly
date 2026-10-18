@@ -60,11 +60,6 @@ public sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
             .HasForeignKey(delivery => delivery.PaymentTransactionId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<PaymentTransaction>()
-            .WithMany()
-            .HasForeignKey(delivery => delivery.ActivePaymentTransactionId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.OwnsOne(delivery => delivery.PickupAddress, owned => ConfigureAddress(owned, "Pickup"));
         builder.OwnsOne(delivery => delivery.DropOffAddress, owned => ConfigureAddress(owned, "DropOff"));
 

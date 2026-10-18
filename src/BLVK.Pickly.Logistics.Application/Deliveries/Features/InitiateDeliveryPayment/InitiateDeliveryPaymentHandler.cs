@@ -63,15 +63,26 @@ public sealed class InitiateDeliveryPaymentHandler(
         var attempts = await deliveryPaymentAttempts.ListAsync(
             new DeliveryPaymentAttemptsByDeliverySpecification(delivery.Id, enableTracking: true),
             cancellationToken);
-        var existingAttempt = idempotencyKey is null
+        var attemptTransactions = new List<(DeliveryPaymentAttempt Attempt, PaymentTransaction Transaction)>(attempts.Count);
+        foreach (var attempt in attempts)
+        {
+            var attemptTransaction = await paymentTransactions.GetByIdAsync(attempt.PaymentTransactionId, cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"Payment transaction '{attempt.PaymentTransactionId}' was not found for delivery payment attempt '{attempt.Id}'.");
+            attemptTransactions.Add((attempt, attemptTransaction));
+        }
+
+        var existing = idempotencyKey is null
             ? null
-            : attempts.FirstOrDefault(attempt => attempt.IdempotencyKey == idempotencyKey);
-        existingAttempt ??= delivery.ActivePaymentTransactionId is null
-            ? null
-            : attempts.FirstOrDefault(attempt => attempt.PaymentTransactionId == delivery.ActivePaymentTransactionId);
-        var existing = existingAttempt is null
-            ? null
-            : await paymentTransactions.GetByIdAsync(existingAttempt.PaymentTransactionId, cancellationToken);
+            : attemptTransactions
+                .FirstOrDefault(candidate => candidate.Attempt.IdempotencyKey == idempotencyKey)
+                .Transaction;
+        existing ??= attemptTransactions
+            .Where(candidate => IsOutstanding(candidate.Transaction.PaymentStatus))
+            .OrderBy(candidate => OutstandingPriority(candidate.Transaction.PaymentStatus))
+            .ThenBy(candidate => candidate.Attempt.CreatedAtUtc)
+            .Select(candidate => candidate.Transaction)
+            .FirstOrDefault();
 
         if (existing is not null)
         {
@@ -124,7 +135,6 @@ public sealed class InitiateDeliveryPaymentHandler(
             stakeholder.Id,
             stakeholder.TenantId);
         var paymentAttempt = DeliveryPaymentAttempt.Create(delivery.Id, paymentTransaction.Id, idempotencyKey);
-        delivery.BeginPrepaidPaymentAttempt(paymentTransaction.Id);
         await paymentTransactions.AddAsync(paymentTransaction, cancellationToken);
         await deliveryPaymentAttempts.AddAsync(paymentAttempt, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -205,4 +215,19 @@ public sealed class InitiateDeliveryPaymentHandler(
             ? normalized
             : throw new ArgumentException("Idempotency-Key cannot exceed 200 characters.", nameof(value));
     }
+
+    private static bool IsOutstanding(PaymentStatus status) =>
+        status is PaymentStatus.PendingInitiation or
+            PaymentStatus.Initiated or
+            PaymentStatus.Succeeded or
+            PaymentStatus.Unresolved;
+
+    private static int OutstandingPriority(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Unresolved => 1,
+        PaymentStatus.Succeeded => 2,
+        PaymentStatus.Initiated => 3,
+        PaymentStatus.PendingInitiation => 4,
+        _ => int.MaxValue
+    };
 }

@@ -62,7 +62,6 @@ public sealed class Delivery : Entity, IAggregateRoot
     public DateTimeOffset? DispatchEligibleAtUtc { get; private set; }
     public Guid? RiderId { get; private set; }
     public Guid? PaymentTransactionId { get; private set; }
-    public Guid? ActivePaymentTransactionId { get; private set; }
     public DateTimeOffset? PaymentSatisfiedAtUtc { get; private set; }
     public Guid? CashCollectionId { get; private set; }
     public Guid? ProofOfDeliveryId { get; private set; }
@@ -212,48 +211,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         _items.Remove(item);
     }
 
-    public void MarkPrepaidPaymentProcessing()
-    {
-        EnsurePrepaidOrder();
-        if (PaymentStatus != DeliveryPaymentStatus.Pending)
-        {
-            throw new AggregateStateException($"Payment cannot start processing from '{PaymentStatus}'.");
-        }
-
-        PaymentStatus = DeliveryPaymentStatus.Processing;
-    }
-
-    public void BeginPrepaidPaymentAttempt(Guid paymentTransactionId)
-    {
-        EnsureRequiredId(paymentTransactionId, nameof(paymentTransactionId));
-        MarkPrepaidPaymentProcessing();
-        ActivePaymentTransactionId = paymentTransactionId;
-    }
-
-    public void RecordPrepaidPaymentAttemptFailed()
-    {
-        EnsurePrepaidOrder();
-        if (PaymentStatus != DeliveryPaymentStatus.Processing)
-        {
-            throw new AggregateStateException($"A payment attempt cannot fail from '{PaymentStatus}'.");
-        }
-
-        PaymentStatus = DeliveryPaymentStatus.Pending;
-        ActivePaymentTransactionId = null;
-    }
-
-    public bool RecordPrepaidPaymentAttemptFailed(Guid paymentTransactionId)
-    {
-        EnsureRequiredId(paymentTransactionId, nameof(paymentTransactionId));
-        if (ActivePaymentTransactionId != paymentTransactionId || PaymentStatus != DeliveryPaymentStatus.Processing)
-        {
-            return false;
-        }
-
-        RecordPrepaidPaymentAttemptFailed();
-        return true;
-    }
-
     public void ConfirmVerifiedPrepaidPayment(
         Guid paymentTransactionId,
         decimal verifiedAmount,
@@ -287,7 +244,6 @@ public sealed class Delivery : Entity, IAggregateRoot
         }
 
         PaymentTransactionId = paymentTransactionId;
-        ActivePaymentTransactionId = null;
         PaymentStatus = DeliveryPaymentStatus.Paid;
         PaymentSatisfiedAtUtc = verifiedAtUtc.ToUniversalTime();
         TransitionTo(

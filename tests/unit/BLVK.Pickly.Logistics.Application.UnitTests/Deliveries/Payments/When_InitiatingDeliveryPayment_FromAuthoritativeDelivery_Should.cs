@@ -91,7 +91,7 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         persistedAttempt.ShouldNotBeNull();
         persistedAttempt.DeliveryId.ShouldBe(delivery.Id);
         persistedAttempt.PaymentTransactionId.ShouldBe(persistedPayment.Id);
-        delivery.ActivePaymentTransactionId.ShouldBe(persistedPayment.Id);
+        delivery.PaymentStatus.ShouldBe(DeliveryPaymentStatus.Pending);
         await databaseTransaction.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 

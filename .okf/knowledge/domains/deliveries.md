@@ -46,7 +46,7 @@ They do not refer to mutable saved-location or recipient-account records. Delive
 existing Payments-domain `Currency` identifier. Provider payment lifecycle remains owned by generic
 `PaymentTransaction`; delivery-owned `DeliveryPaymentAttempt` associates each historical attempt to one Delivery.
 `PaymentTransaction` has no delivery-specific identity. Delivery stores the trusted successful transaction reference
-and the currently authoritative attempt correlation.
+only after the financial obligation is satisfied; it does not store an active-attempt reference.
 
 ## Creation and dispatch
 
@@ -68,8 +68,8 @@ recipient/cash for Pay On Delivery. These are not independently mutable.
 Trusted application workflows satisfy the delivery-level obligation by supplying references and
 amount/currency evidence to `ConfirmVerifiedPrepaidPayment` or `ConfirmFullCashCollection`. Both
 require the exact agreed amount and currency, and repeated confirmation with the same reference is
-idempotent. A failed provider attempt returns prepaid delivery payment state to pending rather than
-permanently failing the delivery.
+idempotent. For prepaid deliveries, `Delivery.PaymentStatus` remains pending while provider attempts are in progress;
+processing state is derived from associated transactions instead of independently mutated on Delivery.
 
 The normal fulfillment sequence is `PendingAssignment -> RiderAssigned -> PickedUp -> InTransit ->
 Delivered`. Completion requires an assigned rider, proof-of-delivery reference, and a fully satisfied
@@ -117,7 +117,11 @@ Phase 5 exposes sender-scoped `POST` and `GET /api/v1/deliveries/{deliveryId}/pa
 charge from Delivery, reserves `PaymentTransaction` plus `DeliveryPaymentAttempt` under a PostgreSQL advisory lock,
 commits them before provider I/O, and reuses the stable merchant reference for ambiguous retries. The association has
 a unique `PaymentTransactionId` and a per-delivery idempotency-key constraint; a delivery may retain many failed,
-expired or incomplete attempts. `ActivePaymentTransactionId` prevents an older failure from resetting a newer attempt.
+expired or incomplete attempts. Initiation loads every association and derives an outstanding attempt from its actual
+transaction status: pending initiation, initiated, succeeded awaiting application, or unresolved. The idempotency key
+wins when it identifies an earlier attempt; otherwise any outstanding financial outcome blocks creation of another
+transaction, and a different requested provider returns a conflict. Failed, expired and cancelled transactions permit
+a new attempt. The delivery-scoped advisory lock serializes this decision across application instances.
 
 Provider success continues through the generic outbox event. `SuccessfulPaymentConfirmedHandler` routes
 `DeliveryPayment` to `ConfirmDeliveryPaymentCommand`; its consumer reloads the attempt, Delivery and persisted

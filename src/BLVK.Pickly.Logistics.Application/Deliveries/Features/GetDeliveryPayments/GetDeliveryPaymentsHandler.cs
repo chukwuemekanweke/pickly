@@ -32,17 +32,17 @@ public sealed class GetDeliveryPaymentsHandler(
 
         var associations = await deliveryPaymentAttempts.ListAsync(
             new DeliveryPaymentAttemptsByDeliverySpecification(delivery.Id), cancellationToken);
-        var attempts = new List<PaymentTransaction>(associations.Count);
+        var attempts = new List<(DeliveryPaymentAttempt Association, PaymentTransaction Transaction)>(associations.Count);
         foreach (var association in associations)
         {
             var payment = await paymentTransactions.GetByIdAsync(association.PaymentTransactionId, cancellationToken);
             if (payment is not null)
             {
-                attempts.Add(payment);
+                attempts.Add((association, payment));
             }
         }
         var providerNames = new Dictionary<Guid, string>();
-        foreach (var providerId in attempts.Select(attempt => attempt.PaymentProviderId).Distinct())
+        foreach (var providerId in attempts.Select(attempt => attempt.Transaction.PaymentProviderId).Distinct())
         {
             providerNames[providerId] = (await paymentProviders.GetByIdAsync(providerId, cancellationToken))?.ProviderName ?? string.Empty;
         }
@@ -58,15 +58,23 @@ public sealed class GetDeliveryPaymentsHandler(
                 delivery.Charge.CurrencyId,
                 currency?.CurrencyCode ?? string.Empty,
                 attempts.Select(attempt => new DeliveryPaymentAttemptResponse(
-                    attempt.Id,
-                    attempt.PaymentProviderId,
-                    providerNames[attempt.PaymentProviderId],
-                    attempt.MerchantReference,
-                    attempt.PaymentStatus.ToString(),
-                    attempt.CreatedAtUtc,
-                    attempt.ExpiresAtUtc,
-                    attempt.PaymentStatus is Contracts.Payments.PaymentStatus.PendingInitiation or Contracts.Payments.PaymentStatus.Initiated
-                        ? attempt.ProviderPayloadMetadata
-                        : new Dictionary<string, string>())).ToArray()));
+                    attempt.Transaction.Id,
+                    attempt.Transaction.PaymentProviderId,
+                    providerNames[attempt.Transaction.PaymentProviderId],
+                    attempt.Transaction.MerchantReference,
+                    attempt.Transaction.PaymentStatus.ToString(),
+                    attempt.Transaction.CreatedAtUtc,
+                    attempt.Transaction.ExpiresAtUtc,
+                    attempt.Transaction.PaymentStatus is Contracts.Payments.PaymentStatus.PendingInitiation or Contracts.Payments.PaymentStatus.Initiated
+                        ? attempt.Transaction.ProviderPayloadMetadata
+                        : new Dictionary<string, string>(),
+                    attempt.Transaction.VerifiedAmount,
+                    attempt.Transaction.VerifiedCurrencyId,
+                    attempt.Transaction.VerifiedCurrencyCode,
+                    attempt.Transaction.PaymentStatus == Contracts.Payments.PaymentStatus.Unresolved
+                        ? attempt.Transaction.FailureReason
+                        : null,
+                    attempt.Association.AppliedAtUtc,
+                    attempt.Association.ApplicationException)).ToArray()));
     }
 }

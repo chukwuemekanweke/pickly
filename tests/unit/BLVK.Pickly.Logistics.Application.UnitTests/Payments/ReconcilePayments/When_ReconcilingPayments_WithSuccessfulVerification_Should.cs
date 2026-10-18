@@ -31,6 +31,9 @@ public sealed class When_ReconcilingPayments_WithSuccessfulVerification_Should
             .Returns(new PaymentProviderVerificationResult(
                 PaymentProviderVerificationStatus.Succeeded,
                 "provider-ref",
+                1000m,
+                "NGN",
+                context.Clock.GetUtcNow(),
                 null,
                 KnownPaymentTransactionChangeReasons.ReconciliationConfirmedSuccess));
         context.PaymentProviderServices.Add(paymentProviderService);
@@ -44,6 +47,9 @@ public sealed class When_ReconcilingPayments_WithSuccessfulVerification_Should
 
         result.ProcessedCount.ShouldBe(1);
         transaction.PaymentStatus.ShouldBe(PaymentStatus.Succeeded);
+        transaction.VerifiedAmount.ShouldBe(1000m);
+        transaction.VerifiedCurrencyId.ShouldBe(currency.Id);
+        transaction.VerifiedCurrencyCode.ShouldBe("NGN");
         await context.EventPublisher.Received(1).PublishAsync(
             Arg.Is<SuccessfulPaymentConfirmed>(message =>
                 message.PaymentTransactionId == transaction.Id &&

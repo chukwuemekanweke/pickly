@@ -70,6 +70,14 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
             DeliveryPaymentAttempt.Create(delivery.Id, secondPayment.Id, "second-attempt"));
         await dbContext.SaveChangesAsync();
 
+        var history = await dbContext.DeliveryPaymentAttempts
+            .Where(attempt => attempt.DeliveryId == delivery.Id)
+            .OrderBy(attempt => attempt.CreatedAtUtc)
+            .ToListAsync();
+        history.Count.ShouldBe(2);
+        history.Select(attempt => attempt.PaymentTransactionId)
+            .ShouldBe(new[] { firstPayment.Id, secondPayment.Id }, ignoreOrder: true);
+
         dbContext.Add(DeliveryPaymentAttempt.Create(delivery.Id, firstPayment.Id, "duplicate-association"));
 
         await Should.ThrowAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
@@ -85,6 +93,7 @@ public sealed class When_PersistingDeliveryAggregate_Should(ContainersFixture fi
         deliveryType.ShouldNotBeNull();
         deliveryType.GetSchema().ShouldBe("deliveries");
         deliveryType.GetTableName().ShouldBe("Deliveries");
+        deliveryType.FindProperty("ActivePaymentTransactionId").ShouldBeNull();
         deliveryType.GetIndexes().ShouldContain(index =>
             index.IsUnique && index.Properties.Single().Name == nameof(Delivery.TrackingId));
         deliveryType.GetIndexes().ShouldContain(index =>

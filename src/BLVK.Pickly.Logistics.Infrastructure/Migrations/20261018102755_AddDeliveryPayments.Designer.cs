@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261018091144_AddDeliveryPayments")]
+    [Migration("20261018102755_AddDeliveryPayments")]
     partial class AddDeliveryPayments
     {
         /// <inheritdoc />
@@ -705,9 +705,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ActivePaymentTransactionId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("CashCollectionId")
                         .HasColumnType("uuid");
 
@@ -783,8 +780,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ActivePaymentTransactionId");
 
                     b.HasIndex("CashCollectionId")
                         .IsUnique()
@@ -2406,6 +2401,10 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("VerifiedCurrencyCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<Guid?>("VerifiedCurrencyId")
                         .HasColumnType("uuid");
 
@@ -3251,11 +3250,6 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.Delivery", b =>
                 {
-                    b.HasOne("BLVK.Pickly.Logistics.Domain.Payments.Entities.PaymentTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("ActivePaymentTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.DeliveryQuote", null)
                         .WithMany()
                         .HasForeignKey("DeliveryQuoteId")

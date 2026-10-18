@@ -24,7 +24,6 @@ internal sealed class PaymentsFlowTestContext
     public IRepository<PaymentProviderConfiguration> PaymentProviderConfigurationRepository { get; } = Substitute.For<IRepository<PaymentProviderConfiguration>>();
     public IRepository<PaymentTransaction> PaymentTransactionRepository { get; } = Substitute.For<IRepository<PaymentTransaction>>();
     public IRepository<PaymentWebhookInbox> PaymentWebhookInboxRepository { get; } = Substitute.For<IRepository<PaymentWebhookInbox>>();
-    public IRepository<Delivery> DeliveryRepository { get; } = Substitute.For<IRepository<Delivery>>();
     public IRepository<DeliveryPaymentAttempt> DeliveryPaymentAttemptRepository { get; } = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
     public IWalletTransactionReadModelRepository WalletTransactionReadModelRepository { get; } = Substitute.For<IWalletTransactionReadModelRepository>();
     public ICustomTelemetryContext CustomTelemetryContext { get; } = Substitute.For<ICustomTelemetryContext>();
@@ -97,7 +96,6 @@ internal sealed class PaymentsFlowTestContext
             PaymentTransactionRepository,
             CurrencyRepository,
             PaymentProviderRepository,
-            DeliveryRepository,
             DeliveryPaymentAttemptRepository,
             PaymentProviderServices,
             EventPublisher,

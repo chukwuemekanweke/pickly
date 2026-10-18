@@ -44,4 +44,11 @@ For delivery prepayment, generic `SuccessfulPaymentConfirmed` remains unchanged.
 `DeliveryPaymentAttempt` by `PaymentTransactionId` before applying verified payment. Neither message adds a
 `DeliveryId`; consumer inbox persistence makes routing and application safe under redelivery.
 
+`PaymentReconciliationService` emits that success event only when the provider supplies an actual settled amount and
+currency that exactly match the requested values. Missing or mismatched settlement evidence is persisted as an
+`Unresolved` transaction (and as an operational exception on a delivery attempt) without an outbox event, so neither
+the router nor `ConfirmDeliveryPaymentHandler` can activate downstream business state. The delivery consumer reloads
+the transaction and validates persisted succeeded status, evidence, association, ownership and agreed charge rather
+than trusting message fields.
+
 See [[persistence]] for how the outbox table itself is persisted, and [[unit-testing]]/[[integration-testing]] for handler/background-service test coverage requirements.

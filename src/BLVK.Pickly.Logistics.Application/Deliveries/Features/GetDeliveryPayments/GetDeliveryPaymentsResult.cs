@@ -15,7 +15,13 @@ public sealed record DeliveryPaymentAttemptResponse(
     string Status,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? ExpiresAtUtc,
-    IReadOnlyDictionary<string, string> PaymentInstruction);
+    IReadOnlyDictionary<string, string> PaymentInstruction,
+    decimal? VerifiedAmount,
+    Guid? VerifiedCurrencyId,
+    string? VerifiedCurrencyCode,
+    string? FinancialException,
+    DateTimeOffset? AppliedAtUtc,
+    string? ApplicationException);
 
 public sealed record DeliveryPaymentsResponse(
     Guid DeliveryId,

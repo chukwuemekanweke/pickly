@@ -4,13 +4,13 @@ namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.InitiateDelivery
 
 public enum InitiateDeliveryPaymentStatus
 {
-    Success,
-    NotAuthenticated,
-    NotFound,
-    NotPayable,
-    AlreadyPaid,
-    ProviderUnavailable,
-    ProviderConflict
+    Success = 1,
+    NotAuthenticated = 2,
+    NotFound = 3,
+    NotPayable = 4,
+    AlreadyPaid = 5,
+    ProviderUnavailable = 6,
+    ProviderConflict = 7
 }
 
 public sealed record InitiateDeliveryPaymentResult(

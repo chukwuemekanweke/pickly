@@ -34,6 +34,9 @@ public sealed class PaymentTransactionConfiguration : IEntityTypeConfiguration<P
         builder.Property(transaction => transaction.VerifiedAmount)
             .HasPrecision(18, 2);
 
+        builder.Property(transaction => transaction.VerifiedCurrencyCode)
+            .HasMaxLength(10);
+
         builder.Property(transaction => transaction.FailureReason)
             .HasMaxLength(200);
 
