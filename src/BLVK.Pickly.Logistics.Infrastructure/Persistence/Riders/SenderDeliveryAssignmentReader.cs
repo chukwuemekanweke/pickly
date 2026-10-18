@@ -1,6 +1,5 @@
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +7,7 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Persistence.Riders;
 
 internal sealed class SenderDeliveryAssignmentReader(AppDbContext dbContext) : ISenderDeliveryAssignmentReader
 {
-    public async Task<SenderAssignmentSnapshot> GetAsync(Guid deliveryId, CancellationToken cancellationToken)
+    public async Task<SenderDeliveryAssignmentFacts> GetAsync(Guid deliveryId, CancellationToken cancellationToken)
     {
         var delivery = await dbContext.Deliveries
             .AsNoTracking()
@@ -44,13 +43,13 @@ internal sealed class SenderDeliveryAssignmentReader(AppDbContext dbContext) : I
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
-        var matchingStatus = delivery.RiderId.HasValue
-            ? "Assigned"
-            : activeOffer
-                ? "OfferActive"
-                : activeSession || delivery.IsMatchingEligible
-                    ? "Pending"
-                    : "NotEligible";
-        return new(matchingStatus, activeOffer, delivery.RiderId, riderName, riderAvatarUrl, assignedAtUtc);
+        return new(
+            activeOffer,
+            activeSession,
+            delivery.IsMatchingEligible,
+            delivery.RiderId,
+            riderName,
+            riderAvatarUrl,
+            assignedAtUtc);
     }
 }

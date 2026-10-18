@@ -1,30 +1,36 @@
-using BLVK.Pickly.Logistics.Domain.Common.Auditing;
-using BLVK.Pickly.Logistics.Domain.Riders;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
+using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Persistence.Riders;
 
-internal sealed class RiderStatusReader(
-    AppDbContext dbContext,
-    RiderPersistenceSupport support) : IRiderStatusReader
+internal sealed class RiderStatusReader(AppDbContext dbContext) : IRiderStatusReader
 {
-    public async Task<RiderStatusResult> GetAsync(
-        ActorContext actor,
+    private static readonly DeliveryStatus[] ActiveDeliveryStatuses =
+    [
+        DeliveryStatus.RiderAssigned,
+        DeliveryStatus.PickedUp,
+        DeliveryStatus.InTransit
+    ];
+
+    public async Task<RiderStatusFacts> GetFactsAsync(
+        RiderProfile profile,
         DateTimeOffset utcNow,
-        RiderMatchingOptions options,
         CancellationToken cancellationToken)
     {
-        var resolved = await support.ResolveRiderAsync(actor, cancellationToken);
-        if (resolved.Code != RiderOperationCode.Success)
-        {
-            return new(resolved.Code);
-        }
-
         var location = await dbContext.RiderCurrentLocations
             .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.RiderProfileId == resolved.Profile!.Id, cancellationToken);
-        return await support.BuildStatusResultAsync(resolved.Profile!, location, utcNow, options, cancellationToken);
+            .SingleOrDefaultAsync(item => item.RiderProfileId == profile.Id, cancellationToken);
+        var hasActiveDelivery = await dbContext.Deliveries.AnyAsync(
+            delivery => delivery.RiderId == profile.StakeholderId && ActiveDeliveryStatuses.Contains(delivery.Status),
+            cancellationToken);
+        var pendingOfferCount = await dbContext.RiderDeliveryOffers.CountAsync(
+            offer => offer.RiderProfileId == profile.Id &&
+                offer.Status == RiderDeliveryOfferStatus.Pending &&
+                offer.ExpiresAtUtc > utcNow,
+            cancellationToken);
+        return new(location, hasActiveDelivery, pendingOfferCount);
     }
 }

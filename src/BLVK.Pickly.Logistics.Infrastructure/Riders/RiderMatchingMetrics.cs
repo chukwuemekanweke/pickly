@@ -1,10 +1,10 @@
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
+using BLVK.Pickly.Logistics.Domain.Riders;
 using System.Diagnostics.Metrics;
 using DomainObservability = BLVK.Pickly.Logistics.Domain.Common.Observability.Observability;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Riders;
 
-internal static class RiderMatchingMetrics
+internal sealed class RiderMatchingMetrics : IRiderMatchingTelemetry
 {
     private static readonly Meter Meter = new(DomainObservability.MeterName);
     private static readonly Counter<long> ScheduledDispatchesOpened = Meter.CreateCounter<long>("pickly.riders.scheduled_dispatches.opened");
@@ -17,17 +17,22 @@ internal static class RiderMatchingMetrics
     private static readonly Counter<long> AssignmentConflicts = Meter.CreateCounter<long>("pickly.riders.assignments.conflicts");
     private static readonly Counter<long> StaleLocations = Meter.CreateCounter<long>("pickly.riders.locations.stale");
 
-    public static void RecordProcessing(MatchingProcessingResult result)
+    public void RecordProcessing(
+        int scheduledDispatchesOpened,
+        int offersExpired,
+        int matchingAttempts,
+        int offersCreated,
+        int noCandidateAttempts)
     {
-        ScheduledDispatchesOpened.Add(result.ScheduledDispatchesOpened);
-        MatchingAttempts.Add(result.MatchingAttempts);
-        NoCandidateAttempts.Add(result.NoCandidateAttempts);
-        OffersCreated.Add(result.OffersCreated);
-        OffersExpired.Add(result.OffersExpired);
+        ScheduledDispatchesOpened.Add(scheduledDispatchesOpened);
+        MatchingAttempts.Add(matchingAttempts);
+        NoCandidateAttempts.Add(noCandidateAttempts);
+        OffersCreated.Add(offersCreated);
+        OffersExpired.Add(offersExpired);
     }
 
-    public static void RecordOfferAccepted() => OffersAccepted.Add(1);
-    public static void RecordOfferRejected() => OffersRejected.Add(1);
-    public static void RecordAssignmentConflict() => AssignmentConflicts.Add(1);
-    public static void RecordStaleLocation() => StaleLocations.Add(1);
+    public void RecordOfferAccepted() => OffersAccepted.Add(1);
+    public void RecordOfferRejected() => OffersRejected.Add(1);
+    public void RecordAssignmentConflict() => AssignmentConflicts.Add(1);
+    public void RecordStaleLocation() => StaleLocations.Add(1);
 }

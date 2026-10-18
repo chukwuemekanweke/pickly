@@ -1,16 +1,14 @@
-using BLVK.Pickly.Logistics.Domain.Common.Auditing;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 
 namespace BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 public interface IRiderLocationPersistence
 {
-    Task<RiderOperationResult> UpdateAsync(
-        ActorContext actor,
+    Task<RiderCurrentLocation?> FindAsync(Guid riderProfileId, CancellationToken cancellationToken);
+
+    void TrackPosition(
+        RiderCurrentLocation location,
         decimal latitude,
         decimal longitude,
-        DateTimeOffset capturedAtUtc,
-        DateTimeOffset utcNow,
-        RiderMatchingOptions options,
-        CancellationToken cancellationToken);
+        bool isNew);
 }

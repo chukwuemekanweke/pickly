@@ -68,6 +68,14 @@ Command/query reference (copy these, not a new shape):
   transactional use case, e.g. `IDeliveryBookingPersistence`, `IRiderOfferAcceptancePersistence`) over a broad store
   owning unrelated operations. Transactions, row/advisory locks, isolation levels and provider-specific SQL stay in
   Infrastructure; restructuring must never weaken them.
+- A dedicated handler must own the use case, not merely forward it. Eligibility rules, workflow branching, aggregate
+  transitions, retry/expiry decisions and application result selection belong in the handler or a reusable Domain/
+  Application policy. Infrastructure ports expose data-access facts and database capabilities; they must not return
+  application status codes or choose business outcomes.
+- It is valid for a handler to coordinate repositories plus a narrow transaction/lock abstraction. The abstraction
+  defines the required atomic boundary; Infrastructure implements EF tracking, isolation, advisory locks, PostGIS and
+  provider-exception translation. Database-backed predicates that must execute as a bounded set query stay behind a
+  narrow read port and return facts/projections for the handler to interpret.
 
 ## Rules
 

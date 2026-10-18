@@ -1,178 +1,155 @@
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
-using BLVK.Pickly.Logistics.Domain.Riders;
 using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Configurations;
-using BLVK.Pickly.Logistics.Infrastructure.Riders;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
-using System.Data;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Persistence.Riders;
 
 internal sealed class RiderMatchingPersistence(
     AppDbContext dbContext,
-    RiderPersistenceSupport support) : IRiderMatchingPersistence
+    RiderGeographyQueries geographyQueries) : IRiderMatchingPersistence
 {
-    private const string MatchingProcessorLockKey = "rider-matching-processor";
+    private const string RiderStakeholderTypeKey = "rider";
+    private static readonly DeliveryStatus[] ActiveDeliveryStatuses =
+    [
+        DeliveryStatus.RiderAssigned,
+        DeliveryStatus.PickedUp,
+        DeliveryStatus.InTransit
+    ];
 
-    public async Task<MatchingProcessingResult> ProcessAsync(
+    public async Task<IReadOnlyList<RiderDeliveryOffer>> ListExpiredOffersAsync(
         DateTimeOffset utcNow,
-        RiderMatchingOptions options,
-        CancellationToken cancellationToken)
-    {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        await support.AcquireKeyLockAsync(MatchingProcessorLockKey, cancellationToken);
-
-        var expiredOffers = await dbContext.RiderDeliveryOffers
+        int batchSize,
+        CancellationToken cancellationToken) =>
+        await dbContext.RiderDeliveryOffers
             .Where(offer => offer.Status == RiderDeliveryOfferStatus.Pending && offer.ExpiresAtUtc <= utcNow)
             .OrderBy(offer => offer.ExpiresAtUtc)
-            .Take(options.MatchingScanBatchSize)
+            .Take(batchSize)
             .ToListAsync(cancellationToken);
-        var expiredSessionIds = expiredOffers.Select(offer => offer.MatchingSessionId).Distinct().ToArray();
-        var expiredSessions = await dbContext.DeliveryMatchingSessions
-            .Where(session => expiredSessionIds.Contains(session.Id))
-            .ToDictionaryAsync(session => session.Id, cancellationToken);
-        foreach (var offer in expiredOffers)
-        {
-            offer.Expire(utcNow);
-            if (expiredSessions.TryGetValue(offer.MatchingSessionId, out var session) &&
-                session.Status == DeliveryMatchingSessionStatus.Active)
-            {
-                session.RecordAttempt(utcNow, utcNow + options.RetryBackoff, session.SearchRadiusMeters);
-            }
-        }
 
-        var scheduledDeliveries = await dbContext.Deliveries
+    public async Task<IReadOnlyDictionary<Guid, DeliveryMatchingSession>> GetMatchingSessionsAsync(
+        IEnumerable<Guid> matchingSessionIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = matchingSessionIds.Distinct().ToArray();
+        return await dbContext.DeliveryMatchingSessions
+            .Where(session => ids.Contains(session.Id))
+            .ToDictionaryAsync(session => session.Id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Delivery>> ListScheduledDeliveriesAsync(
+        DateTimeOffset utcNow,
+        int batchSize,
+        CancellationToken cancellationToken) =>
+        await dbContext.Deliveries
             .Where(delivery =>
                 delivery.Status == DeliveryStatus.AwaitingDispatch &&
                 delivery.DispatchEligibleAtUtc <= utcNow &&
-                (delivery.OrderType == DeliveryOrderType.PayOnDelivery || delivery.PaymentStatus == DeliveryPaymentStatus.Paid))
+                (delivery.OrderType == DeliveryOrderType.PayOnDelivery ||
+                    delivery.PaymentStatus == DeliveryPaymentStatus.Paid))
             .OrderBy(delivery => delivery.DispatchEligibleAtUtc)
             .ThenBy(delivery => delivery.Id)
-            .Take(options.ScheduledDispatchScanBatchSize)
+            .Take(batchSize)
             .ToListAsync(cancellationToken);
-        foreach (var delivery in scheduledDeliveries)
-        {
-            delivery.OpenDispatch(utcNow, "system", "scheduled_dispatch_job");
-            dbContext.DeliveryStatusHistory.Add(delivery.StatusHistory.Last());
-        }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        var deliveries = await dbContext.Deliveries
+    public async Task<IReadOnlyList<Delivery>> ListMatchingEligibleDeliveriesAsync(
+        int batchSize,
+        CancellationToken cancellationToken) =>
+        await dbContext.Deliveries
             .Where(delivery =>
                 delivery.Status == DeliveryStatus.PendingAssignment &&
                 delivery.RiderId == null &&
-                (delivery.OrderType == DeliveryOrderType.PayOnDelivery || delivery.PaymentStatus == DeliveryPaymentStatus.Paid))
+                (delivery.OrderType == DeliveryOrderType.PayOnDelivery ||
+                    delivery.PaymentStatus == DeliveryPaymentStatus.Paid))
             .OrderBy(delivery => delivery.CreatedAtUtc)
             .ThenBy(delivery => delivery.Id)
-            .Take(options.MatchingScanBatchSize)
+            .Take(batchSize)
             .ToListAsync(cancellationToken);
 
-        // Filtered unique indexes guarantee at most one active session and one pending offer per Delivery.
-        var deliveryIds = deliveries.Select(delivery => delivery.Id).ToArray();
-        var activeSessions = await dbContext.DeliveryMatchingSessions
-            .Where(session => deliveryIds.Contains(session.DeliveryId) && session.Status == DeliveryMatchingSessionStatus.Active)
+    public async Task<IReadOnlyDictionary<Guid, DeliveryMatchingSession>> GetActiveSessionsByDeliveryAsync(
+        IEnumerable<Guid> deliveryIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = deliveryIds.Distinct().ToArray();
+        return await dbContext.DeliveryMatchingSessions
+            .Where(session => ids.Contains(session.DeliveryId) && session.Status == DeliveryMatchingSessionStatus.Active)
             .ToDictionaryAsync(session => session.DeliveryId, cancellationToken);
-        var deliveriesWithPendingOffer = (await dbContext.RiderDeliveryOffers
-            .Where(offer => deliveryIds.Contains(offer.DeliveryId) && offer.Status == RiderDeliveryOfferStatus.Pending)
-            .Select(offer => offer.DeliveryId)
-            .ToListAsync(cancellationToken))
-            .ToHashSet();
-
-        var attempts = 0;
-        var created = 0;
-        var noCandidates = 0;
-        foreach (var delivery in deliveries)
-        {
-            if (!activeSessions.TryGetValue(delivery.Id, out var session))
-            {
-                session = DeliveryMatchingSession.Create(delivery.Id, options.InitialSearchRadiusMeters, utcNow);
-                dbContext.DeliveryMatchingSessions.Add(session);
-            }
-
-            if (session.NextAttemptAtUtc > utcNow || deliveriesWithPendingOffer.Contains(delivery.Id))
-            {
-                continue;
-            }
-
-            attempts++;
-            var pickupPoint = RiderPersistenceSupport.CreatePoint(delivery.PickupAddress.Latitude, delivery.PickupAddress.Longitude);
-            var zoneId = await support.FindPickupZoneIdAsync(delivery, pickupPoint, utcNow, cancellationToken);
-            RiderCandidate? candidate = null;
-            if (zoneId.HasValue)
-            {
-                var freshAfter = utcNow.ToUniversalTime() - options.LocationFreshness;
-                candidate = await (
-                    from profile in dbContext.RiderProfiles
-                    join location in dbContext.RiderCurrentLocations on profile.Id equals location.RiderProfileId
-                    join serviceZone in dbContext.RiderServiceZones on profile.Id equals serviceZone.RiderProfileId
-                    join stakeholder in dbContext.Stakeholders on profile.StakeholderId equals stakeholder.Id
-                    join stakeholderType in dbContext.StakeholderTypes on stakeholder.StakeholderTypeId equals stakeholderType.Id
-                    join vehicle in dbContext.VehicleCategories on profile.VehicleCategoryId equals vehicle.Id
-                    where profile.TenantId == dbContext.Stakeholders
-                        .Where(stakeholder => stakeholder.Id == delivery.SenderId)
-                        .Select(stakeholder => stakeholder.TenantId)
-                        .Single()
-                    where profile.VerificationStatus == RiderVerificationStatus.Approved
-                    where profile.AvailabilityStatus == RiderAvailabilityStatus.Available
-                    where profile.VehicleCategoryId == delivery.VehicleCategoryId
-                    where vehicle.IsActive
-                    where stakeholder.IsVerified && stakeholderType.Key == RiderPersistenceSupport.RiderStakeholderTypeKey
-                    where location.CapturedAtUtc >= freshAfter
-                    where serviceZone.DeliveryZoneId == zoneId.Value
-                    where !dbContext.Deliveries.Any(item =>
-                        item.RiderId == profile.StakeholderId &&
-                        RiderPersistenceSupport.ActiveDeliveryStatuses.Contains(item.Status))
-                    where !dbContext.RiderDeliveryOffers.Any(offer =>
-                        offer.RiderProfileId == profile.Id && offer.Status == RiderDeliveryOfferStatus.Pending)
-                    let distance = EF.Property<Point>(location, RiderCurrentLocationConfiguration.PositionProperty)
-                        .Distance(pickupPoint)
-                    where distance <= session.SearchRadiusMeters
-                    orderby distance, profile.Id
-                    select new RiderCandidate(profile.Id, distance))
-                    .Take(options.MaximumCandidatesPerRound)
-                    .FirstOrDefaultAsync(cancellationToken);
-            }
-
-            var nextRadius = Math.Min(
-                options.MaximumSearchRadiusMeters,
-                session.SearchRadiusMeters + options.SearchRadiusExpansionMeters);
-            var cycleBoundary = (session.AttemptCount + 1) % options.MaximumAttemptsPerCycle == 0;
-            session.RecordAttempt(
-                utcNow,
-                candidate is null || cycleBoundary ? utcNow + options.RetryBackoff : utcNow,
-                cycleBoundary ? options.InitialSearchRadiusMeters : nextRadius);
-
-            if (candidate is null)
-            {
-                noCandidates++;
-                continue;
-            }
-
-            dbContext.RiderDeliveryOffers.Add(RiderDeliveryOffer.Create(
-                session.Id,
-                delivery.Id,
-                candidate.RiderProfileId,
-                utcNow,
-                utcNow + options.OfferTimeout));
-            created++;
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        var result = new MatchingProcessingResult(
-            scheduledDeliveries.Count,
-            expiredOffers.Count,
-            attempts,
-            created,
-            noCandidates);
-        RiderMatchingMetrics.RecordProcessing(result);
-        return result;
     }
 
-    private sealed record RiderCandidate(Guid RiderProfileId, double DistanceMeters);
+    public async Task<IReadOnlySet<Guid>> GetDeliveriesWithPendingOffersAsync(
+        IEnumerable<Guid> deliveryIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = deliveryIds.Distinct().ToArray();
+        return (await dbContext.RiderDeliveryOffers
+                .Where(offer => ids.Contains(offer.DeliveryId) && offer.Status == RiderDeliveryOfferStatus.Pending)
+                .Select(offer => offer.DeliveryId)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+    }
+
+    public async Task<RiderCandidate?> FindCandidateAsync(
+        Delivery delivery,
+        int searchRadiusMeters,
+        DateTimeOffset freshAfterUtc,
+        DateTimeOffset utcNow,
+        int maximumCandidates,
+        CancellationToken cancellationToken)
+    {
+        var pickupPoint = RiderGeographyQueries.CreatePoint(
+            delivery.PickupAddress.Latitude,
+            delivery.PickupAddress.Longitude);
+        var zoneId = await geographyQueries.FindPickupZoneIdAsync(
+            delivery,
+            pickupPoint,
+            utcNow,
+            cancellationToken);
+        if (!zoneId.HasValue)
+        {
+            return null;
+        }
+
+        return await (
+            from profile in dbContext.RiderProfiles
+            join location in dbContext.RiderCurrentLocations on profile.Id equals location.RiderProfileId
+            join serviceZone in dbContext.RiderServiceZones on profile.Id equals serviceZone.RiderProfileId
+            join stakeholder in dbContext.Stakeholders on profile.StakeholderId equals stakeholder.Id
+            join stakeholderType in dbContext.StakeholderTypes on stakeholder.StakeholderTypeId equals stakeholderType.Id
+            join vehicle in dbContext.VehicleCategories on profile.VehicleCategoryId equals vehicle.Id
+            where profile.TenantId == dbContext.Stakeholders
+                .Where(sender => sender.Id == delivery.SenderId)
+                .Select(sender => sender.TenantId)
+                .Single()
+            where profile.VerificationStatus == RiderVerificationStatus.Approved
+            where profile.AvailabilityStatus == RiderAvailabilityStatus.Available
+            where profile.VehicleCategoryId == delivery.VehicleCategoryId
+            where vehicle.IsActive
+            where stakeholder.IsVerified && stakeholderType.Key == RiderStakeholderTypeKey
+            where location.CapturedAtUtc >= freshAfterUtc
+            where serviceZone.DeliveryZoneId == zoneId.Value
+            where !dbContext.Deliveries.Any(item =>
+                item.RiderId == profile.StakeholderId && ActiveDeliveryStatuses.Contains(item.Status))
+            where !dbContext.RiderDeliveryOffers.Any(offer =>
+                offer.RiderProfileId == profile.Id && offer.Status == RiderDeliveryOfferStatus.Pending)
+            let distance = EF.Property<Point>(location, RiderCurrentLocationConfiguration.PositionProperty)
+                .Distance(pickupPoint)
+            where distance <= searchRadiusMeters
+            orderby distance, profile.Id
+            select new RiderCandidate(profile.Id, distance))
+            .Take(maximumCandidates)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public void AddMatchingSession(DeliveryMatchingSession session) =>
+        dbContext.DeliveryMatchingSessions.Add(session);
+
+    public void AddOffer(RiderDeliveryOffer offer) =>
+        dbContext.RiderDeliveryOffers.Add(offer);
+
+    public void AddStatusHistory(DeliveryStatusHistory history) =>
+        dbContext.DeliveryStatusHistory.Add(history);
 }

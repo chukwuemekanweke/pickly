@@ -1,22 +1,26 @@
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 namespace BLVK.Pickly.Logistics.Application.Riders.Features.GetRiderActiveDelivery;
 
-public sealed class GetRiderActiveDeliveryHandler(IRiderActiveDeliveryReader reader)
+public sealed class GetRiderActiveDeliveryHandler(
+    RiderActorResolver actorResolver,
+    IRiderActiveDeliveryReader reader)
 {
     public async Task<GetRiderActiveDeliveryResult> HandleAsync(
         GetRiderActiveDeliveryQuery query,
         CancellationToken cancellationToken)
     {
-        var result = await reader.GetAsync(query.ActorContext, cancellationToken);
-        return new(result.Code switch
+        var resolved = await actorResolver.ResolveAsync(query.ActorContext, trackProfile: false, cancellationToken);
+        if (resolved.Status != RiderActorResolutionStatus.Success)
         {
-            RiderOperationCode.Success => GetRiderActiveDeliveryStatus.Success,
-            RiderOperationCode.NotAuthenticated => GetRiderActiveDeliveryStatus.NotAuthenticated,
-            RiderOperationCode.NotRider => GetRiderActiveDeliveryStatus.NotRider,
-            RiderOperationCode.NotFound => GetRiderActiveDeliveryStatus.NotFound,
-            _ => GetRiderActiveDeliveryStatus.Conflict
-        }, result.Delivery);
+            return new(resolved.Status == RiderActorResolutionStatus.NotAuthenticated
+                ? GetRiderActiveDeliveryStatus.NotAuthenticated
+                : GetRiderActiveDeliveryStatus.NotRider);
+        }
+
+        var delivery = await reader.GetAsync(resolved.Profile!.StakeholderId, cancellationToken);
+        return delivery is null
+            ? new(GetRiderActiveDeliveryStatus.NotFound)
+            : new(GetRiderActiveDeliveryStatus.Success, delivery);
     }
 }

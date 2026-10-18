@@ -1,8 +1,15 @@
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
-
 namespace BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 public interface ISenderDeliveryAssignmentReader
 {
-    Task<SenderAssignmentSnapshot> GetAsync(Guid deliveryId, CancellationToken cancellationToken);
+    Task<SenderDeliveryAssignmentFacts> GetAsync(Guid deliveryId, CancellationToken cancellationToken);
 }
+
+public sealed record SenderDeliveryAssignmentFacts(
+    bool HasActiveOffer,
+    bool HasActiveMatchingSession,
+    bool IsMatchingEligible,
+    Guid? RiderId,
+    string? RiderName,
+    string? RiderAvatarUrl,
+    DateTimeOffset? AssignedAtUtc);

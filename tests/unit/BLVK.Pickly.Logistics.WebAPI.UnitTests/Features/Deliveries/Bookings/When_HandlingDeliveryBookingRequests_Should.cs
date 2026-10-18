@@ -55,6 +55,7 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
         private readonly IRepository<Delivery> _deliveries = Substitute.For<IRepository<Delivery>>();
         private readonly IRepository<Currency> _currencies = Substitute.For<IRepository<Currency>>();
         private readonly IDeliveryBookingPersistence _persistence = Substitute.For<IDeliveryBookingPersistence>();
+        private readonly ISenderDeliveryAssignmentReader _assignments = Substitute.For<ISenderDeliveryAssignmentReader>();
         private Delivery? _delivery;
 
         public TestContext()
@@ -84,6 +85,8 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
             _deliveries.FirstOrDefaultAsync(Arg.Any<ISpecification<Delivery>>(), Arg.Any<CancellationToken>())
                 .Returns(_ => _delivery);
             _currencies.GetByIdAsync(currency.Id, Arg.Any<CancellationToken>()).Returns(currency);
+            _assignments.GetAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(new SenderDeliveryAssignmentFacts(false, false, true, null, null, null, null));
             _persistence.CommitAsync(
                     Arg.Any<Delivery>(),
                     Arg.Any<DeliveryQuote>(),
@@ -112,7 +115,7 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
             var get = new GetDeliveryHandler(
                 _deliveries,
                 _currencies,
-                Substitute.For<ISenderDeliveryAssignmentReader>());
+                _assignments);
             var actor = Substitute.For<ICurrentActor>();
             actor.ActorId.Returns(_senderId.ToString());
             actor.TenantId.Returns(Guid.CreateVersion7());

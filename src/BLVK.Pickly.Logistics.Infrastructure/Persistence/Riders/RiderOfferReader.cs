@@ -1,4 +1,4 @@
-using BLVK.Pickly.Logistics.Domain.Common.Auditing;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
@@ -6,47 +6,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Persistence.Riders;
 
-internal sealed class RiderOfferReader(
-    AppDbContext dbContext,
-    RiderPersistenceSupport support) : IRiderOfferReader
+internal sealed class RiderOfferReader(AppDbContext dbContext) : IRiderOfferReader
 {
-    public async Task<RiderOffersResult> ListAsync(
-        ActorContext actor,
+    public async Task<IReadOnlyList<RiderDeliveryOffer>> ListExpiredAsync(
+        Guid riderProfileId,
         DateTimeOffset utcNow,
-        CancellationToken cancellationToken)
-    {
-        var resolved = await support.ResolveRiderAsync(actor, cancellationToken);
-        if (resolved.Code != RiderOperationCode.Success)
-        {
-            return new(resolved.Code);
-        }
-
-        if (!resolved.Profile!.IsApproved)
-        {
-            return new(RiderOperationCode.ProfileInactive);
-        }
-
-        // Listing lazily expires the rider's own timed-out offers so they are never presented as actionable.
-        var expired = await dbContext.RiderDeliveryOffers
+        CancellationToken cancellationToken) =>
+        await dbContext.RiderDeliveryOffers
             .Where(offer =>
-                offer.RiderProfileId == resolved.Profile.Id &&
+                offer.RiderProfileId == riderProfileId &&
                 offer.Status == RiderDeliveryOfferStatus.Pending &&
                 offer.ExpiresAtUtc <= utcNow)
             .ToListAsync(cancellationToken);
-        foreach (var offer in expired)
-        {
-            offer.Expire(utcNow);
-        }
 
-        if (expired.Count > 0)
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
+    public async Task<IReadOnlyCollection<RiderOfferSnapshot>> ListActiveSnapshotsAsync(
+        Guid riderProfileId,
+        DateTimeOffset utcNow,
+        CancellationToken cancellationToken)
+    {
         var offers = await dbContext.RiderDeliveryOffers
             .AsNoTracking()
             .Where(offer =>
-                offer.RiderProfileId == resolved.Profile.Id &&
+                offer.RiderProfileId == riderProfileId &&
                 offer.Status == RiderDeliveryOfferStatus.Pending &&
                 offer.ExpiresAtUtc > utcNow)
             .OrderBy(offer => offer.ExpiresAtUtc)
@@ -59,7 +40,7 @@ internal sealed class RiderOfferReader(
             .Where(delivery => deliveryIds.Contains(delivery.Id))
             .ToDictionaryAsync(delivery => delivery.Id, cancellationToken);
 
-        var snapshots = offers
+        return offers
             .Where(offer => deliveries.ContainsKey(offer.DeliveryId))
             .Select(offer =>
             {
@@ -76,7 +57,5 @@ internal sealed class RiderOfferReader(
                     offer.ExpiresAtUtc);
             })
             .ToArray();
-
-        return new(RiderOperationCode.Success, snapshots);
     }
 }

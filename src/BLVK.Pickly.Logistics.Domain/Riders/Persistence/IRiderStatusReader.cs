@@ -1,13 +1,16 @@
-using BLVK.Pickly.Logistics.Domain.Common.Auditing;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 
 namespace BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 public interface IRiderStatusReader
 {
-    Task<RiderStatusResult> GetAsync(
-        ActorContext actor,
+    Task<RiderStatusFacts> GetFactsAsync(
+        RiderProfile profile,
         DateTimeOffset utcNow,
-        RiderMatchingOptions options,
         CancellationToken cancellationToken);
 }
+
+public sealed record RiderStatusFacts(
+    RiderCurrentLocation? Location,
+    bool HasActiveDelivery,
+    int PendingOfferCount);

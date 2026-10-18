@@ -1,12 +1,11 @@
 using BLVK.Pickly.Logistics.Domain.Riders;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
-using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Application.Riders.Features.GetRiderStatus;
 
 public sealed class GetRiderStatusHandler(
-    IRiderStatusReader reader,
+    RiderActorResolver actorResolver,
+    RiderStatusProjector statusProjector,
     IOptions<RiderMatchingOptions> options,
     TimeProvider timeProvider)
 {
@@ -14,17 +13,19 @@ public sealed class GetRiderStatusHandler(
         GetRiderStatusQuery query,
         CancellationToken cancellationToken)
     {
-        var result = await reader.GetAsync(
-            query.ActorContext,
+        var resolved = await actorResolver.ResolveAsync(query.ActorContext, trackProfile: false, cancellationToken);
+        if (resolved.Status != RiderActorResolutionStatus.Success)
+        {
+            return new(resolved.Status == RiderActorResolutionStatus.NotAuthenticated
+                ? GetRiderStatusStatus.NotAuthenticated
+                : GetRiderStatusStatus.NotRider);
+        }
+
+        var status = await statusProjector.ProjectAsync(
+            resolved.Profile!,
             timeProvider.GetUtcNow(),
             options.Value,
             cancellationToken);
-        return new(result.Code switch
-        {
-            RiderOperationCode.Success => GetRiderStatusStatus.Success,
-            RiderOperationCode.NotAuthenticated => GetRiderStatusStatus.NotAuthenticated,
-            RiderOperationCode.NotRider => GetRiderStatusStatus.NotRider,
-            _ => GetRiderStatusStatus.Conflict
-        }, result.Status);
+        return new(GetRiderStatusStatus.Success, status);
     }
 }

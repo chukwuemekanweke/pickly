@@ -1,14 +1,17 @@
-using BLVK.Pickly.Logistics.Domain.Common.Auditing;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
+using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 
 namespace BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 
 public interface IRiderAvailabilityPersistence
 {
-    Task<RiderStatusResult> SetAsync(
-        ActorContext actor,
-        bool isAvailable,
-        DateTimeOffset utcNow,
-        RiderMatchingOptions options,
+    Task<RiderAvailabilityState> LoadAsync(
+        RiderProfile profile,
         CancellationToken cancellationToken);
 }
+
+public sealed record RiderAvailabilityState(
+    RiderCurrentLocation? Location,
+    bool HasActiveDelivery,
+    bool IsVehicleCategoryActive,
+    IReadOnlyList<RiderDeliveryOffer> PendingOffers,
+    IReadOnlyDictionary<Guid, DeliveryMatchingSession> MatchingSessions);

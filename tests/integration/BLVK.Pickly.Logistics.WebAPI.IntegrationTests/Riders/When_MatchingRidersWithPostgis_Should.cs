@@ -1,10 +1,12 @@
+using BLVK.Pickly.Logistics.Application.Riders;
+using BLVK.Pickly.Logistics.Application.Riders.Features.AcceptRiderOffer;
+using BLVK.Pickly.Logistics.Application.Riders.Features.ProcessRiderMatching;
 using BLVK.Pickly.Logistics.Domain.Authentication.Entities;
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders;
 using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
@@ -12,6 +14,7 @@ using BLVK.Pickly.Logistics.Infrastructure.Persistence.Configurations;
 using BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
 using Shouldly;
 
@@ -28,11 +31,11 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
         var rider = await PersistRiderAsync(delivery, 6.5250, 3.3800);
 
         using var scope = CreateScope();
-        var matching = scope.ServiceProvider.GetRequiredService<IRiderMatchingPersistence>();
-        var acceptance = scope.ServiceProvider.GetRequiredService<IRiderOfferAcceptancePersistence>();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var options = MatchingOptions();
         var now = Now.AddHours(2);
+        var matching = CreateMatchingHandler(scope.ServiceProvider, options, now);
+        var acceptance = CreateAcceptanceHandler(scope.ServiceProvider, options, now.AddSeconds(1));
 
         var profile = await dbContext.RiderProfiles.SingleAsync(item => item.StakeholderId == rider.StakeholderId);
         profile.VerificationStatus.ShouldBe(RiderVerificationStatus.Approved);
@@ -54,20 +57,17 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
             .Select(item => item.StakeholderType.Key)
             .SingleAsync()).ShouldBe("rider");
 
-        var processing = await matching.ProcessAsync(now, options, CancellationToken.None);
+        var processing = await matching.HandleAsync(new(), CancellationToken.None);
         processing.MatchingAttempts.ShouldBeGreaterThan(0);
 
         var offer = await dbContext.RiderDeliveryOffers.SingleOrDefaultAsync(item => item.DeliveryId == delivery.Id);
         offer.ShouldNotBeNull($"Attempts={processing.MatchingAttempts}, NoCandidates={processing.NoCandidateAttempts}");
         dbContext.ChangeTracker.Clear();
-        var accepted = await acceptance.AcceptAsync(
-            new(rider.StakeholderId, rider.TenantId, "test-correlation", "test-flow"),
-            offer.Id,
-            now.AddSeconds(1),
-            options,
+        var accepted = await acceptance.HandleAsync(
+            new(offer.Id, new(rider.StakeholderId, rider.TenantId, "test-correlation", "test-flow")),
             CancellationToken.None);
 
-        accepted.Code.ShouldBe(RiderOperationCode.Success);
+        accepted.Status.ShouldBe(AcceptRiderOfferStatus.Success);
         accepted.Delivery.ShouldNotBeNull();
         accepted.Delivery.Status.ShouldBe("RiderAssigned");
 
@@ -85,12 +85,43 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
         await PersistRiderAsync(delivery, 6.58, 3.44);
 
         using var scope = CreateScope();
-        var matching = scope.ServiceProvider.GetRequiredService<IRiderMatchingPersistence>();
-        var processing = await matching.ProcessAsync(Now.AddHours(2), MatchingOptions(), CancellationToken.None);
+        var options = MatchingOptions();
+        var matching = CreateMatchingHandler(scope.ServiceProvider, options, Now.AddHours(2));
+        var processing = await matching.HandleAsync(new(), CancellationToken.None);
 
         processing.NoCandidateAttempts.ShouldBeGreaterThan(0);
         (await scope.ServiceProvider.GetRequiredService<AppDbContext>().RiderDeliveryOffers
             .AnyAsync(item => item.DeliveryId == delivery.Id)).ShouldBeFalse();
+    }
+
+    private static ProcessRiderMatchingHandler CreateMatchingHandler(
+        IServiceProvider services,
+        RiderMatchingOptions options,
+        DateTimeOffset utcNow) =>
+        new(
+            services.GetRequiredService<IRiderTransactionFactory>(),
+            services.GetRequiredService<IRiderConsistencyLock>(),
+            services.GetRequiredService<IRiderMatchingPersistence>(),
+            services.GetRequiredService<IRiderMatchingTelemetry>(),
+            Options.Create(options),
+            new FixedTimeProvider(utcNow));
+
+    private static AcceptRiderOfferHandler CreateAcceptanceHandler(
+        IServiceProvider services,
+        RiderMatchingOptions options,
+        DateTimeOffset utcNow) =>
+        new(
+            services.GetRequiredService<RiderActorResolver>(),
+            services.GetRequiredService<IRiderTransactionFactory>(),
+            services.GetRequiredService<IRiderConsistencyLock>(),
+            services.GetRequiredService<IRiderOfferAcceptancePersistence>(),
+            services.GetRequiredService<IRiderMatchingTelemetry>(),
+            Options.Create(options),
+            new FixedTimeProvider(utcNow));
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
     [Fact]

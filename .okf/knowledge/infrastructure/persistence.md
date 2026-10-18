@@ -54,6 +54,18 @@ purpose-specific port in `Domain/<Area>/Persistence/` with one Infrastructure im
 `DeliveryBookingPersistence` and the rider ports under `Persistence/Riders/`. Shared query/lock helpers may be factored
 into an internal scoped helper that shares the same `AppDbContext`; do not merge unrelated use cases into one store.
 
+Infrastructure persistence code owns mechanics, not use-case policy. It may start/commit/roll back transactions, acquire
+locks, translate provider conflicts, maintain EF shadow properties, and execute bounded provider-specific queries. It
+returns domain aggregates, factual projections, or database outcomes to Application. It must not decide authentication/
+authorization outcomes, eligibility, freshness, expiry/retry policy, aggregate transitions, or application result
+statuses. Application handlers coordinate those facts inside the transaction abstraction and invoke domain methods.
+
+Rider operations demonstrate the split: `RiderTransactionFactory` and `RiderConsistencyLock` preserve PostgreSQL
+isolation and stable advisory-lock ordering; `RiderGeographyQueries` and purpose-specific reader/persistence ports own
+PostGIS and EF queries. Rider handlers own offer expiry/acceptance/rejection, availability, matching retry/radius policy,
+assignment eligibility, aggregate transitions and operation-specific results. Unit tests exercise those decisions with
+mocked ports; integration tests exercise PostGIS, locking, uniqueness and atomic commits.
+
 ## Delivery booking transaction
 
 `DeliveryBookingPersistence` is the narrow infrastructure transaction boundary for quote confirmation. The Application

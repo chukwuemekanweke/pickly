@@ -36,11 +36,13 @@ governance: constraint
 Each rider endpoint is a vertical slice under `Application/Riders/Features/<OperationName>/` (`UpdateRiderLocation`,
 `SetRiderAvailability`, `GetRiderStatus`, `ListRiderOffers`, `AcceptRiderOffer`, `RejectRiderOffer`,
 `GetRiderActiveDelivery`); the Jobs matching loop calls `ProcessRiderMatchingHandler`. Handlers supply `TimeProvider`
-time and `RiderMatchingOptions` and map the persistence `RiderOperationCode` to their own status enum. Each handler
-depends on one purpose-specific port in `Domain/Riders/Persistence/`; sender delivery retrieval uses
-`ISenderDeliveryAssignmentReader`. Implementations live in `Infrastructure/Persistence/Riders/` and own every
-transaction, advisory lock, isolation level and PostGIS query; `RiderPersistenceSupport` holds the shared rider
-resolution, status projection, zone lookup and lock helpers. There is no rider-wide application service or store.
+time and `RiderMatchingOptions`, evaluates use-case rules, invokes aggregate transitions and returns its own status enum.
+Purpose-specific ports in `Domain/Riders/Persistence/` expose tracked data and bounded query facts; sender delivery
+retrieval uses `ISenderDeliveryAssignmentReader`. Implementations live in `Infrastructure/Persistence/Riders/`.
+`RiderTransactionFactory` translates database conflicts and preserves isolation, `RiderConsistencyLock` owns stable
+PostgreSQL advisory-lock ordering, and `RiderGeographyQueries` owns shared PostGIS primitives. Infrastructure never
+selects rider application statuses or performs offer/availability/matching state transitions. There is no rider-wide
+application service or store.
 
 ## Identity, profile and operational state
 
