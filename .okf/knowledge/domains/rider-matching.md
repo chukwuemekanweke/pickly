@@ -21,7 +21,7 @@ status: stable
 code_refs:
     - src/BLVK.Pickly.Logistics.Domain/Riders/**
     - src/BLVK.Pickly.Logistics.Application/Riders/**
-    - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/RiderOperationsStore.cs
+    - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/Riders/**
     - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/Configurations/Rider*.cs
     - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/Configurations/DeliveryMatchingSessionConfiguration.cs
     - src/BLVK.Pickly.Logistics.Infrastructure/Persistence/Configurations/DeliveryConfiguration.cs
@@ -31,6 +31,17 @@ code_refs:
     - tests/**/Riders/**
 governance: constraint
 ---
+## Code structure
+
+Each rider endpoint is a vertical slice under `Application/Riders/Features/<OperationName>/` (`UpdateRiderLocation`,
+`SetRiderAvailability`, `GetRiderStatus`, `ListRiderOffers`, `AcceptRiderOffer`, `RejectRiderOffer`,
+`GetRiderActiveDelivery`); the Jobs matching loop calls `ProcessRiderMatchingHandler`. Handlers supply `TimeProvider`
+time and `RiderMatchingOptions` and map the persistence `RiderOperationCode` to their own status enum. Each handler
+depends on one purpose-specific port in `Domain/Riders/Persistence/`; sender delivery retrieval uses
+`ISenderDeliveryAssignmentReader`. Implementations live in `Infrastructure/Persistence/Riders/` and own every
+transaction, advisory lock, isolation level and PostGIS query; `RiderPersistenceSupport` holds the shared rider
+resolution, status projection, zone lookup and lock helpers. There is no rider-wide application service or store.
+
 ## Identity, profile and operational state
 
 `RiderProfile` is rider-only operational data associated one-to-one with an existing `Stakeholder` and scoped to the

@@ -49,6 +49,11 @@ status: stable
 New entities need an explicit `IEntityTypeConfiguration<T>` — do not rely on EF Core conventions alone for anything with non-trivial constraints, indexes, or owned types. New aggregates need a
 specification-based query path rather than ad hoc LINQ scattered across handlers.
 
+Transactional use cases that need provider-specific behavior (locks, isolation levels, PostGIS SQL) get a narrow,
+purpose-specific port in `Domain/<Area>/Persistence/` with one Infrastructure implementation per port, as in
+`DeliveryBookingPersistence` and the rider ports under `Persistence/Riders/`. Shared query/lock helpers may be factored
+into an internal scoped helper that shares the same `AppDbContext`; do not merge unrelated use cases into one store.
+
 ## Delivery booking transaction
 
 `DeliveryBookingPersistence` is the narrow infrastructure transaction boundary for quote confirmation. The Application

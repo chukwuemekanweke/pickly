@@ -48,6 +48,11 @@ processes holding DLL locks and cause transient build failures.
 
 ## Engineering invariants
 
+- New API operations and job units of work follow the established vertical-slice pattern: one feature folder per
+  operation with its own handler, command/query, result and status, and a thin controller that validates with
+  FluentValidation and delegates to that handler. Use `Deliveries/Features/CreateDelivery`, `GetDelivery` and
+  `DeliveryBookingsController` as references. Never consolidate endpoint use cases into a centralized application
+  service or a broad persistence store; see `.okf/knowledge/architecture/vertical-slices.md`.
 - Public and persisted enums use explicit one-based values; append new values and never renumber existing ones.
 - An idempotency key is permanently bound to its original operation and outcome; retries never redirect to a newer attempt.
 - Ambiguous or unresolved financial outcomes block new charges and automated fulfillment until an explicit review resolves them.

@@ -1,4 +1,4 @@
-using BLVK.Pickly.Logistics.Application.Riders;
+using BLVK.Pickly.Logistics.Application.Riders.Features.ProcessRiderMatching;
 using BLVK.Pickly.Logistics.Jobs.Infrastructure.BackgroundServices;
 using Microsoft.Extensions.Options;
 
@@ -21,8 +21,8 @@ public sealed class RiderMatchingProcessor(
             try
             {
                 using var scope = serviceScopeFactory.CreateScope();
-                var service = scope.ServiceProvider.GetRequiredService<RiderOperationsService>();
-                var result = await service.ProcessMatchingAsync(stoppingToken);
+                var handler = scope.ServiceProvider.GetRequiredService<ProcessRiderMatchingHandler>();
+                var result = await handler.HandleAsync(new(), stoppingToken);
                 if (result.ScheduledDispatchesOpened + result.MatchingAttempts + result.OffersExpired > 0)
                 {
                     logger.LogInformation(

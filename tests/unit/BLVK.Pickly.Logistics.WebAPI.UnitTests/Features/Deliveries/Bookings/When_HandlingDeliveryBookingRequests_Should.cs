@@ -9,6 +9,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Services;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.WebAPI.Features.Deliveries.Bookings;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -108,7 +109,10 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
                 tracking,
                 Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
                 new FixedTimeProvider(Now));
-            var get = new GetDeliveryHandler(_deliveries, _currencies);
+            var get = new GetDeliveryHandler(
+                _deliveries,
+                _currencies,
+                Substitute.For<ISenderDeliveryAssignmentReader>());
             var actor = Substitute.For<ICurrentActor>();
             actor.ActorId.Returns(_senderId.ToString());
             actor.TenantId.Returns(Guid.CreateVersion7());

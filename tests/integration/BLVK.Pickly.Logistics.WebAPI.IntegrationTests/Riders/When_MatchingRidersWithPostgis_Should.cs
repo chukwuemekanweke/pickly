@@ -5,6 +5,7 @@ using BLVK.Pickly.Logistics.Domain.Riders;
 using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Operations;
+using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Configurations;
@@ -27,7 +28,8 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
         var rider = await PersistRiderAsync(delivery, 6.5250, 3.3800);
 
         using var scope = CreateScope();
-        var store = scope.ServiceProvider.GetRequiredService<IRiderOperationsStore>();
+        var matching = scope.ServiceProvider.GetRequiredService<IRiderMatchingPersistence>();
+        var acceptance = scope.ServiceProvider.GetRequiredService<IRiderOfferAcceptancePersistence>();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var options = MatchingOptions();
         var now = Now.AddHours(2);
@@ -52,22 +54,22 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
             .Select(item => item.StakeholderType.Key)
             .SingleAsync()).ShouldBe("rider");
 
-        var processing = await store.ProcessMatchingAsync(now, options, CancellationToken.None);
+        var processing = await matching.ProcessAsync(now, options, CancellationToken.None);
         processing.MatchingAttempts.ShouldBeGreaterThan(0);
 
         var offer = await dbContext.RiderDeliveryOffers.SingleOrDefaultAsync(item => item.DeliveryId == delivery.Id);
         offer.ShouldNotBeNull($"Attempts={processing.MatchingAttempts}, NoCandidates={processing.NoCandidateAttempts}");
         dbContext.ChangeTracker.Clear();
-        var acceptance = await store.AcceptOfferAsync(
+        var accepted = await acceptance.AcceptAsync(
             new(rider.StakeholderId, rider.TenantId, "test-correlation", "test-flow"),
             offer.Id,
             now.AddSeconds(1),
             options,
             CancellationToken.None);
 
-        acceptance.Code.ShouldBe(RiderOperationCode.Success);
-        acceptance.Delivery.ShouldNotBeNull();
-        acceptance.Delivery.Status.ShouldBe("RiderAssigned");
+        accepted.Code.ShouldBe(RiderOperationCode.Success);
+        accepted.Delivery.ShouldNotBeNull();
+        accepted.Delivery.Status.ShouldBe("RiderAssigned");
 
         var persisted = await dbContext.Deliveries
             .Include(item => item.StatusHistory)
@@ -83,8 +85,8 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
         await PersistRiderAsync(delivery, 6.58, 3.44);
 
         using var scope = CreateScope();
-        var store = scope.ServiceProvider.GetRequiredService<IRiderOperationsStore>();
-        var processing = await store.ProcessMatchingAsync(Now.AddHours(2), MatchingOptions(), CancellationToken.None);
+        var matching = scope.ServiceProvider.GetRequiredService<IRiderMatchingPersistence>();
+        var processing = await matching.ProcessAsync(Now.AddHours(2), MatchingOptions(), CancellationToken.None);
 
         processing.NoCandidateAttempts.ShouldBeGreaterThan(0);
         (await scope.ServiceProvider.GetRequiredService<AppDbContext>().RiderDeliveryOffers

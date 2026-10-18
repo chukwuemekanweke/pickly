@@ -57,7 +57,14 @@ using BLVK.Pickly.Logistics.Application.Payments.Features.ReconcilePayments;
 using BLVK.Pickly.Logistics.Application.Providers.Features.ActivateProvider;
 using BLVK.Pickly.Logistics.Application.ReferenceData.Features.GetCountries;
 using BLVK.Pickly.Logistics.Application.ReferenceData.Features.GetLanguages;
-using BLVK.Pickly.Logistics.Application.Riders;
+using BLVK.Pickly.Logistics.Application.Riders.Features.AcceptRiderOffer;
+using BLVK.Pickly.Logistics.Application.Riders.Features.GetRiderActiveDelivery;
+using BLVK.Pickly.Logistics.Application.Riders.Features.GetRiderStatus;
+using BLVK.Pickly.Logistics.Application.Riders.Features.ListRiderOffers;
+using BLVK.Pickly.Logistics.Application.Riders.Features.ProcessRiderMatching;
+using BLVK.Pickly.Logistics.Application.Riders.Features.RejectRiderOffer;
+using BLVK.Pickly.Logistics.Application.Riders.Features.SetRiderAvailability;
+using BLVK.Pickly.Logistics.Application.Riders.Features.UpdateRiderLocation;
 using BLVK.Pickly.Logistics.Application.Stakeholders.Features.CompleteAvatarUpload;
 using BLVK.Pickly.Logistics.Application.Stakeholders.Features.CreateAvatarUpload;
 using BLVK.Pickly.Logistics.Application.Stakeholders.Features.GetPreferences;
@@ -147,7 +154,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SelectLocationCandidateHandler>();
         services.AddScoped<GetLocationHandler>();
         services.AddScoped<GetNearbyLocationsHandler>();
-        services.AddScoped<RiderOperationsService>();
+        services.AddScoped<UpdateRiderLocationHandler>();
+        services.AddScoped<SetRiderAvailabilityHandler>();
+        services.AddScoped<GetRiderStatusHandler>();
+        services.AddScoped<ListRiderOffersHandler>();
+        services.AddScoped<AcceptRiderOfferHandler>();
+        services.AddScoped<RejectRiderOfferHandler>();
+        services.AddScoped<GetRiderActiveDeliveryHandler>();
+        services.AddScoped<ProcessRiderMatchingHandler>();
 
         return services;
     }

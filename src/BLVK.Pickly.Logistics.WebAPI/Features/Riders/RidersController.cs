@@ -1,8 +1,13 @@
 using Asp.Versioning;
-using BLVK.Pickly.Logistics.Application.Riders;
+using BLVK.Pickly.Logistics.Application.Riders.Features.AcceptRiderOffer;
+using BLVK.Pickly.Logistics.Application.Riders.Features.GetRiderActiveDelivery;
+using BLVK.Pickly.Logistics.Application.Riders.Features.GetRiderStatus;
+using BLVK.Pickly.Logistics.Application.Riders.Features.ListRiderOffers;
+using BLVK.Pickly.Logistics.Application.Riders.Features.RejectRiderOffer;
+using BLVK.Pickly.Logistics.Application.Riders.Features.SetRiderAvailability;
+using BLVK.Pickly.Logistics.Application.Riders.Features.UpdateRiderLocation;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
-using BLVK.Pickly.Logistics.Domain.Riders.Operations;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +21,13 @@ namespace BLVK.Pickly.Logistics.WebAPI.Features.Riders;
 [Authorize(Policy = AuthorizationPolicyNames.RequireActiveSession)]
 [Route("api/v{version:apiVersion}/riders/me")]
 public sealed class RidersController(
-    RiderOperationsService service,
+    UpdateRiderLocationHandler updateLocationHandler,
+    SetRiderAvailabilityHandler setAvailabilityHandler,
+    GetRiderStatusHandler getStatusHandler,
+    ListRiderOffersHandler listOffersHandler,
+    AcceptRiderOfferHandler acceptOfferHandler,
+    RejectRiderOfferHandler rejectOfferHandler,
+    GetRiderActiveDeliveryHandler getActiveDeliveryHandler,
     RiderLocationRequestValidator locationValidator,
     ICurrentActor currentActor) : ControllerBase
 {
@@ -32,19 +43,16 @@ public sealed class RidersController(
             return BadRequest(new ValidationProblemDetails(validation.ToValidationDictionary()));
         }
 
-        var result = await service.UpdateLocationAsync(
-            Actor(),
-            request.Latitude,
-            request.Longitude,
-            request.CapturedAtUtc,
+        var result = await updateLocationHandler.HandleAsync(
+            new(request.Latitude, request.Longitude, request.CapturedAtUtc, Actor()),
             cancellationToken);
-        return result.Code switch
+        return result.Status switch
         {
-            RiderOperationCode.Success => NoContent(),
-            RiderOperationCode.NotAuthenticated => Unauthorized(),
-            RiderOperationCode.NotRider => Forbid(),
-            RiderOperationCode.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
-            RiderOperationCode.StaleLocation => Problem(409, "stale_rider_location", "Stale location", "A newer rider location has already been accepted."),
+            UpdateRiderLocationStatus.Success => NoContent(),
+            UpdateRiderLocationStatus.NotAuthenticated => Unauthorized(),
+            UpdateRiderLocationStatus.NotRider => Forbid(),
+            UpdateRiderLocationStatus.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
+            UpdateRiderLocationStatus.StaleLocation => Problem(409, "stale_rider_location", "Stale location", "A newer rider location has already been accepted."),
             _ => Problem(400, "invalid_rider_location", "Invalid rider location", "The coordinates or capture time are invalid.")
         };
     }
@@ -54,24 +62,41 @@ public sealed class RidersController(
         [FromBody] RiderAvailabilityRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await service.SetAvailabilityAsync(Actor(), request.IsAvailable, cancellationToken);
-        return StatusResult(result);
+        var result = await setAvailabilityHandler.HandleAsync(new(request.IsAvailable, Actor()), cancellationToken);
+        return result.Status switch
+        {
+            SetRiderAvailabilityStatus.Success => Ok(result.RiderStatus),
+            SetRiderAvailabilityStatus.NotAuthenticated => Unauthorized(),
+            SetRiderAvailabilityStatus.NotRider => Forbid(),
+            SetRiderAvailabilityStatus.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
+            SetRiderAvailabilityStatus.StaleLocation => Problem(409, "stale_rider_location", "Fresh location required", "A fresh rider location is required before becoming available."),
+            _ => Problem(409, "rider_status_conflict", "Rider status conflict", "The requested availability conflicts with an active assignment.")
+        };
     }
 
     [HttpGet("status")]
-    public async Task<IActionResult> GetStatus(CancellationToken cancellationToken) =>
-        StatusResult(await service.GetStatusAsync(Actor(), cancellationToken));
+    public async Task<IActionResult> GetStatus(CancellationToken cancellationToken)
+    {
+        var result = await getStatusHandler.HandleAsync(new(Actor()), cancellationToken);
+        return result.Status switch
+        {
+            GetRiderStatusStatus.Success => Ok(result.RiderStatus),
+            GetRiderStatusStatus.NotAuthenticated => Unauthorized(),
+            GetRiderStatusStatus.NotRider => Forbid(),
+            _ => Problem(409, "rider_status_conflict", "Rider status conflict", "The rider status could not be retrieved.")
+        };
+    }
 
     [HttpGet("delivery-offers")]
     public async Task<IActionResult> ListOffers(CancellationToken cancellationToken)
     {
-        var result = await service.ListOffersAsync(Actor(), cancellationToken);
-        return result.Code switch
+        var result = await listOffersHandler.HandleAsync(new(Actor()), cancellationToken);
+        return result.Status switch
         {
-            RiderOperationCode.Success => Ok(result.Offers),
-            RiderOperationCode.NotAuthenticated => Unauthorized(),
-            RiderOperationCode.NotRider => Forbid(),
-            RiderOperationCode.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
+            ListRiderOffersStatus.Success => Ok(result.Offers),
+            ListRiderOffersStatus.NotAuthenticated => Unauthorized(),
+            ListRiderOffersStatus.NotRider => Forbid(),
+            ListRiderOffersStatus.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
             _ => Conflict()
         };
     }
@@ -79,14 +104,14 @@ public sealed class RidersController(
     [HttpPost("delivery-offers/{offerId:guid}/accept")]
     public async Task<IActionResult> AcceptOffer(Guid offerId, CancellationToken cancellationToken)
     {
-        var result = await service.AcceptOfferAsync(Actor(), offerId, cancellationToken);
-        return result.Code switch
+        var result = await acceptOfferHandler.HandleAsync(new(offerId, Actor()), cancellationToken);
+        return result.Status switch
         {
-            RiderOperationCode.Success => Ok(result.Delivery),
-            RiderOperationCode.NotAuthenticated => Unauthorized(),
-            RiderOperationCode.NotRider or RiderOperationCode.Forbidden => Forbid(),
-            RiderOperationCode.NotFound => NotFound(),
-            RiderOperationCode.Expired => Problem(409, "offer_expired", "Offer expired", "The delivery offer has expired."),
+            AcceptRiderOfferStatus.Success => Ok(result.Delivery),
+            AcceptRiderOfferStatus.NotAuthenticated => Unauthorized(),
+            AcceptRiderOfferStatus.NotRider or AcceptRiderOfferStatus.Forbidden => Forbid(),
+            AcceptRiderOfferStatus.NotFound => NotFound(),
+            AcceptRiderOfferStatus.Expired => Problem(409, "offer_expired", "Offer expired", "The delivery offer has expired."),
             _ => Problem(409, "assignment_conflict", "Assignment conflict", "The offer, delivery, or rider is no longer eligible for assignment.")
         };
     }
@@ -94,14 +119,14 @@ public sealed class RidersController(
     [HttpPost("delivery-offers/{offerId:guid}/reject")]
     public async Task<IActionResult> RejectOffer(Guid offerId, CancellationToken cancellationToken)
     {
-        var result = await service.RejectOfferAsync(Actor(), offerId, cancellationToken);
-        return result.Code switch
+        var result = await rejectOfferHandler.HandleAsync(new(offerId, Actor()), cancellationToken);
+        return result.Status switch
         {
-            RiderOperationCode.Success => NoContent(),
-            RiderOperationCode.NotAuthenticated => Unauthorized(),
-            RiderOperationCode.NotRider or RiderOperationCode.Forbidden => Forbid(),
-            RiderOperationCode.NotFound => NotFound(),
-            RiderOperationCode.Expired => Problem(409, "offer_expired", "Offer expired", "The delivery offer has expired."),
+            RejectRiderOfferStatus.Success => NoContent(),
+            RejectRiderOfferStatus.NotAuthenticated => Unauthorized(),
+            RejectRiderOfferStatus.NotRider or RejectRiderOfferStatus.Forbidden => Forbid(),
+            RejectRiderOfferStatus.NotFound => NotFound(),
+            RejectRiderOfferStatus.Expired => Problem(409, "offer_expired", "Offer expired", "The delivery offer has expired."),
             _ => Conflict()
         };
     }
@@ -109,26 +134,16 @@ public sealed class RidersController(
     [HttpGet("active-delivery")]
     public async Task<IActionResult> GetActiveDelivery(CancellationToken cancellationToken)
     {
-        var result = await service.GetActiveDeliveryAsync(Actor(), cancellationToken);
-        return result.Code switch
+        var result = await getActiveDeliveryHandler.HandleAsync(new(Actor()), cancellationToken);
+        return result.Status switch
         {
-            RiderOperationCode.Success => Ok(result.Delivery),
-            RiderOperationCode.NotAuthenticated => Unauthorized(),
-            RiderOperationCode.NotRider => Forbid(),
-            RiderOperationCode.NotFound => NoContent(),
+            GetRiderActiveDeliveryStatus.Success => Ok(result.Delivery),
+            GetRiderActiveDeliveryStatus.NotAuthenticated => Unauthorized(),
+            GetRiderActiveDeliveryStatus.NotRider => Forbid(),
+            GetRiderActiveDeliveryStatus.NotFound => NoContent(),
             _ => Conflict()
         };
     }
-
-    private IActionResult StatusResult(RiderStatusResult result) => result.Code switch
-    {
-        RiderOperationCode.Success => Ok(result.Status),
-        RiderOperationCode.NotAuthenticated => Unauthorized(),
-        RiderOperationCode.NotRider => Forbid(),
-        RiderOperationCode.ProfileInactive => Problem(409, "rider_inactive", "Rider inactive", "The rider profile is not active and approved."),
-        RiderOperationCode.StaleLocation => Problem(409, "stale_rider_location", "Fresh location required", "A fresh rider location is required before becoming available."),
-        _ => Problem(409, "rider_status_conflict", "Rider status conflict", "The requested availability conflicts with an active assignment.")
-    };
 
     private ActorContext Actor() => Guid.TryParse(currentActor.ActorId, out var id)
         ? new(id, currentActor.TenantId, currentActor.CorrelationId, currentActor.FlowId)
