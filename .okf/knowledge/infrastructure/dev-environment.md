@@ -13,6 +13,7 @@ code_refs:
     - docker-compose.yml
     - docker-compose.local.yml
     - docker-compose.env.example.sh
+    - docker-compose.env.example.ps1
 sources:
     - kind: file
       path: docker-compose.yml
@@ -33,7 +34,8 @@ status: stable
 - Local and Testcontainers PostgreSQL use `postgis/postgis:16-3.5-alpine` because migrations require the PostGIS
   extension; cloud databases must have PostGIS available (see [[locations]]).
 - Mapbox is configured through `MAPBOX_ACCESS_TOKEN` and `MAPBOX_PERMANENT_STORAGE_ENABLED` (placeholders in
-  `docker-compose.env.example.sh`); leave the flag `false` unless the account permits permanent geocoding storage.
+  both `docker-compose.env.example.sh` and `docker-compose.env.example.ps1`); leave the flag `false` unless the
+  account permits permanent geocoding storage.
   Compose maps the one token to both `Locations__Mapbox__AccessToken` (geocoding) and
   `Deliveries__Routing__Mapbox__AccessToken` (quote routing). An empty routing token does not fail startup; quotes
   then fail as routing-unavailable.
