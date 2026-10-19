@@ -14,7 +14,7 @@ public sealed partial class When_ResolvingLocation_WithConcurrentResolution_Shou
             .Returns(_ =>
             {
                 // Another instance holds the lease and finishes registering while this request waits.
-                if (Interlocked.Increment(ref attempts) == 2)
+                if (Interlocked.Increment(ref attempts) == 1)
                 {
                     context.SeedProviderLocation(resolutionKey: LocationResolutionTestContext.ResolutionKey());
                 }

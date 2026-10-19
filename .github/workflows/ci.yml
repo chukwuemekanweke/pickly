@@ -319,6 +319,7 @@ jobs:
       SSH_USER: ${{ secrets.HETZNER_SSH_USER }}
       SSH_PORT: ${{ secrets.HETZNER_SSH_PORT }}
       SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+      SSH_KEY_PASSPHRASE: ${{ secrets.HETZNER_SSH_KEY_PASSPHRASE }}
       SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_SSH_KNOWN_HOSTS }}
 
     steps:
@@ -327,7 +328,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          for variable in SSH_HOST SSH_USER SSH_PORT SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+          for variable in SSH_HOST SSH_USER SSH_PORT SSH_PRIVATE_KEY SSH_KEY_PASSPHRASE SSH_KNOWN_HOSTS; do
             if [ -z "${!variable:-}" ]; then
               echo "Required production secret $variable is not configured."
               exit 1
@@ -351,13 +352,35 @@ jobs:
 
           SSH_DIRECTORY="$RUNNER_TEMP/pickly-ssh"
           SSH_KEY_FILE="$SSH_DIRECTORY/deploy-key"
+          SSH_ASKPASS_FILE="$SSH_DIRECTORY/askpass"
           KNOWN_HOSTS_FILE="$SSH_DIRECTORY/known_hosts"
           install -m 700 -d "$SSH_DIRECTORY"
-          trap 'rm -rf "$SSH_DIRECTORY"' EXIT
+
+          cleanup() {
+            if [ -n "${SSH_AGENT_PID:-}" ]; then
+              ssh-agent -k >/dev/null 2>&1 || true
+            fi
+
+            rm -rf "$SSH_DIRECTORY"
+          }
+          trap cleanup EXIT
 
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$KNOWN_HOSTS_FILE"
           chmod 600 "$SSH_KEY_FILE" "$KNOWN_HOSTS_FILE"
+
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'printf '\''%s\n'\'' "$SSH_KEY_PASSPHRASE"' \
+            > "$SSH_ASKPASS_FILE"
+          chmod 700 "$SSH_ASKPASS_FILE"
+
+          eval "$(ssh-agent -s)"
+          DISPLAY=:0 \
+            SSH_ASKPASS="$SSH_ASKPASS_FILE" \
+            SSH_ASKPASS_REQUIRE=force \
+            ssh-add "$SSH_KEY_FILE" </dev/null
+          unset SSH_PRIVATE_KEY SSH_KEY_PASSPHRASE
 
           if ! ssh-keygen -F "[$SSH_HOST]:$SSH_PORT" -f "$KNOWN_HOSTS_FILE" >/dev/null; then
             echo "HETZNER_SSH_KNOWN_HOSTS does not contain the configured host and port."
