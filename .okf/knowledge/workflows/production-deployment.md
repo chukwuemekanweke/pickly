@@ -34,9 +34,10 @@ Host, user, port, encrypted private key, private-key passphrase, and pinned know
 production environment secrets. The workflow loads the key into an ephemeral `ssh-agent` through a
 non-interactive `SSH_ASKPASS` helper, unsets the key material before connecting, and removes the
 temporary files and agent on exit. SSH uses batch mode, the dedicated identity only, and strict
-host-key checking. The deployment user must have non-interactive Docker access; granting Docker
-access is effectively granting root-level control of the host and must be an explicit
-server-administration decision.
+host-key checking. Client keepalives cover the silent container-health polling periods so an idle
+connection does not interrupt deployment. The deployment user must have non-interactive Docker
+access; granting Docker access is effectively granting root-level control of the host and must be
+an explicit server-administration decision.
 
 ## Deployment invariants
 

@@ -392,6 +392,8 @@ jobs:
             -p "$SSH_PORT" \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$KNOWN_HOSTS_FILE" \
             "$SSH_USER@$SSH_HOST" \
