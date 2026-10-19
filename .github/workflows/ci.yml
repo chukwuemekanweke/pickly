@@ -304,3 +304,225 @@ jobs:
             GITHUB_PAT=${{ secrets.GH_PKG_PAT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-production:
+    needs: docker-build-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: pickly-production
+      cancel-in-progress: false
+    env:
+      SSH_HOST: ${{ secrets.HETZNER_HOST }}
+      SSH_USER: ${{ secrets.HETZNER_SSH_USER }}
+      SSH_PORT: ${{ secrets.HETZNER_SSH_PORT }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_SSH_KNOWN_HOSTS }}
+
+    steps:
+      - name: Deploy commit to Hetzner
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          for variable in SSH_HOST SSH_USER SSH_PORT SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+            if [ -z "${!variable:-}" ]; then
+              echo "Required production secret $variable is not configured."
+              exit 1
+            fi
+          done
+
+          if [[ ! "$SSH_HOST" =~ ^[A-Za-z0-9._:-]+$ ]]; then
+            echo "HETZNER_HOST contains unsupported characters."
+            exit 1
+          fi
+
+          if [[ ! "$SSH_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]; then
+            echo "HETZNER_SSH_USER is not a valid SSH username."
+            exit 1
+          fi
+
+          if [[ ! "$SSH_PORT" =~ ^[0-9]+$ ]] || (( SSH_PORT < 1 || SSH_PORT > 65535 )); then
+            echo "HETZNER_SSH_PORT must be a port number between 1 and 65535."
+            exit 1
+          fi
+
+          SSH_DIRECTORY="$RUNNER_TEMP/pickly-ssh"
+          SSH_KEY_FILE="$SSH_DIRECTORY/deploy-key"
+          KNOWN_HOSTS_FILE="$SSH_DIRECTORY/known_hosts"
+          install -m 700 -d "$SSH_DIRECTORY"
+          trap 'rm -rf "$SSH_DIRECTORY"' EXIT
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$KNOWN_HOSTS_FILE"
+          chmod 600 "$SSH_KEY_FILE" "$KNOWN_HOSTS_FILE"
+
+          if ! ssh-keygen -F "[$SSH_HOST]:$SSH_PORT" -f "$KNOWN_HOSTS_FILE" >/dev/null; then
+            echo "HETZNER_SSH_KNOWN_HOSTS does not contain the configured host and port."
+            exit 1
+          fi
+
+          ssh \
+            -i "$SSH_KEY_FILE" \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$KNOWN_HOSTS_FILE" \
+            "$SSH_USER@$SSH_HOST" \
+            bash -s -- "${{ github.sha }}" "${{ github.run_id }}" <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+
+          revision="$1"
+          run_id="$2"
+          deployment_directory=/opt/pickly
+
+          if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "The requested image revision is not a full Git commit SHA."
+            exit 1
+          fi
+
+          if [[ ! "$run_id" =~ ^[0-9]+$ ]]; then
+            echo "The GitHub Actions run ID is invalid."
+            exit 1
+          fi
+
+          cd "$deployment_directory"
+
+          for required_file in compose.yml .env app.env; do
+            if [ ! -f "$required_file" ]; then
+              echo "Required deployment file $deployment_directory/$required_file is missing."
+              exit 1
+            fi
+          done
+
+          if ! docker info >/dev/null 2>&1; then
+            echo "The deployment user cannot access Docker non-interactively."
+            exit 1
+          fi
+
+          exec 9>"$deployment_directory/.deployment.lock"
+          if ! flock -w 300 9; then
+            echo "Timed out waiting for the production deployment lock."
+            exit 1
+          fi
+
+          latest_run_file="$deployment_directory/.latest-deployment-run-id"
+          latest_run_id=0
+          if [ -f "$latest_run_file" ]; then
+            latest_run_id="$(tr -d '[:space:]' < "$latest_run_file")"
+            if [[ ! "$latest_run_id" =~ ^[0-9]+$ ]]; then
+              echo "The stored deployment run ID is invalid."
+              exit 1
+            fi
+          fi
+
+          if (( run_id < latest_run_id )); then
+            echo "Skipping superseded workflow run $run_id; run $latest_run_id already reached the server."
+            exit 0
+          fi
+
+          printf '%s\n' "$run_id" > "$latest_run_file.tmp"
+          mv "$latest_run_file.tmp" "$latest_run_file"
+
+          compose() {
+            PICKLY_VERSION="$revision" docker compose \
+              --env-file "$deployment_directory/.env" \
+              --env-file "$deployment_directory/app.env" \
+              --file "$deployment_directory/compose.yml" \
+              "$@"
+          }
+
+          echo "Validating production Compose configuration."
+          compose config --quiet
+
+          available_services="$(compose config --services)"
+          for service in postgres database-migrator webapi consumer jobs; do
+            if ! grep -Fxq "$service" <<< "$available_services"; then
+              echo "Required Compose service '$service' is missing."
+              exit 1
+            fi
+          done
+
+          wait_for_health() {
+            local timeout_seconds="$1"
+            shift
+            local deadline=$((SECONDS + timeout_seconds))
+            local service container_id status all_healthy
+
+            while (( SECONDS < deadline )); do
+              all_healthy=true
+
+              for service in "$@"; do
+                container_id="$(compose ps -q "$service")"
+                if [ -z "$container_id" ]; then
+                  all_healthy=false
+                  continue
+                fi
+
+                status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$container_id")"
+                case "$status" in
+                  healthy)
+                    ;;
+                  unhealthy)
+                    echo "Service '$service' reported an unhealthy status."
+                    return 1
+                    ;;
+                  *)
+                    all_healthy=false
+                    ;;
+                esac
+              done
+
+              if [ "$all_healthy" = true ]; then
+                return 0
+              fi
+
+              sleep 5
+            done
+
+            echo "Timed out waiting for services to become healthy: $*"
+            return 1
+          }
+
+          echo "Pulling application images for commit $revision."
+          compose pull database-migrator webapi consumer jobs
+
+          echo "Verifying PostgreSQL health without recreating it."
+          if ! wait_for_health 120 postgres; then
+            compose ps postgres
+            exit 1
+          fi
+
+          echo "Running database migrations."
+          compose up -d --no-deps --force-recreate database-migrator
+          if ! wait_for_health 600 database-migrator; then
+            compose ps database-migrator
+            compose stop database-migrator || true
+            compose rm -f database-migrator || true
+            exit 1
+          fi
+
+          compose stop database-migrator
+          compose rm -f database-migrator
+
+          echo "Updating application services."
+          compose up -d --no-deps --force-recreate webapi consumer jobs
+          if ! wait_for_health 300 webapi consumer jobs; then
+            compose ps webapi consumer jobs
+            exit 1
+          fi
+
+          deployed_version_file="$deployment_directory/.deployed-version"
+          if [ -f "$deployed_version_file" ]; then
+            cp "$deployed_version_file" "$deployment_directory/.previous-deployed-version"
+          fi
+
+          printf '%s\n' "$revision" > "$deployed_version_file.tmp"
+          mv "$deployed_version_file.tmp" "$deployed_version_file"
+
+          echo "Successfully deployed commit $revision."
+          compose ps webapi consumer jobs postgres
+          REMOTE_SCRIPT
