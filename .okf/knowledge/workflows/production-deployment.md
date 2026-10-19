@@ -51,3 +51,12 @@ an explicit server-administration decision.
 - `webapi`, `consumer`, and `jobs` are recreated without dependencies and must all become healthy.
 - Successful and previous deployed revisions are recorded for a simple manual rollback; database
   migrations are never automatically reversed.
+
+## Public ingress
+
+`api.pikly.org` terminates HTTPS at the separately managed `pickly-caddy` container. It runs the
+official `caddy:2-alpine` image with host networking, uses `/opt/pickly/Caddyfile`, and persists ACME
+state in the `pickly-caddy-data` and `pickly-caddy-config` Docker volumes. Caddy proxies public
+requests to the WebAPI's loopback binding at `127.0.0.1:8080`; `/metrics` is deliberately answered
+with `404` instead of being exposed publicly. The application deployment workflow leaves this
+long-running ingress container untouched.
