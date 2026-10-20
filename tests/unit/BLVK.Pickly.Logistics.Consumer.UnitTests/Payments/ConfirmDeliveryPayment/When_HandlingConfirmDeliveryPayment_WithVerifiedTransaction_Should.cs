@@ -4,6 +4,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using Shouldly;
 
 namespace BLVK.Pickly.Logistics.Consumer.UnitTests.Payments.ConfirmDeliveryPayment;
@@ -38,6 +39,7 @@ public sealed class When_HandlingConfirmDeliveryPayment_WithVerifiedTransaction_
             .Returns(attempt);
         context.PaymentTransactionRepository.GetByIdAsync(payment.Id, Arg.Any<CancellationToken>()).Returns(payment);
         context.DeliveryRepository.GetByIdAsync(delivery.Id, Arg.Any<CancellationToken>()).Returns(delivery);
+        ConfigureNotificationFacts(context, senderId, tenantId, currencyId);
 
         var command = new ConfirmDeliveryPaymentCommand(payment.Id, payment.MerchantReference, 2500m, currencyId)
         {
@@ -55,6 +57,10 @@ public sealed class When_HandlingConfirmDeliveryPayment_WithVerifiedTransaction_
         delivery.StatusHistory.Count.ShouldBe(statusHistoryCount);
         attempt.AppliedAtUtc.ShouldBe(context.Clock.GetUtcNow());
         await context.UnitOfWork.Received().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await context.CommandSender.Received(1).SendAsync(
+            Arg.Is<Contracts.Commands.Notifications.SendNotificationCommand>(notification =>
+                notification.NotificationType == Contracts.Commands.Notifications.NotificationType.PaymentSucceeded),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -137,12 +143,35 @@ public sealed class When_HandlingConfirmDeliveryPayment_WithVerifiedTransaction_
             .Returns(attempt);
         context.PaymentTransactionRepository.GetByIdAsync(payment.Id, Arg.Any<CancellationToken>()).Returns(payment);
         context.DeliveryRepository.GetByIdAsync(delivery.Id, Arg.Any<CancellationToken>()).Returns(delivery);
+        ConfigureNotificationFacts(context, senderId, tenantId, currencyId);
         var command = new ConfirmDeliveryPaymentCommand(payment.Id, payment.MerchantReference, 2500m, currencyId)
         {
             StakeholderId = senderId,
             TenantId = tenantId
         };
         return new(context, delivery, attempt, command);
+    }
+
+    private static void ConfigureNotificationFacts(
+        PaymentsConsumerTestContext context,
+        Guid senderId,
+        Guid tenantId,
+        Guid currencyId)
+    {
+        context.CurrencyRepository.GetByIdAsync(currencyId, Arg.Any<CancellationToken>())
+            .Returns(context.CreateCurrency(currencyId, "NGN"));
+        context.StakeholderReadModelRepository.GetByStakeholderIdAsync(senderId, Arg.Any<CancellationToken>())
+            .Returns(new StakeholderReadModel(
+                senderId,
+                Guid.CreateVersion7(),
+                "sender@example.com",
+                tenantId,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                "Ada",
+                "Sender",
+                null,
+                true));
     }
 
     private static Delivery CreateDelivery(

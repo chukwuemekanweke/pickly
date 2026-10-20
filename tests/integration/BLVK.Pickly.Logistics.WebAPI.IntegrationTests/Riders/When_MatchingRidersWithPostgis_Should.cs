@@ -3,10 +3,13 @@ using BLVK.Pickly.Logistics.Application.Riders.Features.AcceptRiderOffer;
 using BLVK.Pickly.Logistics.Application.Riders.Features.ProcessRiderMatching;
 using BLVK.Pickly.Logistics.Application.Riders.Features.SetRiderAvailability;
 using BLVK.Pickly.Logistics.Application.Riders.Features.UpdateRiderLocation;
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Domain.Authentication.Entities;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Authentication;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
@@ -15,6 +18,7 @@ using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence.Configurations;
 using BLVK.Pickly.Logistics.WebAPI.IntegrationTests.Deliveries;
@@ -125,8 +129,15 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
             services.GetRequiredService<IRiderTransactionFactory>(),
             services.GetRequiredService<IRiderConsistencyLock>(),
             services.GetRequiredService<IRiderOfferAcceptancePersistence>(),
+            services.GetRequiredService<IStakeholderReadModelRepository>(),
+            services.GetRequiredService<ICommandSender>(),
             services.GetRequiredService<IRiderMatchingTelemetry>(),
             Options.Create(options),
+            Options.Create(new DeliveryNotificationOptions
+            {
+                ApplicationBaseUrl = "https://app.pikly.ng/",
+                DisplayTimeZoneId = "Africa/Lagos"
+            }),
             new FixedTimeProvider(utcNow));
 
     private static SetRiderAvailabilityHandler CreateAvailabilityHandler(
@@ -258,6 +269,16 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
         persisted.StatusHistory.Count(item => item.NewStatus == DeliveryStatus.RiderAssigned).ShouldBe(1);
         (await dbContext.RiderDeliveryOffers.CountAsync(item =>
             item.DeliveryId == delivery.Id && item.Status == RiderDeliveryOfferStatus.Accepted)).ShouldBe(1);
+        var senderNotificationId = NotificationMessageIdentity.Create(
+            delivery.Id,
+            NotificationType.RiderAssigned,
+            delivery.SenderId);
+        var riderNotificationId = NotificationMessageIdentity.Create(
+            delivery.Id,
+            NotificationType.RiderAcceptedInstructions,
+            rider.StakeholderId);
+        (await dbContext.OutboxMessages.CountAsync(item =>
+            item.MessageId == senderNotificationId || item.MessageId == riderNotificationId)).ShouldBe(2);
     }
 
     [Fact]

@@ -1,15 +1,20 @@
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Contracts.Commands.Payments;
 using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using Chidelu.Integration.Messaging.RabbitMQ.Consumer;
 using Chidelu.Integration.Messaging.RabbitMQ.Core.Exceptions;
+using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace BLVK.Pickly.Logistics.Consumer.Payments;
 
@@ -20,6 +25,10 @@ public sealed class ConfirmDeliveryPaymentHandler(
     IRepository<DeliveryPaymentAttempt> attemptRepository,
     IRepository<PaymentTransaction> paymentRepository,
     IRepository<Delivery> deliveryRepository,
+    IRepository<Currency> currencyRepository,
+    IStakeholderReadModelRepository stakeholders,
+    ICommandSender commandSender,
+    IOptions<DeliveryNotificationOptions> notificationOptions,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     IRepository<MessageInbox> messageInboxRepository,
@@ -86,6 +95,13 @@ public sealed class ConfirmDeliveryPaymentHandler(
             return;
         }
 
+        if (attempt.AppliedAtUtc is not null &&
+            delivery.PaymentStatus == DeliveryPaymentStatus.Paid &&
+            delivery.PaymentTransactionId == payment.Id)
+        {
+            return;
+        }
+
         delivery.ConfirmVerifiedPrepaidPayment(
             payment.Id,
             payment.VerifiedAmount.Value,
@@ -94,5 +110,54 @@ public sealed class ConfirmDeliveryPaymentHandler(
             ActorAccessor.ActorId,
             "verified_delivery_payment");
         attempt.RecordApplied(Clock.GetUtcNow());
+        var currency = await currencyRepository.GetByIdAsync(payment.VerifiedCurrencyId.Value, cancellationToken)
+            ?? throw new CannotProcessMessageNonTransientException(
+                $"Verified currency '{payment.VerifiedCurrencyId}' was not found.");
+        var payer = await stakeholders.GetByStakeholderIdAsync(payment.StakeholderId, cancellationToken)
+            ?? throw new CannotProcessMessageNonTransientException(
+                $"Paying stakeholder '{payment.StakeholderId}' was not found.");
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(notificationOptions.Value.DisplayTimeZoneId);
+        var paymentDate = TimeZoneInfo.ConvertTime(
+            payment.ProviderVerifiedAtUtc ?? payment.CompletedAtUtc ?? Clock.GetUtcNow(),
+            timeZone);
+        var actionUrl = new Uri(
+            new Uri(notificationOptions.Value.ApplicationBaseUrl.TrimEnd('/') + "/"),
+            $"deliveries/{Uri.EscapeDataString(delivery.TrackingId)}").AbsoluteUri;
+        await commandSender.SendAsync(
+            new SendNotificationCommand(
+                payer.TenantId,
+                payer.CountryId,
+                NotificationType.PaymentSucceeded,
+                NotificationMedium.Email,
+                new EmailNotificationContent(
+                    payer.EmailAddress,
+                    new Dictionary<string, string>
+                    {
+                        ["FirstName"] = payer.FirstName,
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.PaymentSucceeded,
+                        ["TrackingId"] = delivery.TrackingId,
+                        ["Amount"] = payment.VerifiedAmount.Value.ToString("N2", CultureInfo.InvariantCulture),
+                        ["Currency"] = currency.CurrencyCode,
+                        ["PaymentReference"] = payment.MerchantReference,
+                        ["PaymentDate"] = paymentDate.ToString(
+                            "dd MMM yyyy, h:mm tt 'WAT'",
+                            CultureInfo.GetCultureInfo("en-NG")),
+                        ["PaymentStatus"] = "Paid",
+                        ["NextSteps"] = delivery.Status == DeliveryStatus.AwaitingDispatch
+                            ? "Your scheduled delivery will enter rider matching when its dispatch window opens."
+                            : "Your delivery is now eligible for rider matching.",
+                        ["ActionUrl"] = actionUrl
+                    }))
+            {
+                MessageId = NotificationMessageIdentity.Create(
+                    payment.Id,
+                    NotificationType.PaymentSucceeded,
+                    payer.StakeholderId),
+                RequestedAt = Clock.GetUtcNow(),
+                StakeholderId = payer.StakeholderId,
+                Language = payer.Language,
+                FlowId = command.FlowId
+            },
+            cancellationToken);
     }
 }

@@ -56,5 +56,45 @@ public sealed class WhenHandlingEmailNotificationCommand_Should
                 properties[Observability.PropertyNames.Notifications.ProviderMessageId] == "mailtrap-message-id" &&
                 properties[Observability.PropertyNames.Notifications.NotificationType] == NotificationType.SignInSuccessful.ToString()));
     }
+
+    [Fact]
+    public async Task SkipExpiredPaymentInstructions()
+    {
+        var customTelemetryContext = Substitute.For<ICustomTelemetryContext>();
+        var currentActorAccessor = Substitute.For<ICurrentActorAccessor>();
+        var messageContext = Substitute.For<IMessageContext>();
+        var emailNotificationService = Substitute.For<IEmailNotificationService>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var messageInboxRepository = Substitute.For<IRepository<MessageInbox>>();
+        var now = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = Substitute.For<TimeProvider>();
+        timeProvider.GetUtcNow().Returns(now);
+        messageContext.CorrelationId.Returns(Guid.CreateVersion7().ToString("N"));
+        var command = new SendNotificationCommand(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            NotificationType.PaymentInitiated,
+            NotificationMedium.Email,
+            new EmailNotificationContent(
+                ConsumerTestData.Email(),
+                new Dictionary<string, string>()))
+        {
+            ExpiresAtUtc = now
+        };
+
+        await new SendNotificationHandler(
+                customTelemetryContext,
+                currentActorAccessor,
+                messageContext,
+                emailNotificationService,
+                unitOfWork,
+                timeProvider,
+                messageInboxRepository,
+                Substitute.For<ILogger<SendNotificationHandler>>())
+            .HandleAsync(command, CancellationToken.None);
+
+        await emailNotificationService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        customTelemetryContext.DidNotReceiveWithAnyArgs().AddCustomEvent(default!, default!);
+    }
 }
 

@@ -117,6 +117,12 @@ Offer listing exposes only decision-useful pickup and destination-area details b
 rider active-delivery endpoint includes recipient contact and fulfillment-facing snapshots. Sender delivery retrieval
 adds matching state and the assigned rider's public name/avatar, never candidate rankings or GPS positions.
 
+A winning acceptance also tracks two independent outbox commands inside the same assignment transaction: a
+sender-facing rider-assigned notification and rider-facing pickup/fulfillment instructions. Their stable identities
+use the Delivery, notification type, and recipient. Failed, expired, losing, foreign, replayed, or rolled-back
+acceptances create no additional notification; recipient contact and private address instructions are disclosed only
+in the assigned rider's command.
+
 ## Concurrency and locking
 
 Locks are transaction-scoped `pg_advisory_xact_lock` keys `delivery:{id}` and `rider:{stakeholderId}`. Order is always

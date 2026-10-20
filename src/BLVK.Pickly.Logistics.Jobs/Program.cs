@@ -1,5 +1,6 @@
 using BLVK.Pickly.Logistics.Application;
 using BLVK.Pickly.Logistics.Infrastructure.Messaging;
+using BLVK.Pickly.Logistics.Infrastructure.Notifications;
 using BLVK.Pickly.Logistics.Infrastructure.Observability;
 using BLVK.Pickly.Logistics.Infrastructure.Payments;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
@@ -26,6 +27,7 @@ builder.Services.AddCustomTelemetryContext();
 builder.Services.AddPostgresWritePersistence(builder.Configuration);
 builder.Services.AddPostgresReadPersistence(builder.Configuration);
 builder.Services.AddPaymentServices(builder.Configuration);
+builder.Services.AddDeliveryNotificationConfiguration(builder.Configuration);
 builder.Services.AddTransactionalOutbox();
 builder.Services.AddRabbitMqOutboxDispatching(builder.Configuration);
 builder.Services.AddOutboxMessageProcessing(builder.Configuration);

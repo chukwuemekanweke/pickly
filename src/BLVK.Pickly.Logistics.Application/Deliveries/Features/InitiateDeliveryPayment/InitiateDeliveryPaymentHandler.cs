@@ -1,5 +1,8 @@
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Contracts.Payments;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
@@ -10,6 +13,8 @@ using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using BLVK.Pickly.Logistics.Domain.Payments.Specifications;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
+using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Application.Deliveries.Features.InitiateDeliveryPayment;
 
@@ -23,8 +28,12 @@ public sealed class InitiateDeliveryPaymentHandler(
     IRepository<Currency> currencies,
     IRepository<CountryCurrency> countryCurrencies,
     IRepository<Stakeholder> stakeholders,
+    IStakeholderReadModelRepository stakeholderReadModels,
     IEnumerable<IPaymentProviderService> providerServices,
     IDeliveryPaymentInitiationConsistencyLock consistencyLock,
+    ICommandSender commandSender,
+    IOptions<DeliveryNotificationOptions> notificationOptions,
+    TimeProvider timeProvider,
     IUnitOfWork unitOfWork)
 {
     public async Task<InitiateDeliveryPaymentResult> HandleAsync(
@@ -206,6 +215,53 @@ public sealed class InitiateDeliveryPaymentHandler(
                 result.ExpiresAtUtc,
                 KnownPaymentTransactionChangeReasons.PaymentInitiated);
             paymentTransaction.SetPaymentMethodType(result.PaymentMethodType);
+            var requestedAt = timeProvider.GetUtcNow();
+            if (HasActionableInstructions(result.InstructionFields) &&
+                (result.ExpiresAtUtc is null || result.ExpiresAtUtc > requestedAt))
+                {
+                var delivery = await deliveries.GetByIdAsync(deliveryId, cancellationToken)
+                    ?? throw new InvalidOperationException(
+                        $"Delivery '{deliveryId}' was not found while preparing payment instructions.");
+                var payer = await stakeholderReadModels.GetByStakeholderIdAsync(
+                    paymentTransaction.StakeholderId,
+                    cancellationToken)
+                    ?? throw new InvalidOperationException(
+                        $"Paying stakeholder '{paymentTransaction.StakeholderId}' was not found.");
+                await commandSender.SendAsync(
+                    new SendNotificationCommand(
+                        payer.TenantId,
+                        payer.CountryId,
+                        NotificationType.PaymentInitiated,
+                        NotificationMedium.Email,
+                        new EmailNotificationContent(
+                            payer.EmailAddress,
+                            new Dictionary<string, string>
+                            {
+                                ["FirstName"] = payer.FirstName,
+                                ["IllustrationUrl"] = NotificationIllustrationUrls.PaymentInitiated,
+                                ["TrackingId"] = delivery.TrackingId,
+                                ["Amount"] = paymentTransaction.Amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture),
+                                ["Currency"] = snapshot.CurrencyCode,
+                                ["PaymentReference"] = paymentTransaction.MerchantReference,
+                                ["PaymentProvider"] = snapshot.PaymentProviderName,
+                                ["PaymentMethod"] = paymentTransaction.PaymentMethodType.ToString(),
+                                ["PaymentInstructions"] = FormatPaymentInstructions(result.InstructionFields),
+                                ["PaymentExpiry"] = FormatExpiry(result.ExpiresAtUtc),
+                                ["ActionUrl"] = PaymentActionUrl(delivery, result.InstructionFields)
+                            }))
+                    {
+                        MessageId = NotificationMessageIdentity.Create(
+                            paymentTransaction.Id,
+                            NotificationType.PaymentInitiated,
+                            payer.StakeholderId),
+                        RequestedAt = requestedAt,
+                        StakeholderId = payer.StakeholderId,
+                        Language = payer.Language,
+                        ExpiresAtUtc = result.ExpiresAtUtc
+                    },
+                    cancellationToken);
+            }
+
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return ToResult(paymentTransaction, snapshot.PaymentProviderName, isReplay);
@@ -274,6 +330,75 @@ public sealed class InitiateDeliveryPaymentHandler(
         return normalized.Length <= 200
             ? normalized
             : throw new ArgumentException("Idempotency-Key cannot exceed 200 characters.", nameof(value));
+    }
+
+    private string PaymentActionUrl(
+        Delivery delivery,
+        IReadOnlyDictionary<string, string> instructions)
+    {
+        if (TryGetInstruction(instructions, "paymentLink", out var paymentLink) &&
+            Uri.TryCreate(paymentLink, UriKind.Absolute, out var paymentUri) &&
+            paymentUri.Scheme == Uri.UriSchemeHttps)
+        {
+            return paymentUri.AbsoluteUri;
+        }
+
+        return new Uri(
+            new Uri(notificationOptions.Value.ApplicationBaseUrl.TrimEnd('/') + "/"),
+            $"deliveries/{Uri.EscapeDataString(delivery.TrackingId)}/payment").AbsoluteUri;
+    }
+
+    private string FormatExpiry(DateTimeOffset? expiresAtUtc)
+    {
+        if (!expiresAtUtc.HasValue)
+        {
+            return "No provider deadline supplied";
+        }
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(notificationOptions.Value.DisplayTimeZoneId);
+        return TimeZoneInfo.ConvertTime(expiresAtUtc.Value, timeZone)
+            .ToString("dd MMM yyyy, h:mm tt 'WAT'", System.Globalization.CultureInfo.GetCultureInfo("en-NG"));
+    }
+
+    private static string FormatPaymentInstructions(IReadOnlyDictionary<string, string> instructions)
+    {
+        var lines = new List<string>();
+        AddInstruction(lines, instructions, "bankName", "Bank");
+        AddInstruction(lines, instructions, "accountName", "Account name");
+        AddInstruction(lines, instructions, "accountNumber", "Account number");
+        AddInstruction(lines, instructions, "paymentLink", "Secure payment link");
+        return lines.Count == 0
+            ? "Open the delivery payment page to continue with the provider's instructions."
+            : string.Join(Environment.NewLine, lines);
+    }
+
+    private static bool HasActionableInstructions(IReadOnlyDictionary<string, string> instructions) =>
+        TryGetInstruction(instructions, "accountNumber", out _) ||
+        (TryGetInstruction(instructions, "paymentLink", out var paymentLink) &&
+         Uri.TryCreate(paymentLink, UriKind.Absolute, out var paymentUri) &&
+         paymentUri.Scheme == Uri.UriSchemeHttps);
+
+    private static void AddInstruction(
+        List<string> lines,
+        IReadOnlyDictionary<string, string> instructions,
+        string key,
+        string label)
+    {
+        if (TryGetInstruction(instructions, key, out var value))
+        {
+            lines.Add($"{label}: {value}");
+        }
+    }
+
+    private static bool TryGetInstruction(
+        IReadOnlyDictionary<string, string> instructions,
+        string key,
+        out string value)
+    {
+        var match = instructions.FirstOrDefault(entry =>
+            string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase));
+        value = match.Value?.Trim() ?? string.Empty;
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     private sealed record InitiationDecision(

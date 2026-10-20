@@ -1,9 +1,11 @@
 using BLVK.Pickly.Logistics.Application;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using BLVK.Pickly.Logistics.Jobs.Infrastructure.BackgroundServices;
 using BLVK.Pickly.Logistics.Jobs.Payments;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +25,9 @@ public sealed class When_ReconcilingPayments_WithConfiguredSchedule_Should
         var paymentProviderRepository = Substitute.For<IRepository<PaymentProvider>>();
         var deliveryRepository = Substitute.For<IRepository<Delivery>>();
         var deliveryPaymentAttemptRepository = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
+        var stakeholderReadModelRepository = Substitute.For<IStakeholderReadModelRepository>();
         var eventPublisher = Substitute.For<IEventPublisher>();
+        var commandSender = Substitute.For<ICommandSender>();
         var customTelemetryContext = Substitute.For<ICustomTelemetryContext>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var paymentProviderService = Substitute.For<IPaymentProviderService>();
@@ -35,11 +39,19 @@ public sealed class When_ReconcilingPayments_WithConfiguredSchedule_Should
             .AddSingleton(paymentProviderRepository)
             .AddSingleton(deliveryRepository)
             .AddSingleton(deliveryPaymentAttemptRepository)
+            .AddSingleton(stakeholderReadModelRepository)
             .AddSingleton<IEnumerable<IPaymentProviderService>>([paymentProviderService])
             .AddSingleton(eventPublisher)
+            .AddSingleton(commandSender)
             .AddSingleton(customTelemetryContext)
             .AddSingleton(unitOfWork)
             .AddSingleton<TimeProvider>(clock)
+            .AddSingleton<IOptions<DeliveryNotificationOptions>>(
+                Options.Create(new DeliveryNotificationOptions
+                {
+                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    DisplayTimeZoneId = "Africa/Lagos"
+                }))
             .AddApplication()
             .BuildServiceProvider();
 

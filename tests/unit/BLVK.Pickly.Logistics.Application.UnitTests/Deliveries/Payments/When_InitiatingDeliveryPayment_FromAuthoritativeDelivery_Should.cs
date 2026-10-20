@@ -1,6 +1,9 @@
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.InitiateDeliveryPayment;
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
@@ -9,6 +12,8 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
+using Microsoft.Extensions.Options;
 using Shouldly;
 
 namespace BLVK.Pickly.Logistics.Application.UnitTests.Deliveries.Payments;
@@ -39,14 +44,29 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         var currencyRepository = Substitute.For<IRepository<Currency>>();
         var countryCurrencyRepository = Substitute.For<IRepository<CountryCurrency>>();
         var stakeholderRepository = Substitute.For<IRepository<Stakeholder>>();
+        var stakeholderReadModels = Substitute.For<IStakeholderReadModelRepository>();
         var consistencyLock = Substitute.For<IDeliveryPaymentInitiationConsistencyLock>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var databaseTransaction = Substitute.For<IUnitOfWorkTransaction>();
         var providerService = Substitute.For<IPaymentProviderService>();
+        var commandSender = Substitute.For<ICommandSender>();
         unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>()).Returns(databaseTransaction);
         deliveryRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Delivery>>(), Arg.Any<CancellationToken>()).Returns(delivery);
+        deliveryRepository.GetByIdAsync(delivery.Id, Arg.Any<CancellationToken>()).Returns(delivery);
         attemptReadModels.ListForDecisionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         stakeholderRepository.GetByIdAsync(senderId, Arg.Any<CancellationToken>()).Returns(stakeholder);
+        stakeholderReadModels.GetByStakeholderIdAsync(senderId, Arg.Any<CancellationToken>())
+            .Returns(new StakeholderReadModel(
+                senderId,
+                stakeholder.AppUserId,
+                "sender@example.com",
+                tenantId,
+                countryId,
+                stakeholder.StakeholderTypeId,
+                stakeholder.FirstName,
+                stakeholder.LastName,
+                null,
+                true));
         currencyRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<Currency>>(), Arg.Any<CancellationToken>()).Returns(currency);
         currencyRepository.GetByIdAsync(currency.Id, Arg.Any<CancellationToken>()).Returns(currency);
         countryCurrencyRepository.FirstOrDefaultAsync(Arg.Any<ISpecification<CountryCurrency>>(), Arg.Any<CancellationToken>()).Returns(countryCurrency);
@@ -104,8 +124,16 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
             currencyRepository,
             countryCurrencyRepository,
             stakeholderRepository,
+            stakeholderReadModels,
             [providerService],
             consistencyLock,
+            commandSender,
+            Options.Create(new DeliveryNotificationOptions
+            {
+                ApplicationBaseUrl = "https://app.pikly.ng/",
+                DisplayTimeZoneId = "Africa/Lagos"
+            }),
+            TimeProvider.System,
             unitOfWork);
 
         var result = await handler.HandleAsync(
@@ -122,6 +150,13 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
         persistedAttempt.PaymentTransactionId.ShouldBe(persistedPayment.Id);
         delivery.PaymentStatus.ShouldBe(DeliveryPaymentStatus.Pending);
         await databaseTransaction.Received(2).CommitAsync(Arg.Any<CancellationToken>());
+        await commandSender.Received(1).SendAsync(
+            Arg.Is<SendNotificationCommand>(notification =>
+                notification.NotificationType == NotificationType.PaymentInitiated &&
+                notification.ExpiresAtUtc == null &&
+                ((EmailNotificationContent)notification.NotificationContent).Content["ActionUrl"] ==
+                    "https://payments.invalid/checkout"),
+            Arg.Any<CancellationToken>());
     }
 
     private static Delivery CreateDelivery(Guid senderId, Guid currencyId) =>

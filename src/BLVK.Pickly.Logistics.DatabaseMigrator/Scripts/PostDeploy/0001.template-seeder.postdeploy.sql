@@ -556,6 +556,12 @@ WITH template_values("NotificationType", "Language", "Description", "Subject", "
     (8, 'en', 'Trial expired notification', 'Your {{:Product:}} trial has ended', 'TrialExpired.html'),
     (9, 'en', 'Subscription cancelled notification', 'Help us improve {{:Product:}}', 'CancelledSubscription.html'),
     (10, 'en', 'Subscription invoice notification', 'Your invoice from {{:Product:}}', 'Invoice.html'),
+    (11, 'en', 'Delivery order created notification', 'Your Pikly Order Has Been Placed — {{:TrackingId:}}', 'OrderCreated.html'),
+    (12, 'en', 'Delivery payment instructions notification', 'Payment Instructions for Your Pikly Delivery — {{:TrackingId:}}', 'PaymentInitiated.html'),
+    (13, 'en', 'Delivery rider assigned notification', 'A Rider Has Been Assigned to Your Pikly Delivery — {{:TrackingId:}}', 'RiderAssigned.html'),
+    (14, 'en', 'Delivery payment failed notification', 'Your Pikly Payment Was Unsuccessful — {{:TrackingId:}}', 'PaymentFailed.html'),
+    (15, 'en', 'Delivery payment successful notification', 'Payment Confirmed for Your Pikly Delivery — {{:TrackingId:}}', 'PaymentSucceeded.html'),
+    (16, 'en', 'Accepted rider delivery instructions notification', 'Delivery Confirmed — Pickup Instructions for {{:TrackingId:}}', 'RiderAcceptedInstructions.html'),
     (1, 'fr', 'Notification de création de compte', 'Bienvenue sur {{:Product:}}', 'AccountCreated.html'),
     (2, 'fr', 'Notification de confirmation de l’adresse e-mail', 'Confirmez votre adresse e-mail', 'ConfirmEmail.html'),
     (3, 'fr', 'Notification de réinitialisation du mot de passe', 'Réinitialisez votre mot de passe', 'ResetPassword.html'),
@@ -565,7 +571,13 @@ WITH template_values("NotificationType", "Language", "Description", "Subject", "
     (7, 'fr', 'Notification de verrouillage du compte', 'Votre compte a été verrouillé', 'AccountLocked.html'),
     (8, 'fr', 'Notification de fin d’essai', 'Votre essai {{:Product:}} est terminé', 'TrialExpired.html'),
     (9, 'fr', 'Notification d’annulation d’abonnement', 'Aidez-nous à améliorer {{:Product:}}', 'CancelledSubscription.html'),
-    (10, 'fr', 'Notification de facture', 'Votre facture {{:Product:}}', 'Invoice.html')
+    (10, 'fr', 'Notification de facture', 'Votre facture {{:Product:}}', 'Invoice.html'),
+    (11, 'fr', 'Notification de création de livraison', 'Votre commande Pikly a été enregistrée — {{:TrackingId:}}', 'OrderCreated.html'),
+    (12, 'fr', 'Notification d’instructions de paiement', 'Instructions de paiement pour votre livraison Pikly — {{:TrackingId:}}', 'PaymentInitiated.html'),
+    (13, 'fr', 'Notification d’assignation d’un livreur', 'Un livreur est assigné à votre livraison Pikly — {{:TrackingId:}}', 'RiderAssigned.html'),
+    (14, 'fr', 'Notification d’échec du paiement', 'Votre paiement Pikly n’a pas abouti — {{:TrackingId:}}', 'PaymentFailed.html'),
+    (15, 'fr', 'Notification de confirmation du paiement', 'Paiement confirmé pour votre livraison Pikly — {{:TrackingId:}}', 'PaymentSucceeded.html'),
+    (16, 'fr', 'Instructions de livraison pour le livreur assigné', 'Livraison confirmée — Instructions de ramassage pour {{:TrackingId:}}', 'RiderAcceptedInstructions.html')
 ),
 templates_existing AS (
     SELECT t."NotificationType", t."Language"

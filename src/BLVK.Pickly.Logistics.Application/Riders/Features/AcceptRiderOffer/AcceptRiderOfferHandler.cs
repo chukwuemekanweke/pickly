@@ -1,10 +1,16 @@
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Domain.Common.Exceptions;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
+using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
+using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Riders;
 using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.Domain.Riders.Specifications;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Application.Riders.Features.AcceptRiderOffer;
@@ -15,8 +21,11 @@ public sealed class AcceptRiderOfferHandler(
     IRiderTransactionFactory transactionFactory,
     IRiderConsistencyLock consistencyLock,
     IRiderOfferAcceptancePersistence persistence,
+    IStakeholderReadModelRepository stakeholders,
+    ICommandSender commandSender,
     IRiderMatchingTelemetry telemetry,
     IOptions<RiderMatchingOptions> options,
+    IOptions<DeliveryNotificationOptions> notificationOptions,
     TimeProvider timeProvider)
 {
     public async Task<AcceptRiderOfferResult> HandleAsync(
@@ -141,6 +150,7 @@ public sealed class AcceptRiderOfferHandler(
                         conflictingOffer.Revoke(now);
                     }
 
+                    await EnqueueAssignmentNotificationsAsync(state.Delivery, profile.StakeholderId, now, token);
                     await transaction.CommitAsync(token);
                     telemetry.RecordOfferAccepted();
                     return new AcceptRiderOfferResult(
@@ -181,4 +191,109 @@ public sealed class AcceptRiderOfferHandler(
                 RiderDeliverySnapshotFactory.Create(acceptedDelivery));
         }
     }
+
+    private async Task EnqueueAssignmentNotificationsAsync(
+        Delivery delivery,
+        Guid riderStakeholderId,
+        DateTimeOffset requestedAt,
+        CancellationToken cancellationToken)
+    {
+        var sender = await stakeholders.GetByStakeholderIdAsync(delivery.SenderId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Sender '{delivery.SenderId}' was not found while preparing assignment notification.");
+        var rider = await stakeholders.GetByStakeholderIdAsync(riderStakeholderId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Rider '{riderStakeholderId}' was not found while preparing assignment notification.");
+        var deliveryUrl = DeliveryUrl(delivery);
+
+        await commandSender.SendAsync(
+            new SendNotificationCommand(
+                sender.TenantId,
+                sender.CountryId,
+                NotificationType.RiderAssigned,
+                NotificationMedium.Email,
+                new EmailNotificationContent(
+                    sender.EmailAddress,
+                    new Dictionary<string, string>
+                    {
+                        ["FirstName"] = sender.FirstName,
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.RiderAssigned,
+                        ["TrackingId"] = delivery.TrackingId,
+                        ["RiderName"] = $"{rider.FirstName} {rider.LastName}".Trim(),
+                        ["PickupAddress"] = FormatAddress(delivery.PickupAddress),
+                        ["DropOffAddress"] = FormatAddress(delivery.DropOffAddress),
+                        ["CurrentStatus"] = "Rider assigned",
+                        ["ScheduledPickup"] = FormatScheduledPickup(delivery),
+                        ["NextSteps"] = "Your rider will proceed to the pickup location. Follow the delivery page for status updates.",
+                        ["ActionUrl"] = deliveryUrl
+                    }))
+            {
+                MessageId = NotificationMessageIdentity.Create(
+                    delivery.Id,
+                    NotificationType.RiderAssigned,
+                    sender.StakeholderId),
+                RequestedAt = requestedAt,
+                StakeholderId = sender.StakeholderId,
+                Language = sender.Language
+            },
+            cancellationToken);
+
+        await commandSender.SendAsync(
+            new SendNotificationCommand(
+                rider.TenantId,
+                rider.CountryId,
+                NotificationType.RiderAcceptedInstructions,
+                NotificationMedium.Email,
+                new EmailNotificationContent(
+                    rider.EmailAddress,
+                    new Dictionary<string, string>
+                    {
+                        ["FirstName"] = rider.FirstName,
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.RiderInstructions,
+                        ["TrackingId"] = delivery.TrackingId,
+                        ["PickupAddress"] = FormatAddress(delivery.PickupAddress),
+                        ["PickupInstructions"] = OptionalText(delivery.PickupAddress.AdditionalInformation),
+                        ["DropOffAddress"] = FormatAddress(delivery.DropOffAddress),
+                        ["DropOffInstructions"] = OptionalText(delivery.DropOffAddress.AdditionalInformation),
+                        ["RecipientName"] = delivery.Recipient.Name,
+                        ["RecipientPhone"] = delivery.Recipient.PhoneNumber,
+                        ["Items"] = string.Join("; ", delivery.Items.Select(item => $"{item.Description} x{item.Quantity}")),
+                        ["ScheduledPickup"] = FormatScheduledPickup(delivery),
+                        ["DeliveryInstructions"] = OptionalText(delivery.DropOffAddress.AdditionalInformation),
+                        ["ActionUrl"] = deliveryUrl
+                    }))
+            {
+                MessageId = NotificationMessageIdentity.Create(
+                    delivery.Id,
+                    NotificationType.RiderAcceptedInstructions,
+                    rider.StakeholderId),
+                RequestedAt = requestedAt,
+                StakeholderId = rider.StakeholderId,
+                Language = rider.Language
+            },
+            cancellationToken);
+    }
+
+    private string DeliveryUrl(Delivery delivery) =>
+        new Uri(
+            new Uri(notificationOptions.Value.ApplicationBaseUrl.TrimEnd('/') + "/"),
+            $"deliveries/{Uri.EscapeDataString(delivery.TrackingId)}").AbsoluteUri;
+
+    private string FormatScheduledPickup(Delivery delivery)
+    {
+        if (!delivery.ScheduledPickupAtUtc.HasValue)
+        {
+            return "As soon as possible";
+        }
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(notificationOptions.Value.DisplayTimeZoneId);
+        return TimeZoneInfo.ConvertTime(delivery.ScheduledPickupAtUtc.Value, timeZone)
+            .ToString("dd MMM yyyy, h:mm tt 'WAT'", System.Globalization.CultureInfo.GetCultureInfo("en-NG"));
+    }
+
+    private static string FormatAddress(DeliveryAddress address) =>
+        string.Join(", ", new[] { address.AddressLine, address.City, address.State, address.CountryCode });
+
+    private static string OptionalText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "None provided" : value.Trim();
 }

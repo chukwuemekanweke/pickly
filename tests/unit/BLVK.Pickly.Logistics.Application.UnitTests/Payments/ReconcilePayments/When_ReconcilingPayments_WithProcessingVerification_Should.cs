@@ -1,3 +1,4 @@
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Contracts.Events;
 using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Payments;
@@ -45,6 +46,9 @@ public sealed class When_ReconcilingPayments_WithProcessingVerification_Should
         transaction.PaymentStatus.ShouldBe(PaymentStatus.Initiated);
         transaction.LastStatusCheckAtUtc.ShouldBe(context.Clock.GetUtcNow());
         await context.EventPublisher.DidNotReceive().PublishAsync(Arg.Any<SuccessfulPaymentConfirmed>(), Arg.Any<CancellationToken>());
+        await context.CommandSender.DidNotReceive().SendAsync(
+            Arg.Any<SendNotificationCommand>(),
+            Arg.Any<CancellationToken>());
     }
 }
 
