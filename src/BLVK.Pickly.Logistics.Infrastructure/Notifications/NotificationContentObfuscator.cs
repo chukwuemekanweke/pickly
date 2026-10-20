@@ -11,7 +11,13 @@ internal static class NotificationContentObfuscator
         "token",
         "secret",
         "passcode",
-        "pin"
+        "pin",
+        "accountnumber",
+        "paymentinstructions",
+        "pickupinstructions",
+        "dropoffinstructions",
+        "deliveryinstructions",
+        "recipientphone"
     ];
 
     public static Dictionary<string, string> Obfuscate(Dictionary<string, string> content)

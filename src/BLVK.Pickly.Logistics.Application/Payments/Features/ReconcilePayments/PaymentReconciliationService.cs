@@ -1,3 +1,4 @@
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Contracts.Events;
 using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
@@ -5,12 +6,15 @@ using BLVK.Pickly.Logistics.Domain.Common.Exceptions;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
 using BLVK.Pickly.Logistics.Domain.Common.Persistence;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Specifications;
 using BLVK.Pickly.Logistics.Domain.Payments;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using BLVK.Pickly.Logistics.Domain.Payments.Specifications;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
+using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Application.Payments.Features.ReconcilePayments;
 
@@ -19,10 +23,14 @@ public sealed class PaymentReconciliationService(
     IRepository<Currency> currencyRepository,
     IRepository<PaymentProvider> paymentProviderRepository,
     IRepository<DeliveryPaymentAttempt> deliveryPaymentAttemptRepository,
+    IRepository<Delivery> deliveryRepository,
+    IStakeholderReadModelRepository stakeholders,
     IEnumerable<IPaymentProviderService> paymentProviderServices,
     IEventPublisher eventPublisher,
+    ICommandSender commandSender,
     ICustomTelemetryContext customTelemetryContext,
     IUnitOfWork unitOfWork,
+    IOptions<DeliveryNotificationOptions> notificationOptions,
     TimeProvider timeProvider)
 {
     private static readonly ActorContext AnonymousActorContext = new(null, null, string.Empty, string.Empty);
@@ -86,6 +94,10 @@ public sealed class PaymentReconciliationService(
                         verificationResult.FailureReason,
                         verificationResult.StatusChangeReason,
                         now);
+                    await EnqueueDeliveryPaymentFailureAsync(
+                        transaction,
+                        expectedCurrency.CurrencyCode,
+                        cancellationToken);
                     RecordTelemetry(
                         transaction,
                         paymentProvider.ProviderKey,
@@ -179,7 +191,7 @@ public sealed class PaymentReconciliationService(
                 MerchantReference = transaction.MerchantReference,
                 PaymentIntent = transaction.PaymentIntent,
                 PaymentProviderId = transaction.PaymentProviderId,
-                Amount = transaction.VerifiedAmount.Value,
+                Amount = transaction.VerifiedAmount!.Value,
                 CurrencyId = transaction.VerifiedCurrencyId!.Value,
                 StakeholderId = transaction.StakeholderId,
                 TenantId = transaction.TenantId,
@@ -227,6 +239,67 @@ public sealed class PaymentReconciliationService(
             new DeliveryPaymentAttemptByTransactionSpecification(transaction.Id, enableTracking: true),
             cancellationToken);
         attempt?.RecordApplicationException(reason);
+    }
+
+    private async Task EnqueueDeliveryPaymentFailureAsync(
+        PaymentTransaction transaction,
+        string currencyCode,
+        CancellationToken cancellationToken)
+    {
+        if (transaction.PaymentIntent != PaymentIntent.DeliveryPayment)
+        {
+            return;
+        }
+
+        var attempt = await deliveryPaymentAttemptRepository.FirstOrDefaultAsync(
+            new DeliveryPaymentAttemptByTransactionSpecification(transaction.Id),
+            cancellationToken);
+        if (attempt is null)
+        {
+            throw new InvalidOperationException(
+                $"Delivery payment attempt for transaction '{transaction.Id}' was not found.");
+        }
+
+        var delivery = await deliveryRepository.GetByIdAsync(attempt.DeliveryId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Delivery '{attempt.DeliveryId}' was not found for failed payment '{transaction.Id}'.");
+        var payer = await stakeholders.GetByStakeholderIdAsync(transaction.StakeholderId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Paying stakeholder '{transaction.StakeholderId}' was not found.");
+        var actionUrl = new Uri(
+            new Uri(notificationOptions.Value.ApplicationBaseUrl.TrimEnd('/') + "/"),
+            $"deliveries/{Uri.EscapeDataString(delivery.TrackingId)}").AbsoluteUri;
+        await commandSender.SendAsync(
+            new SendNotificationCommand(
+                payer.TenantId,
+                payer.CountryId,
+                NotificationType.PaymentFailed,
+                NotificationMedium.Email,
+                new EmailNotificationContent(
+                    payer.EmailAddress,
+                    new Dictionary<string, string>
+                    {
+                        ["FirstName"] = payer.FirstName,
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.PaymentFailed,
+                        ["TrackingId"] = delivery.TrackingId,
+                        ["PaymentReference"] = transaction.MerchantReference,
+                        ["Amount"] = transaction.Amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture),
+                        ["Currency"] = currencyCode,
+                        ["PaymentStatus"] = "Failed",
+                        ["FailureDescription"] = "The payment provider confirmed that this attempt was unsuccessful. No successful payment has been applied to your delivery.",
+                        ["NextSteps"] = "Review the delivery before starting another payment. If your account was debited, contact support instead of paying again.",
+                        ["ActionUrl"] = actionUrl
+                    }))
+            {
+                MessageId = NotificationMessageIdentity.Create(
+                    transaction.Id,
+                    NotificationType.PaymentFailed,
+                    payer.StakeholderId),
+                RequestedAt = timeProvider.GetUtcNow(),
+                StakeholderId = payer.StakeholderId,
+                Language = payer.Language
+            },
+            cancellationToken);
     }
 
     private void RecordTelemetry(

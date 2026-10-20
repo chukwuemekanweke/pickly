@@ -24,6 +24,7 @@ builder.Services.AddAuthenticationServices(builder.Configuration);
 builder.Services.AddRedisCaching(builder.Configuration);
 builder.Services.AddTransactionalOutbox();
 builder.Services.AddNotificationServices(builder.Configuration);
+builder.Services.AddDeliveryNotificationConfiguration(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddSubscribers(builder.Configuration);
 builder.Services.AddCustomTelemetryContext();

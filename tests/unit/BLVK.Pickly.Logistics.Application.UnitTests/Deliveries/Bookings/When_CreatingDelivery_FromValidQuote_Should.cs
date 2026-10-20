@@ -1,5 +1,7 @@
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreateDelivery;
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
@@ -7,6 +9,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Services;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using Microsoft.Extensions.Options;
 using Shouldly;
 
@@ -47,6 +50,11 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
         result.Delivery.DropOffAddress.AdditionalInformation.ShouldBe("Blue gate");
         result.Delivery.TrackingId.ShouldBe("PKL-ABCDEFGH");
         context.Quote.ConsumedByDeliveryId.ShouldBe(result.Delivery.DeliveryId);
+        await context.CommandSender.Received(1).SendAsync(
+            Arg.Is<SendNotificationCommand>(notification =>
+                notification.NotificationType == NotificationType.OrderCreated &&
+                notification.StakeholderId == context.Quote.SenderId),
+            Arg.Any<CancellationToken>());
 
         if (deliveryType == DeliveryType.Instant)
         {
@@ -74,6 +82,9 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
         await context.Persistence.Received(1).CommitAsync(
             Arg.Any<Delivery>(),
             Arg.Any<DeliveryQuote>(),
+            Arg.Any<CancellationToken>());
+        await context.CommandSender.Received(1).SendAsync(
+            Arg.Any<SendNotificationCommand>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -208,19 +219,40 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
                 });
             var tracking = Substitute.For<IDeliveryTrackingIdGenerator>();
             tracking.Generate().Returns("PKL-ABCDEFGH");
+            var stakeholderReadModels = Substitute.For<IStakeholderReadModelRepository>();
+            stakeholderReadModels.GetByStakeholderIdAsync(_senderId, Arg.Any<CancellationToken>())
+                .Returns(new StakeholderReadModel(
+                    _senderId,
+                    Guid.CreateVersion7(),
+                    "sender@example.com",
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    "Ada",
+                    "Sender",
+                    null,
+                    true));
             Handler = new(
                 _quoteRepository,
                 deliveryRepository,
                 currencyRepository,
                 Persistence,
+                stakeholderReadModels,
+                CommandSender,
                 tracking,
                 Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
+                Options.Create(new DeliveryNotificationOptions
+                {
+                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    DisplayTimeZoneId = "Africa/Lagos"
+                }),
                 _timeProvider);
         }
 
         public Currency Currency { get; }
         public DeliveryQuote Quote { get; }
         public IDeliveryBookingPersistence Persistence { get; }
+        public ICommandSender CommandSender { get; } = Substitute.For<ICommandSender>();
         public CreateDeliveryHandler Handler { get; }
 
         public CreateDeliveryCommand Command(

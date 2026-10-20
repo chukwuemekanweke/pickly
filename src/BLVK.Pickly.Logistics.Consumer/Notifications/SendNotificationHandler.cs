@@ -23,6 +23,15 @@ public sealed class SendNotificationHandler(
 
     protected override async Task HandleAsyncInternal(SendNotificationCommand message, CancellationToken cancellationToken)
     {
+        if (message.ExpiresAtUtc is { } expiresAtUtc && expiresAtUtc <= Clock.GetUtcNow())
+        {
+            logger.LogInformation(
+                "Skipping expired notification {MessageId} of type {NotificationType}.",
+                message.MessageId,
+                message.NotificationType);
+            return;
+        }
+
         try
         {
             switch (message.NotificationMedium)

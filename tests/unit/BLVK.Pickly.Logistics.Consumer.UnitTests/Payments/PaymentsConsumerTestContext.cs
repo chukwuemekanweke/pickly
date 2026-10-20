@@ -2,9 +2,12 @@ using BLVK.Pickly.Logistics.Consumer.Payments;
 using BLVK.Pickly.Logistics.Contracts.Commands.Payments;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using Chidelu.Integration.Messaging.RabbitMQ.Consumer;
+using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Consumer.UnitTests.Payments;
 
@@ -22,6 +25,7 @@ internal sealed class PaymentsConsumerTestContext
     public IRepository<DeliveryPaymentAttempt> DeliveryPaymentAttemptRepository { get; } = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
     public IRepository<PaymentTransaction> PaymentTransactionRepository { get; } = Substitute.For<IRepository<PaymentTransaction>>();
     public IRepository<Delivery> DeliveryRepository { get; } = Substitute.For<IRepository<Delivery>>();
+    public IStakeholderReadModelRepository StakeholderReadModelRepository { get; } = Substitute.For<IStakeholderReadModelRepository>();
     public IUnitOfWork UnitOfWork { get; } = Substitute.For<IUnitOfWork>();
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 4, 25, 14, 0, 0, TimeSpan.Zero));
     public ILogger<SuccessfulPaymentConfirmedHandler> SuccessfulPaymentConfirmedLogger { get; } = Substitute.For<ILogger<SuccessfulPaymentConfirmedHandler>>();
@@ -64,6 +68,14 @@ internal sealed class PaymentsConsumerTestContext
             DeliveryPaymentAttemptRepository,
             PaymentTransactionRepository,
             DeliveryRepository,
+            CurrencyRepository,
+            StakeholderReadModelRepository,
+            CommandSender,
+            Options.Create(new DeliveryNotificationOptions
+            {
+                ApplicationBaseUrl = "https://app.pikly.ng/",
+                DisplayTimeZoneId = "Africa/Lagos"
+            }),
             UnitOfWork,
             Clock,
             MessageInboxRepository,

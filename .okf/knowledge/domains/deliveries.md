@@ -103,6 +103,11 @@ tracked state and resolves the winner by `(SenderId, DeliveryQuoteId)`; unrelate
 replays. Tracking IDs use a cryptographically random `PKL-XXXXXXXX` alphabet and retain database uniqueness, with
 bounded retries that replace only the tracking ID and preserve the Delivery identifier.
 
+New booking commits include one sender-facing `OrderCreated` outbox command with a stable identity. The command is
+tracked before `IDeliveryBookingPersistence.CommitAsync`, so it commits or rolls back with the Delivery and quote;
+the existing-delivery replay path does not enqueue another command. Template data describes the aggregate's actual
+initial status, including scheduled deliveries that have not entered matching.
+
 Scheduled booking requires a still-future quote pickup time and computes eligibility as
 `max(booking time, pickup time - Deliveries:Dispatch:LeadTime)`. Instant deliveries store neither timestamp.
 Booking never calls routing, geocoding or pricing and emits no payment or dispatch side effect.

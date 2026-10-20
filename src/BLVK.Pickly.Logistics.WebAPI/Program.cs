@@ -86,6 +86,7 @@ builder.Services.AddRedisCaching(builder.Configuration);
 builder.Services.AddObjectStorage(builder.Configuration);
 builder.Services.AddPaymentServices(builder.Configuration);
 builder.Services.AddNotificationWebhookServices(builder.Configuration);
+builder.Services.AddDeliveryNotificationConfiguration(builder.Configuration);
 builder.Services.AddTransactionalOutbox();
 builder.Services.AddCustomTelemetryContext();
 builder.Services.AddBackendTelemetry(builder.Configuration);

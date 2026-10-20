@@ -7,11 +7,14 @@ using BLVK.Pickly.Logistics.Application.Payments.Features.ProcessSafeHavenWebhoo
 using BLVK.Pickly.Logistics.Application.Payments.Features.ReconcilePayments;
 using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Common.Observability;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Payments.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Payments.Services;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
+using Microsoft.Extensions.Options;
 
 namespace BLVK.Pickly.Logistics.Application.UnitTests.Payments;
 
@@ -25,9 +28,12 @@ internal sealed class PaymentsFlowTestContext
     public IRepository<PaymentTransaction> PaymentTransactionRepository { get; } = Substitute.For<IRepository<PaymentTransaction>>();
     public IRepository<PaymentWebhookInbox> PaymentWebhookInboxRepository { get; } = Substitute.For<IRepository<PaymentWebhookInbox>>();
     public IRepository<DeliveryPaymentAttempt> DeliveryPaymentAttemptRepository { get; } = Substitute.For<IRepository<DeliveryPaymentAttempt>>();
+    public IRepository<Delivery> DeliveryRepository { get; } = Substitute.For<IRepository<Delivery>>();
+    public IStakeholderReadModelRepository StakeholderReadModelRepository { get; } = Substitute.For<IStakeholderReadModelRepository>();
     public IWalletTransactionReadModelRepository WalletTransactionReadModelRepository { get; } = Substitute.For<IWalletTransactionReadModelRepository>();
     public ICustomTelemetryContext CustomTelemetryContext { get; } = Substitute.For<ICustomTelemetryContext>();
     public IEventPublisher EventPublisher { get; } = Substitute.For<IEventPublisher>();
+    public ICommandSender CommandSender { get; } = Substitute.For<ICommandSender>();
     public IUnitOfWork UnitOfWork { get; } = Substitute.For<IUnitOfWork>();
     public ICredoWebhookSignatureValidator CredoWebhookSignatureValidator { get; } = Substitute.For<ICredoWebhookSignatureValidator>();
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 4, 25, 12, 0, 0, TimeSpan.Zero));
@@ -97,10 +103,18 @@ internal sealed class PaymentsFlowTestContext
             CurrencyRepository,
             PaymentProviderRepository,
             DeliveryPaymentAttemptRepository,
+            DeliveryRepository,
+            StakeholderReadModelRepository,
             PaymentProviderServices,
             EventPublisher,
+            CommandSender,
             CustomTelemetryContext,
             UnitOfWork,
+            Options.Create(new DeliveryNotificationOptions
+            {
+                ApplicationBaseUrl = "https://app.pikly.ng/",
+                DisplayTimeZoneId = "Africa/Lagos"
+            }),
             Clock);
 
     public Stakeholder CreateStakeholder(Guid appUserId, Guid tenantId, Guid countryId) =>

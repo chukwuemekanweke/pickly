@@ -122,7 +122,8 @@ internal sealed class EmailNotificationDispatcher(
                     command.NotificationType),
                 content.Content,
                 "body",
-                command.NotificationType);
+                command.NotificationType,
+                htmlEncodeReplacements: true);
             var renderedHtmlBody = RenderTenantHtmlBody(
                 LoadBaseTemplate(notificationsOptions, brandKey, template.Language, command.NotificationType),
                 renderedSubject,
@@ -260,7 +261,8 @@ internal sealed class EmailNotificationDispatcher(
         string template,
         Dictionary<string, string> replacements,
         string templatePart,
-        NotificationType? notificationType)
+        NotificationType? notificationType,
+        bool htmlEncodeReplacements = false)
     {
         var renderedTemplate = PlaceholderPattern.Replace(template, match =>
         {
@@ -268,7 +270,7 @@ internal sealed class EmailNotificationDispatcher(
 
             if (replacements.TryGetValue(key, out var value))
             {
-                return value;
+                return htmlEncodeReplacements ? WebUtility.HtmlEncode(value) : value;
             }
 
             throw new NotificationConfigurationException(
@@ -283,4 +285,5 @@ internal sealed class EmailNotificationDispatcher(
 
         return renderedTemplate;
     }
+
 }

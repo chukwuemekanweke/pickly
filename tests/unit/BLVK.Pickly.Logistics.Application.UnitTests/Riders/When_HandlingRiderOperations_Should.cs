@@ -6,7 +6,10 @@ using BLVK.Pickly.Logistics.Application.Riders.Features.ProcessRiderMatching;
 using BLVK.Pickly.Logistics.Application.Riders.Features.RejectRiderOffer;
 using BLVK.Pickly.Logistics.Application.Riders.Features.SetRiderAvailability;
 using BLVK.Pickly.Logistics.Application.Riders.Features.UpdateRiderLocation;
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
+using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
@@ -15,6 +18,7 @@ using BLVK.Pickly.Logistics.Domain.Riders.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Enums;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
 using BLVK.Pickly.Logistics.Domain.Stakeholders.Entities;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Shouldly;
@@ -239,8 +243,11 @@ public sealed class When_HandlingRiderOperations_Should
             TransactionFactory(transaction),
             Substitute.For<IRiderConsistencyLock>(),
             persistence,
+            NotificationStakeholders(),
+            Substitute.For<ICommandSender>(),
             Substitute.For<IRiderMatchingTelemetry>(),
             Options.Create(MatchingOptions),
+            NotificationOptions(),
             new FixedTimeProvider(offer.ExpiresAtUtc));
 
         var result = await handler.HandleAsync(new(offer.Id, Actor), CancellationToken.None);
@@ -270,8 +277,11 @@ public sealed class When_HandlingRiderOperations_Should
             transactions,
             Substitute.For<IRiderConsistencyLock>(),
             persistence,
+            NotificationStakeholders(),
+            Substitute.For<ICommandSender>(),
             Substitute.For<IRiderMatchingTelemetry>(),
             Options.Create(MatchingOptions),
+            NotificationOptions(),
             new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new(foreignOffer.Id, Actor), CancellationToken.None);
@@ -296,7 +306,8 @@ public sealed class When_HandlingRiderOperations_Should
             .Returns(new RiderGeographicEligibility(true, false, true));
         var transaction = new TestRiderTransaction();
         var telemetry = Substitute.For<IRiderMatchingTelemetry>();
-        var handler = AcceptanceHandler(profile, offer, persistence, transaction, telemetry);
+        var commandSender = Substitute.For<ICommandSender>();
+        var handler = AcceptanceHandler(profile, offer, persistence, transaction, telemetry, commandSender);
 
         var result = await handler.HandleAsync(new(offer.Id, Actor), CancellationToken.None);
 
@@ -304,6 +315,9 @@ public sealed class When_HandlingRiderOperations_Should
         delivery.RiderId.ShouldBeNull();
         transaction.Committed.ShouldBeFalse();
         telemetry.Received(1).RecordAssignmentConflict();
+        await commandSender.DidNotReceive().SendAsync(
+            Arg.Any<SendNotificationCommand>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -322,7 +336,8 @@ public sealed class When_HandlingRiderOperations_Should
             .Returns(new RiderGeographicEligibility(true, true, true));
         var transaction = new TestRiderTransaction();
         var telemetry = Substitute.For<IRiderMatchingTelemetry>();
-        var handler = AcceptanceHandler(profile, offer, persistence, transaction, telemetry);
+        var commandSender = Substitute.For<ICommandSender>();
+        var handler = AcceptanceHandler(profile, offer, persistence, transaction, telemetry, commandSender);
 
         var result = await handler.HandleAsync(new(offer.Id, Actor), CancellationToken.None);
 
@@ -332,6 +347,11 @@ public sealed class When_HandlingRiderOperations_Should
         session.Status.ShouldBe(DeliveryMatchingSessionStatus.Assigned);
         transaction.Committed.ShouldBeTrue();
         telemetry.Received(1).RecordOfferAccepted();
+        await commandSender.Received(2).SendAsync(
+            Arg.Is<SendNotificationCommand>(notification =>
+                notification.NotificationType == NotificationType.RiderAssigned ||
+                notification.NotificationType == NotificationType.RiderAcceptedInstructions),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -353,8 +373,11 @@ public sealed class When_HandlingRiderOperations_Should
             new AmbiguousCommitTransactionFactory(),
             Substitute.For<IRiderConsistencyLock>(),
             persistence,
+            NotificationStakeholders(),
+            Substitute.For<ICommandSender>(),
             Substitute.For<IRiderMatchingTelemetry>(),
             Options.Create(MatchingOptions),
+            NotificationOptions(),
             new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new(offer.Id, Actor), CancellationToken.None);
@@ -639,16 +662,49 @@ public sealed class When_HandlingRiderOperations_Should
         RiderDeliveryOffer offer,
         IRiderOfferAcceptancePersistence persistence,
         IRiderTransaction transaction,
-        IRiderMatchingTelemetry telemetry) =>
+        IRiderMatchingTelemetry telemetry,
+        ICommandSender commandSender) =>
         new(
             ActorResolver(profile),
             OfferRepository(offer),
             TransactionFactory(transaction),
             Substitute.For<IRiderConsistencyLock>(),
             persistence,
+            NotificationStakeholders(),
+            commandSender,
             telemetry,
             Options.Create(MatchingOptions),
+            NotificationOptions(),
             new FixedTimeProvider(Now));
+
+    private static IStakeholderReadModelRepository NotificationStakeholders()
+    {
+        var stakeholders = Substitute.For<IStakeholderReadModelRepository>();
+        stakeholders.GetByStakeholderIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var stakeholderId = callInfo.ArgAt<Guid>(0);
+                return new StakeholderReadModel(
+                    stakeholderId,
+                    Guid.CreateVersion7(),
+                    $"{stakeholderId:N}@example.com",
+                    Actor.TenantId!.Value,
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    "Test",
+                    "Person",
+                    null,
+                    true);
+            });
+        return stakeholders;
+    }
+
+    private static IOptions<DeliveryNotificationOptions> NotificationOptions() =>
+        Options.Create(new DeliveryNotificationOptions
+        {
+            ApplicationBaseUrl = "https://app.pikly.ng/",
+            DisplayTimeZoneId = "Africa/Lagos"
+        });
 
     private static RiderActorResolver ActorResolver(RiderProfile profile)
     {

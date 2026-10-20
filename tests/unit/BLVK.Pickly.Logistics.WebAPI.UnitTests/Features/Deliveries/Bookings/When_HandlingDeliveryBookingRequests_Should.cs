@@ -2,6 +2,7 @@ using BLVK.Pickly.Logistics.Application.Deliveries;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.CreateDelivery;
 using BLVK.Pickly.Logistics.Application.Deliveries.Features.GetDelivery;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
+using BLVK.Pickly.Logistics.Domain.Common.Messaging;
 using BLVK.Pickly.Logistics.Domain.Deliveries;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
@@ -10,6 +11,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Services;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ValueObjects;
 using BLVK.Pickly.Logistics.Domain.Payments.Entities;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
+using BLVK.Pickly.Logistics.Domain.Stakeholders.ReadModels;
 using BLVK.Pickly.Logistics.WebAPI.Features.Deliveries.Bookings;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -104,13 +106,33 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
         {
             var tracking = Substitute.For<IDeliveryTrackingIdGenerator>();
             tracking.Generate().Returns("PKL-ABCDEFGH");
+            var stakeholderReadModels = Substitute.For<IStakeholderReadModelRepository>();
+            stakeholderReadModels.GetByStakeholderIdAsync(_senderId, Arg.Any<CancellationToken>())
+                .Returns(new StakeholderReadModel(
+                    _senderId,
+                    Guid.CreateVersion7(),
+                    "sender@example.com",
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    "Ada",
+                    "Sender",
+                    null,
+                    true));
             var create = new CreateDeliveryHandler(
                 _quotes,
                 _deliveries,
                 _currencies,
                 _persistence,
+                stakeholderReadModels,
+                Substitute.For<ICommandSender>(),
                 tracking,
                 Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
+                Options.Create(new DeliveryNotificationOptions
+                {
+                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    DisplayTimeZoneId = "Africa/Lagos"
+                }),
                 new FixedTimeProvider(Now));
             var get = new GetDeliveryHandler(
                 _deliveries,

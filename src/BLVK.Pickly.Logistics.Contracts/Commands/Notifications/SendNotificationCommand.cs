@@ -21,4 +21,5 @@ public sealed record SendNotificationCommand : BaseCommand
     public NotificationMedium NotificationMedium { get; }
     public NotificationContent NotificationContent { get; }
     public string Language { get; init; } = "en";
+    public DateTimeOffset? ExpiresAtUtc { get; init; }
 }

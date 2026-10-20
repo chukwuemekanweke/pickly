@@ -15,7 +15,7 @@ namespace BLVK.Pickly.Logistics.Infrastructure.UnitTests;
 public sealed class WhenSendingEmailNotificationWithHtmlBodyTemplate_Should
 {
     [Fact]
-    public async Task RenderHtmlWithoutEscaping()
+    public async Task PreserveTemplateHtmlAndEscapeDynamicContent()
     {
         var tenantId = Guid.CreateVersion7();
         var templateRoot = Path.Combine(Path.GetTempPath(), $"email-templates-{Guid.CreateVersion7():N}");
@@ -25,8 +25,8 @@ public sealed class WhenSendingEmailNotificationWithHtmlBodyTemplate_Should
             Path.Combine(templateRoot, "EmailTemplates", "TemplateSets", "moveaex", "en", "BaseTemplate.html"),
             "<html><body>{{:BodyHtml:}}</body></html>");
         await File.WriteAllTextAsync(
-            Path.Combine(tenantTemplateDirectory, "AccountCreated.html"),
-            "<div>Hello {{:FirstName:}}</div><div>Line 2</div>");
+            Path.Combine(tenantTemplateDirectory, "OrderCreated.html"),
+            "<img src=\"{{:IllustrationUrl:}}\" alt=\"Parcel\" /><div>Hello {{:FirstName:}}</div><div>Line 2</div>");
 
         var providerRepository = Substitute.For<IReadRepository<Provider>>();
         var templateRepository = Substitute.For<IReadRepository<EmailNotificationTemplate>>();
@@ -48,13 +48,14 @@ public sealed class WhenSendingEmailNotificationWithHtmlBodyTemplate_Should
         var command = new SendNotificationCommand(
             tenantId,
             Guid.CreateVersion7(),
-            NotificationType.AccountCreated,
+            NotificationType.OrderCreated,
             NotificationMedium.Email,
             new EmailNotificationContent(
                 InfrastructureTestData.Email(),
                 new Dictionary<string, string>
                 {
-                    ["FirstName"] = "Ada"
+                    ["FirstName"] = "<script>alert('unsafe')</script>",
+                    ["IllustrationUrl"] = NotificationIllustrationUrls.OrderCreated
                 }));
 
         providerRepository.FirstOrDefaultAsync(Arg.Any<ActiveProviderByTypeSpecification>(), Arg.Any<CancellationToken>())
@@ -62,7 +63,7 @@ public sealed class WhenSendingEmailNotificationWithHtmlBodyTemplate_Should
         templateRepository.FirstOrDefaultAsync(
                 Arg.Any<EmailNotificationTemplateByNotificationTypeSpecification>(),
                 Arg.Any<CancellationToken>())
-            .Returns(EmailNotificationTemplate.Create(NotificationType.AccountCreated, "Account created notification", "Welcome", "AccountCreated.html"));
+            .Returns(EmailNotificationTemplate.Create(NotificationType.OrderCreated, "Order created notification", "Welcome", "OrderCreated.html"));
         tenantRepository.FirstOrDefaultAsync(
                 Arg.Any<TenantByIdSpecification>(),
                 Arg.Any<CancellationToken>())
@@ -88,7 +89,7 @@ public sealed class WhenSendingEmailNotificationWithHtmlBodyTemplate_Should
         await transportProvider.Received(1).SendAsync(
             Arg.Is<EmailDeliveryMessage>(message =>
                 message.Subject == "Welcome" &&
-                message.HtmlBody == "<html><body><div>Hello Ada</div><div>Line 2</div></body></html>"),
+                message.HtmlBody == $"<html><body><img src=\"{NotificationIllustrationUrls.OrderCreated}\" alt=\"Parcel\" /><div>Hello &lt;script&gt;alert(&#39;unsafe&#39;)&lt;/script&gt;</div><div>Line 2</div></body></html>"),
             Arg.Any<CancellationToken>());
     }
 }

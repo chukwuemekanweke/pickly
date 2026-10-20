@@ -1,3 +1,4 @@
+using BLVK.Pickly.Logistics.Contracts.Commands.Notifications;
 using BLVK.Pickly.Logistics.Contracts.Events;
 using BLVK.Pickly.Logistics.Contracts.Payments;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Entities;
@@ -72,6 +73,9 @@ public sealed class When_ReconcilingPayments_WithUnverifiedSettlement_Should
         transaction.VerifiedCurrencyCode.ShouldBe(verifiedCurrencyCode);
         transaction.FailureReason!.ShouldContain(expectedReasonFragment);
         transaction.StatusChangeReason.ShouldBe(KnownPaymentTransactionChangeReasons.ReconciliationUnresolvedSettlement);
+        await context.CommandSender.DidNotReceive().SendAsync(
+            Arg.Any<SendNotificationCommand>(),
+            Arg.Any<CancellationToken>());
         attempt.ApplicationException.ShouldBe(transaction.FailureReason);
         await context.EventPublisher.DidNotReceive().PublishAsync(
             Arg.Any<SuccessfulPaymentConfirmed>(), Arg.Any<CancellationToken>());

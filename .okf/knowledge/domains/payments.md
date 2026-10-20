@@ -16,6 +16,7 @@ code_refs:
     - src/BLVK.Pickly.Logistics.Infrastructure/Payments/**
     - src/BLVK.Pickly.Logistics.WebAPI/Features/Payments/**
     - src/BLVK.Pickly.Logistics.Jobs/Payments/**
+    - src/BLVK.Pickly.Logistics.Consumer/Payments/**
     - src/BLVK.Pickly.Logistics.Contracts/Payments/**
     - src/BLVK.Pickly.Logistics.Contracts/Commands/Payments/**
     - tests/unit/BLVK.Pickly.Logistics.Application.UnitTests/Payments/**
@@ -43,6 +44,13 @@ or other business-domain foreign key. It owns provider initiation state and the 
 currency and timestamp. The Deliveries domain owns attempt association through `DeliveryPaymentAttempt`.
 Reconciliation publishes the existing `SuccessfulPaymentConfirmed` only after provider verification establishes the
 settled amount and currency; delivery processing resolves the association by `PaymentTransactionId`.
+
+Delivery payment initiation enqueues an expiring payment-instructions notification only after the provider returns
+actionable instructions and the local transaction becomes `Initiated`; exact-key and outstanding-attempt replays do
+not enqueue it again. Only whitelisted provider instruction fields are included. Provider-confirmed failure enqueues
+a failure notification in the same reconciliation unit of work, while processing, expired, unresolved, or transient
+provider outcomes do not. A payment-success notification is created only after `ConfirmDeliveryPaymentHandler`
+successfully applies verified evidence to the Delivery; an already-applied attempt returns without another message.
 
 Provider-reported success is not sufficient to satisfy any payment intent. Reconciliation requires an actual
 provider-confirmed amount and currency that exactly match the requested `Amount` and `CurrencyId`. Missing or
