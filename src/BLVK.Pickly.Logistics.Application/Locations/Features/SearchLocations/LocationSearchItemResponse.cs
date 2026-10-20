@@ -15,7 +15,14 @@ public sealed record LocationSearchItemResponse(
     bool IsSelectable)
 {
     public static LocationSearchItemResponse FromRegistry(LocationReadModel location) =>
-        new(location.Id, null, location.DisplayAddress, LocationSearchSource.Registry, location.LocationType, null, true);
+        new(
+            location.Id,
+            null,
+            location.DisplayAddress,
+            LocationSearchSource.Registry,
+            location.LocationType,
+            null,
+            location.LocationType is LocationType.Street or LocationType.Landmark);
 
     public static LocationSearchItemResponse FromMapbox(GeocodingCandidate candidate, string selectionToken) =>
         new(null, selectionToken, candidate.DisplayAddress, LocationSearchSource.Mapbox,

@@ -39,10 +39,11 @@ status: stable
 
 `Location` (schema `locations`) is a canonical, reusable physical place shared by every sender. It holds only
 canonical data: `LocationAddress` (display/normalized address, line, city, state, ISO country), WGS84
-`GeographicCoordinates`, `LocationType` (`Street`, `Landmark`), `ResolutionSource` (`Mapbox`,
+`GeographicCoordinates`, `LocationType` (`Street`, `Landmark`, `Area`), `ResolutionSource` (`Mapbox`,
 `InternallyRegistered`), `ResolutionStatus` (`Resolved`, `Retired`), `Visibility` and `ResolvedAtUtc`. It must never
 carry sender data (labels, directions, phone numbers, access codes) — those live on referencing records such as
-`SavedPickupLocation` (see [[deliveries]]). A location is usable only while `Resolved` and not soft-deleted.
+`SavedPickupLocation` (see [[deliveries]]). A location is usable only while `Resolved`, not soft-deleted, and typed as
+a `Street` or `Landmark`; areas may be discoverable context but are never usable as pickup or delivery points.
 
 Children:
 - `LocationProviderReference` — provider provenance (provider, feature id, feature type, storage classification
@@ -77,15 +78,16 @@ than one locality are excluded rather than merged. See [[database-seeding]].
 ## Unified search and explicit registration
 
 - `GET /api/v1/locations/search` is the only public resolution entry point. It authenticates the sender, bounds and
-  normalizes the query, and searches usable public registry locations first. A full normalized display-address match
-  is reliable enough to suppress Mapbox; partial street-name matches remain in the result but do not suppress useful
-  provider candidates.
+  normalizes the query, and searches resolved public registry locations first. Indexed partial street/landmark matches
+  are sufficient to suppress Mapbox as soon as one usable registry result exists; full normalized display-address
+  equality is not required for discovery. Exact-address identity resolution retains its stricter matching rules.
 - When registry results are not reliable, search takes the cross-instance resolution lease, reuses a cached recent
   permanent-geocoding outcome when available, and otherwise calls Mapbox. Search never creates a `Location`.
 - Registry and provider matches share one result contract with `LocationType` and `IsSelectable`. Registered streets
-  and landmarks contain a `LocationId`; new verified ones contain an opaque selection token. Area suggestions contain
-  neither and are never selectable or persisted. No useful provider result returns an empty collection; provider
-  outages remain explicit errors.
+  and landmarks contain a `LocationId`; new verified ones contain an opaque selection token. Registered areas may
+  retain their real `LocationId` but are explicitly nonselectable; provider area suggestions contain neither an id nor
+  a token and are never persisted. Area-only registry matches permit provider fallback. No useful provider result
+  returns an empty collection; provider outages remain explicit errors.
 - Registrable provider candidates are canonical `Street` or `Landmark` precision, match the supported country, and
   carry a valid canonical address and WGS84 coordinates. A premise is accepted only when Mapbox supplies reliable
   structured parent-street identity; the provider street id and street/locality display become the canonical result,
@@ -129,6 +131,8 @@ Search Box results do not carry the same storage rights and must not be persiste
 - Search and registration use the per-user `LocationResolutionPolicy` rate limit; query length, radius, limits and
   supported countries are bounded (`LocationResolutionOptions`). Location-resolution and Mapbox operational options
   contain no C# policy defaults; both configuration sections are required and validated during service registration.
+- Search telemetry records the actual trimmed search term, normalized search term, registry/selectable/provider/result
+  counts, lookup outcome, source, cache use, country and resolution origin as structured event properties.
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT
   EXISTS postgis`, which needs sufficient privileges on managed services (pre-create it otherwise).
 

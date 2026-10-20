@@ -45,7 +45,10 @@ public sealed class Location : Entity, IAggregateRoot
     public IReadOnlyCollection<LocationProviderReference> ProviderReferences => _providerReferences;
     public IReadOnlyCollection<LocationResolutionKey> ResolutionKeys => _resolutionKeys;
 
-    public bool IsUsable => ResolutionStatus == LocationResolutionStatus.Resolved && !IsDeleted;
+    public bool IsUsable =>
+        ResolutionStatus == LocationResolutionStatus.Resolved &&
+        !IsDeleted &&
+        LocationType is LocationType.Street or LocationType.Landmark;
 
     /// <summary>
     /// Registers a canonical street or landmark resolved through a permanent-storage geocoding request. Only results obtained under

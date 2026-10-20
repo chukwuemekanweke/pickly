@@ -46,6 +46,9 @@ only when `StakeholderId` is genuinely unavailable. See [[dotnet-style]].
 
 - Location resolution emits `Observability.EventNames.Locations.*` custom events (registry hit/miss, geocoding
   requested/failed, ambiguous, failed, registered/reused, duplicate-resolution prevented) via `ICustomTelemetryContext`.
+- Location search additionally distinguishes registry misses from matches with no usable street/landmark, and emits
+  `location.search.performed` with the actual trimmed and normalized search terms plus bounded structured counts and
+  source/outcome properties. Search terms remain event/log properties and must never be used as metric labels.
 - Outbound geocoding transport telemetry comes from the standard HttpClient instrumentation registered by
   `AddBackendTelemetry`; do not wrap provider clients in duplicate manual activities or request-duration meters.
   Location resolution business outcomes belong in the `Observability.EventNames.Locations.*` events.

@@ -153,6 +153,7 @@ public sealed class ProviderLocationResolver(
             Observability.EventNames.Locations.ResolutionAmbiguous,
             new Dictionary<string, string>
             {
+                [Observability.PropertyNames.Locations.Provider] = provider,
                 [Observability.PropertyNames.Locations.CandidateCount] =
                     candidates.Count.ToString(CultureInfo.InvariantCulture)
             });
