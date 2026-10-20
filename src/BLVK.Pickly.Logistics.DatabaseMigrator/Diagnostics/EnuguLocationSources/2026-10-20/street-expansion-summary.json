@@ -1,0 +1,40 @@
+{
+  "geometry_source_files": 19,
+  "osm_base_timestamp_min": "2026-07-24T11:04:51Z",
+  "osm_base_timestamp_max": "2026-10-20T14:46:49Z",
+  "source_ways": 3248,
+  "stale_fallback_ways": 150,
+  "distinct_normalized_names": 2203,
+  "connected_components": 2478,
+  "new_streets": 616,
+  "new_street_provider_references": 804,
+  "additional_existing_street_references": 194,
+  "decisions": {
+    "accepted_existing_reference": 130,
+    "accepted_new": 616,
+    "excluded_disconnected_duplicate_name": 372,
+    "excluded_existing_name_unconnected": 62,
+    "excluded_manual_data_quality": 17,
+    "excluded_name_shape": 177,
+    "excluded_road_class": 14,
+    "excluded_too_long": 1,
+    "excluded_too_short": 1089
+  },
+  "selection_rules": {
+    "connectivity": "exact shared OSM geometry vertex within one normalized name",
+    "allowed_highways": [
+      "living_street",
+      "primary",
+      "residential",
+      "secondary",
+      "tertiary",
+      "unclassified"
+    ],
+    "length_metres": [
+      300,
+      10000
+    ],
+    "ambiguous_names": "exclude every disconnected component unless one contains the 0005 seeded way; only that connected seeded component receives references",
+    "representative_point": "distance midpoint of the longest way in the connected component"
+  }
+}

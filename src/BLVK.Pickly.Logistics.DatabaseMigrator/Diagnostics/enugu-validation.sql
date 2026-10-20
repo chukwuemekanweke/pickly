@@ -69,9 +69,9 @@ WHERE ST_Area(ST_Intersection(a."Boundary", b."Boundary")) > 0;
 
 INSERT INTO enugu_validation
 SELECT 'locations: OSM-seeded streets and landmarks',
-       CASE WHEN count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Street') >= 130
+       CASE WHEN count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Street') >= 746
              AND count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Landmark') >= 94 THEN 'PASS' ELSE 'WARN' END,
-       count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Street') || ' streets (130 seeded), '
+       count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Street') || ' streets (746 seeded), '
          || count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Landmark') || ' landmarks (94 seeded); '
          || 'fewer means a row was skipped because an equivalent location already existed'
 FROM locations."Locations" l

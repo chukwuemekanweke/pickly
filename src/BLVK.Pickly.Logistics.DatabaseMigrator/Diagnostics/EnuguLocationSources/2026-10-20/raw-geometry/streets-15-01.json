@@ -1,0 +1,559 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-20T14:45:50Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 584875840,
+  "bounds": {
+    "minlat": 6.4296634,
+    "minlon": 7.4943076,
+    "maxlat": 6.4304977,
+    "maxlon": 7.4972867
+  },
+  "geometry": [
+    { "lat": 6.4296634, "lon": 7.4943076 },
+    { "lat": 6.4297063, "lon": 7.4943855 },
+    { "lat": 6.4303945, "lon": 7.4964618 },
+    { "lat": 6.4304281, "lon": 7.4966218 },
+    { "lat": 6.4304977, "lon": 7.4969174 },
+    { "lat": 6.4304963, "lon": 7.4970211 },
+    { "lat": 6.4304308, "lon": 7.4972867 }
+  ],
+  "tags": {
+    "highway": "tertiary",
+    "name": "Nwoga Street",
+    "oneway": "no",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584878946,
+  "bounds": {
+    "minlat": 6.4248383,
+    "minlon": 7.4901287,
+    "maxlat": 6.4249110,
+    "maxlon": 7.4901836
+  },
+  "geometry": [
+    { "lat": 6.4249110, "lon": 7.4901287 },
+    { "lat": 6.4248383, "lon": 7.4901836 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Bende Lane",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 584878948,
+  "bounds": {
+    "minlat": 6.4310020,
+    "minlon": 7.4932679,
+    "maxlat": 6.4311136,
+    "maxlon": 7.4936119
+  },
+  "geometry": [
+    { "lat": 6.4311136, "lon": 7.4936119 },
+    { "lat": 6.4310020, "lon": 7.4932679 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Umuleri Street",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 584882581,
+  "bounds": {
+    "minlat": 6.4271818,
+    "minlon": 7.4927404,
+    "maxlat": 6.4272299,
+    "maxlon": 7.4927906
+  },
+  "geometry": [
+    { "lat": 6.4272299, "lon": 7.4927404 },
+    { "lat": 6.4271818, "lon": 7.4927906 }
+  ],
+  "tags": {
+    "highway": "tertiary",
+    "name": "Amaigbo Lane",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584882582,
+  "bounds": {
+    "minlat": 6.4279393,
+    "minlon": 7.4935774,
+    "maxlat": 6.4279908,
+    "maxlon": 7.4936256
+  },
+  "geometry": [
+    { "lat": 6.4279908, "lon": 7.4935774 },
+    { "lat": 6.4279393, "lon": 7.4936256 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Amokwe Street",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584882583,
+  "bounds": {
+    "minlat": 6.4367891,
+    "minlon": 7.4939609,
+    "maxlat": 6.4368849,
+    "maxlon": 7.4940055
+  },
+  "geometry": [
+    { "lat": 6.4367891, "lon": 7.4939609 },
+    { "lat": 6.4368849, "lon": 7.4940055 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Market Road",
+    "surface": "unpaved;paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584904261,
+  "bounds": {
+    "minlat": 6.4156051,
+    "minlon": 7.5151423,
+    "maxlat": 6.4163494,
+    "maxlon": 7.5152519
+  },
+  "geometry": [
+    { "lat": 6.4163494, "lon": 7.5151423 },
+    { "lat": 6.4156051, "lon": 7.5152519 }
+  ],
+  "tags": {
+    "alt_name": "Thomas Okonkwo Close",
+    "highway": "residential",
+    "name": "Ekweani Close"
+  }
+},
+{
+  "type": "way",
+  "id": 584938897,
+  "bounds": {
+    "minlat": 6.4379321,
+    "minlon": 7.5058253,
+    "maxlat": 6.4380008,
+    "maxlon": 7.5061653
+  },
+  "geometry": [
+    { "lat": 6.4380008, "lon": 7.5058253 },
+    { "lat": 6.4380001, "lon": 7.5058736 },
+    { "lat": 6.4379994, "lon": 7.5059051 },
+    { "lat": 6.4379921, "lon": 7.5059762 },
+    { "lat": 6.4379718, "lon": 7.5060734 },
+    { "lat": 6.4379321, "lon": 7.5061653 }
+  ],
+  "tags": {
+    "highway": "secondary",
+    "name": "Nkpokiti Road",
+    "oneway": "yes",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584938901,
+  "bounds": {
+    "minlat": 6.4376537,
+    "minlon": 7.5050555,
+    "maxlat": 6.4380008,
+    "maxlon": 7.5058253
+  },
+  "geometry": [
+    { "lat": 6.4376537, "lon": 7.5050555 },
+    { "lat": 6.4377016, "lon": 7.5051573 },
+    { "lat": 6.4378062, "lon": 7.5053318 },
+    { "lat": 6.4378635, "lon": 7.5054391 },
+    { "lat": 6.4379361, "lon": 7.5055899 },
+    { "lat": 6.4379768, "lon": 7.5057100 },
+    { "lat": 6.4380008, "lon": 7.5058253 }
+  ],
+  "tags": {
+    "highway": "secondary",
+    "name": "Nkpokiti Road",
+    "oneway": "yes",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584944412,
+  "bounds": {
+    "minlat": 6.4190509,
+    "minlon": 7.4881985,
+    "maxlat": 6.4191198,
+    "maxlon": 7.4882183
+  },
+  "geometry": [
+    { "lat": 6.4191198, "lon": 7.4882183 },
+    { "lat": 6.4190509, "lon": 7.4881985 }
+  ],
+  "tags": {
+    "highway": "unclassified",
+    "name": "Chief Emeka Ebila Street",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584944413,
+  "bounds": {
+    "minlat": 6.4138446,
+    "minlon": 7.4868406,
+    "maxlat": 6.4145030,
+    "maxlon": 7.4885839
+  },
+  "geometry": [
+    { "lat": 6.4145030, "lon": 7.4868406 },
+    { "lat": 6.4144557, "lon": 7.4869539 },
+    { "lat": 6.4144123, "lon": 7.4870718 },
+    { "lat": 6.4143797, "lon": 7.4871533 },
+    { "lat": 6.4142822, "lon": 7.4874625 },
+    { "lat": 6.4138446, "lon": 7.4885839 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Chief Emeka Ebila Street",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584944414,
+  "bounds": {
+    "minlat": 6.4140452,
+    "minlon": 7.4964989,
+    "maxlat": 6.4141317,
+    "maxlon": 7.4978485
+  },
+  "geometry": [
+    { "lat": 6.4141317, "lon": 7.4978485 },
+    { "lat": 6.4140541, "lon": 7.4970828 },
+    { "lat": 6.4140452, "lon": 7.4964989 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Ochi Close",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584944415,
+  "bounds": {
+    "minlat": 6.4157397,
+    "minlon": 7.4947913,
+    "maxlat": 6.4157761,
+    "maxlon": 7.4948679
+  },
+  "geometry": [
+    { "lat": 6.4157397, "lon": 7.4947913 },
+    { "lat": 6.4157761, "lon": 7.4948679 }
+  ],
+  "tags": {
+    "highway": "unclassified",
+    "name": "Obioma Street",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 584946907,
+  "bounds": {
+    "minlat": 6.4170853,
+    "minlon": 7.4835025,
+    "maxlat": 6.4174959,
+    "maxlon": 7.4836726
+  },
+  "geometry": [
+    { "lat": 6.4174959, "lon": 7.4836726 },
+    { "lat": 6.4174620, "lon": 7.4836633 },
+    { "lat": 6.4173971, "lon": 7.4836396 },
+    { "lat": 6.4173593, "lon": 7.4836298 },
+    { "lat": 6.4173240, "lon": 7.4836188 },
+    { "lat": 6.4173040, "lon": 7.4836081 },
+    { "lat": 6.4172630, "lon": 7.4835975 },
+    { "lat": 6.4172410, "lon": 7.4835868 },
+    { "lat": 6.4172240, "lon": 7.4835790 },
+    { "lat": 6.4171491, "lon": 7.4835355 },
+    { "lat": 6.4170853, "lon": 7.4835025 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Chief Okwor Street",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585116309,
+  "bounds": {
+    "minlat": 6.4621685,
+    "minlon": 7.5283592,
+    "maxlat": 6.4622218,
+    "maxlon": 7.5284218
+  },
+  "geometry": [
+    { "lat": 6.4622218, "lon": 7.5284218 },
+    { "lat": 6.4621685, "lon": 7.5283592 }
+  ],
+  "tags": {
+    "highway": "secondary",
+    "name": "Old Abakaliki Road",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585144131,
+  "bounds": {
+    "minlat": 6.4617819,
+    "minlon": 7.5550549,
+    "maxlat": 6.4618193,
+    "maxlon": 7.5551243
+  },
+  "geometry": [
+    { "lat": 6.4618193, "lon": 7.5550549 },
+    { "lat": 6.4617819, "lon": 7.5551243 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Abiriba Avenue",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585149924,
+  "bounds": {
+    "minlat": 6.4634253,
+    "minlon": 7.5367186,
+    "maxlat": 6.4635256,
+    "maxlon": 7.5382210
+  },
+  "geometry": [
+    { "lat": 6.4634253, "lon": 7.5367186 },
+    { "lat": 6.4634346, "lon": 7.5368001 },
+    { "lat": 6.4634524, "lon": 7.5371347 },
+    { "lat": 6.4634577, "lon": 7.5374579 },
+    { "lat": 6.4634803, "lon": 7.5378562 },
+    { "lat": 6.4634883, "lon": 7.5380185 },
+    { "lat": 6.4635083, "lon": 7.5381365 },
+    { "lat": 6.4635256, "lon": 7.5382210 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Jerry Uwakwe Street",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585149927,
+  "bounds": {
+    "minlat": 6.4650316,
+    "minlon": 7.5344693,
+    "maxlat": 6.4657277,
+    "maxlon": 7.5361286
+  },
+  "geometry": [
+    { "lat": 6.4650316, "lon": 7.5361286 },
+    { "lat": 6.4650527, "lon": 7.5358118 },
+    { "lat": 6.4650805, "lon": 7.5356932 },
+    { "lat": 6.4653120, "lon": 7.5351461 },
+    { "lat": 6.4654992, "lon": 7.5348468 },
+    { "lat": 6.4657277, "lon": 7.5344693 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Franic Lane",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 585149929,
+  "bounds": {
+    "minlat": 6.4665326,
+    "minlon": 7.5346497,
+    "maxlat": 6.4671636,
+    "maxlon": 7.5347335
+  },
+  "geometry": [
+    { "lat": 6.4665326, "lon": 7.5347201 },
+    { "lat": 6.4665613, "lon": 7.5347328 },
+    { "lat": 6.4665799, "lon": 7.5347335 },
+    { "lat": 6.4666032, "lon": 7.5347308 },
+    { "lat": 6.4666372, "lon": 7.5347207 },
+    { "lat": 6.4666925, "lon": 7.5346926 },
+    { "lat": 6.4667425, "lon": 7.5346765 },
+    { "lat": 6.4667778, "lon": 7.5346711 },
+    { "lat": 6.4668424, "lon": 7.5346684 },
+    { "lat": 6.4670343, "lon": 7.5346604 },
+    { "lat": 6.4671636, "lon": 7.5346497 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Franic Lane",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 585164682,
+  "bounds": {
+    "minlat": 6.4767533,
+    "minlon": 7.5316722,
+    "maxlat": 6.4771351,
+    "maxlon": 7.5321660
+  },
+  "geometry": [
+    { "lat": 6.4767533, "lon": 7.5320822 },
+    { "lat": 6.4768978, "lon": 7.5321448 },
+    { "lat": 6.4769334, "lon": 7.5321573 },
+    { "lat": 6.4769600, "lon": 7.5321660 },
+    { "lat": 6.4769756, "lon": 7.5321555 },
+    { "lat": 6.4769915, "lon": 7.5321251 },
+    { "lat": 6.4771351, "lon": 7.5316722 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Anthony Onyeke Close"
+  }
+},
+{
+  "type": "way",
+  "id": 585168551,
+  "bounds": {
+    "minlat": 6.4754241,
+    "minlon": 7.5254524,
+    "maxlat": 6.4756253,
+    "maxlon": 7.5256871
+  },
+  "geometry": [
+    { "lat": 6.4756253, "lon": 7.5254524 },
+    { "lat": 6.4755800, "lon": 7.5255033 },
+    { "lat": 6.4755174, "lon": 7.5255617 },
+    { "lat": 6.4754534, "lon": 7.5256334 },
+    { "lat": 6.4754374, "lon": 7.5256602 },
+    { "lat": 6.4754241, "lon": 7.5256871 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Alor Close",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585177792,
+  "bounds": {
+    "minlat": 6.4758945,
+    "minlon": 7.5202998,
+    "maxlat": 6.4763163,
+    "maxlon": 7.5204137
+  },
+  "geometry": [
+    { "lat": 6.4763163, "lon": 7.5204137 },
+    { "lat": 6.4762616, "lon": 7.5203907 },
+    { "lat": 6.4762010, "lon": 7.5203628 },
+    { "lat": 6.4761410, "lon": 7.5203441 },
+    { "lat": 6.4760717, "lon": 7.5203307 },
+    { "lat": 6.4760131, "lon": 7.5203213 },
+    { "lat": 6.4758945, "lon": 7.5202998 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "St Joseph Parish",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585177795,
+  "bounds": {
+    "minlat": 6.4728643,
+    "minlon": 7.5227071,
+    "maxlat": 6.4731348,
+    "maxlon": 7.5236546
+  },
+  "geometry": [
+    { "lat": 6.4728643, "lon": 7.5227071 },
+    { "lat": 6.4729096, "lon": 7.5228627 },
+    { "lat": 6.4729696, "lon": 7.5230545 },
+    { "lat": 6.4730522, "lon": 7.5232972 },
+    { "lat": 6.4731348, "lon": 7.5236546 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Godwin Ekuma Street",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585201244,
+  "bounds": {
+    "minlat": 6.4672407,
+    "minlon": 7.5842186,
+    "maxlat": 6.4674495,
+    "maxlon": 7.5846497
+  },
+  "geometry": [
+    { "lat": 6.4674495, "lon": 7.5842186 },
+    { "lat": 6.4673246, "lon": 7.5842948 },
+    { "lat": 6.4673183, "lon": 7.5844140 },
+    { "lat": 6.4672407, "lon": 7.5846497 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Otukwu Village Road",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 585201245,
+  "bounds": {
+    "minlat": 6.4673641,
+    "minlon": 7.5837423,
+    "maxlat": 6.4674851,
+    "maxlon": 7.5842186
+  },
+  "geometry": [
+    { "lat": 6.4673641, "lon": 7.5837423 },
+    { "lat": 6.4673688, "lon": 7.5837790 },
+    { "lat": 6.4673755, "lon": 7.5838052 },
+    { "lat": 6.4674851, "lon": 7.5841124 },
+    { "lat": 6.4674653, "lon": 7.5841784 },
+    { "lat": 6.4674495, "lon": 7.5842186 }
+  ],
+  "tags": {
+    "highway": "residential",
+    "name": "Otukwu Village Road",
+    "surface": "unpaved"
+  }
+}
+
+  ]
+}

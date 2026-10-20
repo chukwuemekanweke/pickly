@@ -54,7 +54,7 @@ lines and every batch goes through `ExecuteSqlRawAsync`.
 ## Current post-deploy seeds
 
 0002 `rider` stakeholder type, 0003 vehicle categories, 0004 Enugu zones, 0005 Enugu OSM locations, 0006 ENU-V1
-tariff, 0007 MVP test rider accounts, and 0008 the reviewed 51-landmark Enugu location expansion. All seed data lives in
+tariff, 0007 MVP test rider accounts, and 0008 the reviewed 51-landmark/616-street Enugu location expansion. All seed data lives in
 `Scripts/PostDeploy`; there is no separate manual or environment-specific script path.
 
 0007 is temporary dummy data that runs in every environment: it creates confirmed rider logins with a shared test

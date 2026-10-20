@@ -64,8 +64,10 @@ normalized identity already exists, so seeding never duplicates a Mapbox-registe
 than one locality are excluded rather than merged. See [[database-seeding]].
 
 Reviewed additions use later insert-only scripts rather than rewriting historical seed rows. Post-deploy `0008`
-adds 51 curated node-based landmarks across healthcare, markets, public services, education, worship, transport and
-commercial categories, and maps a second connected OSM way to the existing Annunciation Hospital Road location.
+adds 51 curated node-based landmarks and 616 geometry-reviewed streets, and maps 194 additional connected OSM ways
+to streets already seeded by `0005`. Street ways are grouped only when they share an exact geometry vertex; names
+with multiple disconnected identities and unsuitable/private/short roads are excluded. Each new street uses the
+distance midpoint of its longest contributing way and retains every contributing way as provider provenance.
 A canonical location may therefore have multiple provider references when several connected OSM
 ways represent the same physical street; `(Provider, FeatureId)` remains globally unique. When a usable Mapbox
 location already owns the normalized identity, the OSM reference is attached to it instead of creating a duplicate.
