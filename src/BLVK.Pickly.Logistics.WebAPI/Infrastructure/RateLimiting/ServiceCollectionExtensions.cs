@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         Validate(options.EmailOperationsPolicy, nameof(RateLimitingOptions.EmailOperationsPolicy));
         Validate(options.PasswordResetPolicy, nameof(RateLimitingOptions.PasswordResetPolicy));
         Validate(options.TwoFactorVerificationPolicy, nameof(RateLimitingOptions.TwoFactorVerificationPolicy));
+        Validate(options.LocationSearchPolicy, nameof(RateLimitingOptions.LocationSearchPolicy));
         Validate(options.LocationResolutionPolicy, nameof(RateLimitingOptions.LocationResolutionPolicy));
         Validate(options.RiderLocationPolicy, nameof(RateLimitingOptions.RiderLocationPolicy));
 
@@ -51,8 +52,12 @@ public static class ServiceCollectionExtensions
                 RateLimitingPolicyNames.TwoFactorVerificationPolicy,
                 context => CreateFixedWindowPartition(options.TwoFactorVerificationPolicy, ResolveClientIpPartitionKey(context)));
 
-            // Location resolution can trigger paid geocoding, so it is limited per authenticated user on top of the
-            // global limiter.
+            // Search is more interactive than candidate registration, but both can trigger paid geocoding and remain
+            // limited per authenticated user on top of the global limiter.
+            rateLimiterOptions.AddPolicy(
+                RateLimitingPolicyNames.LocationSearchPolicy,
+                context => CreateFixedWindowPartition(options.LocationSearchPolicy, ResolveAuthenticatedUserPartitionKey(context)));
+
             rateLimiterOptions.AddPolicy(
                 RateLimitingPolicyNames.LocationResolutionPolicy,
                 context => CreateFixedWindowPartition(options.LocationResolutionPolicy, ResolveAuthenticatedUserPartitionKey(context)));

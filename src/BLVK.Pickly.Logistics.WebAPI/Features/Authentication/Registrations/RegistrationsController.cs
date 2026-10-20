@@ -43,7 +43,7 @@ public sealed class RegistrationsController(
             request.CountryId,
             request.FirstName,
             request.LastName,
-            HttpContext?.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            HttpContext.GetClientIpAddress(),
             ActorContext.FromAnonymousActor(currentActor),
             request.Language);
 
@@ -90,7 +90,7 @@ public sealed class RegistrationsController(
                 request.CountryId,
                 request.FirstName,
                 request.LastName,
-                HttpContext?.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+                HttpContext.GetClientIpAddress(),
                 ActorContext.FromAnonymousActor(currentActor),
                 request.Language,
                 HttpContext?.Request.Headers.UserAgent.ToString() ?? string.Empty),

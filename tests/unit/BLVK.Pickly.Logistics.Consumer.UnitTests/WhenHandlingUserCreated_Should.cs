@@ -130,7 +130,8 @@ public sealed class WhenHandlingUserCreated_Should
             content.Content["LastName"] == lastName &&
             content.Content["OtpCode"] == otpCode &&
             content.Content["OtpExpiresAtUtc"] == otpExpiresAtUtc &&
-            content.Content["Product"] == "BLVK.Pickly.Logistics";
+            content.Content["IllustrationUrl"] == NotificationIllustrationUrls.ConfirmEmail &&
+            content.Content["Product"] == "Pikly";
     }
 
     private sealed class FakeTimeProvider(DateTimeOffset utcNow) : TimeProvider

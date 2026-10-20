@@ -138,9 +138,12 @@ Search Box results do not carry the same storage rights and must not be persiste
 
 - Only canonical streets and distinct landmarks are registered, and both are `Public`. Premises and areas are never
   persisted; private building numbers and access directions remain sender-specific metadata.
-- Search and registration use the per-user `LocationResolutionPolicy` rate limit; query length, radius, limits and
-  supported countries are bounded (`LocationResolutionOptions`). Location-resolution and Mapbox operational options
-  contain no C# policy defaults; both configuration sections are required and validated during service registration.
+- Search uses the more permissive per-user `LocationSearchPolicy` rate limit (100 requests per minute by default)
+  for interactive address entry, while candidate registration retains the stricter per-user
+  `LocationResolutionPolicy` (20 requests per 10 minutes by default). Both sit on top of the authenticated global
+  limiter. Query length, radius, limits and supported countries are bounded (`LocationResolutionOptions`).
+  Location-resolution and Mapbox operational options contain no C# policy defaults; both configuration sections are
+  required and validated during service registration.
 - Search telemetry records the actual trimmed search term, normalized search term, registry/selectable/provider/result
   counts, lookup outcome, source, cache use, country and resolution origin as structured event properties.
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT

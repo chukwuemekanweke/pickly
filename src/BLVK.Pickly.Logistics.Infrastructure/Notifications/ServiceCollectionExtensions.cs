@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         options.Validate();
 
         services.Configure<EmailNotificationsOptions>(configuration.GetSection(EmailNotificationsOptions.SectionName));
+        services.AddHttpClient(NotificationHttpClientNames.Mailtrap);
         services.AddScoped<IEmailNotificationService, EmailNotificationDispatcher>();
         services.AddScoped<IEmailTransportProvider, MailtrapEmailTransportProvider>();
 

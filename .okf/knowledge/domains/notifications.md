@@ -38,6 +38,9 @@ status: stable
 - `SendNotificationCommand` (`Contracts`) carries `NotificationContent` for a given `NotificationMedium`/`NotificationType` (email, SMS, app push, web push are modeled as content types even where only
   email is currently wired up end to end).
 - The actual send happens in `Consumer` using `EmailTemplates/TemplateSets` (a `default` template set), driven by an `EmailNotificationTemplate`/`EmailNotificationLog` record for tracking.
+- Mailtrap sends use the `notifications-mailtrap` named `HttpClient`, passed into the Mailtrap SDK, so standard
+  HttpClient OpenTelemetry produces provider request spans with HTTP route/status/exception data. Do not attach
+  recipient addresses, message bodies, API tokens or other email content to transport spans.
 - Delivery lifecycle notifications reuse `SendNotificationCommand` and the transactional outbox; application and
   consumer handlers only compose template data and never call the email provider directly. Stable message identities
   are derived from the business transition, notification type, and recipient so operation replay does not create a
@@ -46,9 +49,17 @@ status: stable
   confirmed payment failure, applied payment success, sender-facing rider assignment, and rider-facing fulfillment
   instructions. Dynamic body replacements are HTML-encoded, sensitive instruction/contact fields are obfuscated in
   notification logs, and expired payment-instruction commands are consumed without sending.
-- Transactional illustrations are checked in as SVG sources and email-compatible PNGs. Their manually managed public
-  R2 URLs are explicit `NotificationIllustrationUrls` values included in each notification command; neither template
-  rendering nor database migration uploads or derives asset URLs.
+- The default template set also contains matching English/French branded layouts for the ten legacy account,
+  authentication, security, trial, subscription and invoice notification types. Email-confirmation OTP,
+  password-reset OTP, successful-sign-in and account-lock messages have active Consumer producers; the other legacy
+  templates remain seeded compatibility fallbacks until a producer dispatches them. Trial and subscription copy must
+  not imply delivery cancellation, retention guarantees or billing capabilities beyond the supplied placeholders.
+- Every localized transactional template includes a 440x280 Pikly illustration. Illustration masters are checked in as
+  SVG sources alongside email-compatible PNGs. Their manually managed public R2 URLs are explicit
+  `NotificationIllustrationUrls` values included in each notification command; neither template rendering nor database
+  migration uploads or derives asset URLs. Upload every new PNG to the matching `transactional/v1` object path before
+  deploying a producer or template that references it, and include `IllustrationUrl` in any producer added for a dormant
+  legacy template.
 - Delivery status comes back via the Mailtrap delivery webhook (`ProcessMailtrapDeliveryWebhook` in Application, received at `WebAPI/Features/EmailNotifications/Webhooks`), recorded as an
   `EmailDeliveryWebhookInbox` entry and published as `EmailDeliveryWebhookReceived` (`Contracts.Events`) through the outbox for downstream handling in `Consumer` — see [[async-processing]].
 

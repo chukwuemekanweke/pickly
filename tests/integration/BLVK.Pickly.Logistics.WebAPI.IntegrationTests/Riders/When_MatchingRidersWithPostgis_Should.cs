@@ -135,7 +135,7 @@ public sealed class When_MatchingRidersWithPostgis_Should(ContainersFixture fixt
             Options.Create(options),
             Options.Create(new DeliveryNotificationOptions
             {
-                ApplicationBaseUrl = "https://app.pikly.ng/",
+                ApplicationBaseUrl = "https://app.pikly.org/",
                 DisplayTimeZoneId = "Africa/Lagos"
             }),
             new FixedTimeProvider(utcNow));

@@ -112,7 +112,7 @@ public sealed class SessionsController(
         var command = new SignInCommand(
             request.Email,
             request.Password,
-            HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            HttpContext.GetClientIpAddress(),
             Request.Headers.UserAgent.ToString(),
             ActorContext.FromAnonymousActor(currentActor));
 
@@ -168,7 +168,7 @@ public sealed class SessionsController(
         var result = await googleSignInHandler.HandleAsync(
             new GoogleSignInCommand(
                 request.IdToken,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+                HttpContext.GetClientIpAddress(),
                 Request.Headers.UserAgent.ToString(),
                 ActorContext.FromAnonymousActor(currentActor),
                 request.FlowToken),
@@ -296,7 +296,7 @@ public sealed class SessionsController(
         var result = await refreshSessionHandler.HandleAsync(
             new RefreshSessionCommand(
                 request.RefreshToken,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+                HttpContext.GetClientIpAddress(),
                 Request.Headers.UserAgent.ToString(),
                 ActorContext.FromAnonymousActor(currentActor)),
             cancellationToken);

@@ -79,6 +79,7 @@ public sealed class WhenHandlingUserSignInSuccessful_Should
                 command.StakeholderId == stakeholderId &&
                 command.NotificationContent is EmailNotificationContent &&
                 ((EmailNotificationContent)command.NotificationContent).To == email &&
+                ((EmailNotificationContent)command.NotificationContent).Content["IllustrationUrl"] == NotificationIllustrationUrls.SignInSuccessful &&
                 ((EmailNotificationContent)command.NotificationContent).Content["IpAddress"] == ipAddress &&
                 ((EmailNotificationContent)command.NotificationContent).Content["UserAgent"] == userAgent),
             Arg.Any<CancellationToken>());

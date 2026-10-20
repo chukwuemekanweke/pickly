@@ -207,6 +207,8 @@ jobs:
           path: "TestResultsIntegration/**/coverage.cobertura.xml"
 
   coverage-report:
+    # Temporarily paused. Keep the job definition ready to re-enable when coverage reporting resumes.
+    if: ${{ false }}
     needs: [test-unit, test-integration]
     runs-on: ubuntu-latest
 

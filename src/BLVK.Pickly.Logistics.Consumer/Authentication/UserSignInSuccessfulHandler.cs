@@ -83,6 +83,7 @@ public sealed class UserSignInSuccessfulHandler(
                     stakeholder.EmailAddress,
                     new Dictionary<string, string>
                     {
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.SignInSuccessful,
                         ["IpAddress"] = message.IpAddress,
                         ["UserAgent"] = message.UserAgent
                     }))

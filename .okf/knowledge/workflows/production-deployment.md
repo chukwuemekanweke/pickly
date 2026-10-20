@@ -57,6 +57,8 @@ an explicit server-administration decision.
 `api.pikly.org` terminates HTTPS at the separately managed `pickly-caddy` container. It runs the
 official `caddy:2-alpine` image with host networking, uses `/opt/pickly/Caddyfile`, and persists ACME
 state in the `pickly-caddy-data` and `pickly-caddy-config` Docker volumes. Caddy proxies public
-requests to the WebAPI's loopback binding at `127.0.0.1:8080`; `/metrics` is deliberately answered
-with `404` instead of being exposed publicly. The application deployment workflow leaves this
+requests to the WebAPI's loopback binding at `127.0.0.1:8080` and must preserve the standard
+`X-Forwarded-For`/`X-Forwarded-Proto` headers. The WebAPI trusts one forwarded hop only from configured proxy
+addresses/networks; its default production configuration includes the private Docker bridge range. `/metrics` is
+deliberately answered with `404` instead of being exposed publicly. The application deployment workflow leaves this
 long-running ingress container untouched.

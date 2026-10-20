@@ -83,6 +83,7 @@ public sealed class UserSignInFailedHandler(
                         user.Email ?? message.EmailAddress,
                         new Dictionary<string, string>
                         {
+                            ["IllustrationUrl"] = NotificationIllustrationUrls.AccountLocked,
                             ["LockedUntilUtc"] = DateTimeFormatter.FormatHumanReadableUtc(lockedUntilUtc, Clock.GetUtcNow())
                         }))
                 {

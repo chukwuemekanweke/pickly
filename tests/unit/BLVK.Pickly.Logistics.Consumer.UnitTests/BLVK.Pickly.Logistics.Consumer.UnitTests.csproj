@@ -17,4 +17,10 @@
   <ItemGroup>
     <ProjectReference Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.Consumer\\BLVK.Pickly.Logistics.Consumer.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\\..\\..\\src\\BLVK.Pickly.Logistics.DatabaseMigrator\\Scripts\\PostDeploy\\0001.template-seeder.postdeploy.sql"
+          Link="EmailTemplates\\0001.template-seeder.postdeploy.sql"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

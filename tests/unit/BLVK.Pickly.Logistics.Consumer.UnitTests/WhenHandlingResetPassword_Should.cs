@@ -76,7 +76,8 @@ public sealed class WhenHandlingResetPassword_Should
                 ((EmailNotificationContent)command.NotificationContent).Content["FirstName"] == firstName &&
                 ((EmailNotificationContent)command.NotificationContent).Content["LastName"] == lastName &&
                 ((EmailNotificationContent)command.NotificationContent).Content["OtpCode"] == otp.Code &&
-                ((EmailNotificationContent)command.NotificationContent).Content["OtpExpiresAtUtc"] == DateTimeFormatter.FormatHumanReadableUtc(otp.ExpiresAtUtc, timeProvider.GetUtcNow())),
+                ((EmailNotificationContent)command.NotificationContent).Content["OtpExpiresAtUtc"] == DateTimeFormatter.FormatHumanReadableUtc(otp.ExpiresAtUtc, timeProvider.GetUtcNow()) &&
+                ((EmailNotificationContent)command.NotificationContent).Content["IllustrationUrl"] == NotificationIllustrationUrls.ResetPassword),
             Arg.Any<CancellationToken>());
         await twoFactorOtpService.Received(1).GenerateOtpAsync(
             appUserId,
