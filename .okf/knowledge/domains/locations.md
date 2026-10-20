@@ -63,6 +63,13 @@ attribution). The OSM reference is their idempotency key; a seed row is skipped 
 normalized identity already exists, so seeding never duplicates a Mapbox-registered location. Names used in more
 than one locality are excluded rather than merged. See [[database-seeding]].
 
+Reviewed additions use later insert-only scripts rather than rewriting historical seed rows. Post-deploy `0008`
+adds 51 curated node-based landmarks across healthcare, markets, public services, education, worship, transport and
+commercial categories, and maps a second connected OSM way to the existing Annunciation Hospital Road location.
+A canonical location may therefore have multiple provider references when several connected OSM
+ways represent the same physical street; `(Provider, FeatureId)` remains globally unique. When a usable Mapbox
+location already owns the normalized identity, the OSM reference is attached to it instead of creating a duplicate.
+
 ## Spatial storage (PostGIS)
 
 - Coordinates map to `geography(Point,4326)` through `GeographicCoordinatesConverter` — the only place that applies
@@ -87,7 +94,8 @@ than one locality are excluded rather than merged. See [[database-seeding]].
   and landmarks contain a `LocationId`; new verified ones contain an opaque selection token. Registered areas may
   retain their real `LocationId` but are explicitly nonselectable; provider area suggestions contain neither an id nor
   a token and are never persisted. Area-only registry matches permit provider fallback. No useful provider result
-  returns an empty collection; provider outages remain explicit errors.
+  returns an empty collection. Provider timeouts and outages are still recorded in telemetry but degrade gracefully
+  to a successful empty response; provider rate limits and invalid responses remain explicit errors.
 - Registrable provider candidates are canonical `Street` or `Landmark` precision, match the supported country, and
   carry a valid canonical address and WGS84 coordinates. A premise is accepted only when Mapbox supplies reliable
   structured parent-street identity; the provider street id and street/locality display become the canonical result,

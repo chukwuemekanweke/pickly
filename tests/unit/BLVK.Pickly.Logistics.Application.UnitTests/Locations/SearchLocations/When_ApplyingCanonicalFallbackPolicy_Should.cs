@@ -61,7 +61,6 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
     }
 
     [Theory]
-    [InlineData(GeocodingStatus.ProviderUnavailable, SearchLocationsStatus.ProviderUnavailable)]
     [InlineData(GeocodingStatus.RateLimited, SearchLocationsStatus.ProviderRateLimited)]
     [InlineData(GeocodingStatus.InvalidResponse, SearchLocationsStatus.InvalidProviderResponse)]
     public async Task PreserveProviderFailures(GeocodingStatus providerStatus, SearchLocationsStatus expected)
@@ -74,5 +73,21 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
             CancellationToken.None);
 
         result.Status.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(GeocodingStatus.Timeout)]
+    [InlineData(GeocodingStatus.ProviderUnavailable)]
+    public async Task ReturnEmptySuccessWhenProviderIsUnavailable(GeocodingStatus providerStatus)
+    {
+        _provider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+            .Returns(GeocodingResult.Failed(providerStatus));
+
+        var result = await Handler().HandleAsync(
+            new SearchLocationsQuery("Unknown", "NG", 10, _actor),
+            CancellationToken.None);
+
+        result.Status.ShouldBe(SearchLocationsStatus.Success);
+        result.Items.ShouldBeEmpty();
     }
 }

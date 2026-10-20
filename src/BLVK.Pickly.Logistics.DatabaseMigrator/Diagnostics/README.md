@@ -21,6 +21,7 @@ The migrator runs the following in order:
 | `0005.enugu-locations` | 130 streets and 43 landmarks from OpenStreetMap | **draft, ground check pending** |
 | `0006.enu-v1-pricing-policy` | ENU-V1 tariff: 3 vehicle rules, 100 directional zone rules | approved rates; **₦400/₦600 pairs pending** |
 | `0007.test-rider-accounts` | 18 ready-to-use test rider accounts `piklytech+rider1..18@gmail.com` | **MVP dummy data, created in every environment; remove before launch** (section 11) |
+| `0008.enugu-locations-expansion` | 51 reviewed OSM-node landmarks and a second provenance way for Annunciation Hospital Road | **draft, ground check pending** |
 
 Because 0004–0006 run everywhere, review the open items in `GEOGRAPHIC-SOURCES.md` before the first production
 deployment. ENU-V1 becomes immutable as soon as it exists in an environment.
@@ -43,6 +44,7 @@ hard-coded.
 | 0005 locations | OSM `(Provider, FeatureId)` and normalized identity | Insert-only. Existing or equivalent locations are never modified or duplicated. |
 | 0006 ENU-V1 | `Version` | Policy and all rules inserted together the first time; afterwards nothing changes. Tariff changes are new versions (ENU-V2). |
 | 0007 test riders | account email | Create a missing account once (never reset an existing password, lockout or 2FA); converge profile, approval and zones to the roster; a no-op once converged. Skips rather than fails. |
+| 0008 location expansion | OSM `(Provider, FeatureId)` and normalized identity | Insert reviewed node landmarks or reuse equivalent canonical locations; attach all reviewed OSM references without changing existing locations. |
 
 **Verified with the real migrator:**
 - Two deployments to a fresh database produce identical row counts and rewrite no rows.
@@ -74,7 +76,7 @@ These commands run on the deployment server from the repository root.
 # if it does not exist yet. "Local" also starts Postgres/PostGIS, Redis and RabbitMQ; "Cloud" uses managed ones.
 ./docker-compose.local.sh Local      # or: ./docker-compose.local.sh Cloud
 
-# The migrator applies migrations and PostDeploy 0000-0007, then reports ready:
+# The migrator applies migrations and PostDeploy 0000-0008, then reports ready:
 curl --fail http://localhost:8081/health/readiness
 ```
 
@@ -99,7 +101,7 @@ The script prints PASS, WARN or FAIL for each check and exits non-zero on any FA
 
 - **Zones:** count, validity, SRID 4326, MultiPolygon, lon/lat order, same-priority overlap.
 - **Locations:** counts, duplicate identities, coordinates outside Enugu, locations outside every zone or with an
-  ambiguous top zone.
+  ambiguous top zone, the Annunciation hospital point and its connected road-segment references.
 - **Vehicle categories:** codes, weight limits and Mapbox profiles.
 - **Pricing:**
   - NGN currency; ENU-V1 base, distance and weight rates; vehicle rules;
