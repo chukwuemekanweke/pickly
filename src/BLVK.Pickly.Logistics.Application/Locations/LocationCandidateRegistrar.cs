@@ -46,7 +46,7 @@ public sealed class LocationCandidateRegistrar(
         ActorContext actorContext,
         CancellationToken cancellationToken)
     {
-        if (!TryBuildAddress(candidate, out var address))
+        if (!IsRegistrable(candidate, candidate.CountryCode) || !TryBuildAddress(candidate, out var address))
         {
             throw new InvalidOperationException("Only validated provider candidates can be registered.");
         }

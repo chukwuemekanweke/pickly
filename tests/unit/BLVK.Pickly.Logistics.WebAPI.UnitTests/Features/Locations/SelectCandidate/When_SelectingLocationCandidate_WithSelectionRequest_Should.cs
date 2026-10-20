@@ -23,7 +23,9 @@ public sealed partial class When_SelectingLocationCandidate_WithSelectionRequest
                 context.StakeholderId,
                 "mapbox",
                 LocationResolutionSource.Mapbox,
-                [LocationsControllerTestContext.Candidate(confidence: GeocodingMatchConfidence.Medium)]));
+                [LocationsControllerTestContext.Candidate(
+                    precision: GeocodingPrecision.Street,
+                    confidence: GeocodingMatchConfidence.Medium)]));
 
         var result = await context.CreateController().Register(
             new RegisterLocationRequest(LocationSelectionTokens.Create(selectionId, 0)),
@@ -45,7 +47,7 @@ public sealed partial class When_SelectingLocationCandidate_WithSelectionRequest
                 context.StakeholderId,
                 "mapbox",
                 LocationResolutionSource.Mapbox,
-                [LocationsControllerTestContext.Candidate()]));
+                [LocationsControllerTestContext.Candidate(precision: GeocodingPrecision.Street)]));
         context.RegistrationStore.RegisterAsync(
                 Arg.Any<Location>(),
                 Arg.Any<string>(),

@@ -57,8 +57,19 @@ public static class Observability
             public const string Outcome = "resolution_outcome";
             public const string MatchKind = "registry_match_kind";
             public const string CandidateCount = "candidate_count";
+            public const string ProviderCandidateCount = "provider_candidate_count";
             public const string CountryCode = "country_code";
             public const string DurationMilliseconds = "duration_ms";
+            public const string SearchTerm = "search_term";
+            public const string NormalizedSearchTerm = "normalized_search_term";
+            public const string SearchTermCount = "search_term_count";
+            public const string RegistryResultCount = "registry_result_count";
+            public const string SelectableRegistryResultCount = "selectable_registry_result_count";
+            public const string RegistryOutcome = "registry_outcome";
+            public const string ResultCount = "result_count";
+            public const string ResultSource = "result_source";
+            public const string ProviderResponseFromCache = "provider_response_from_cache";
+            public const string ResolutionOrigin = "resolution_origin";
         }
 
         public static class Deliveries
@@ -137,6 +148,8 @@ public static class Observability
         {
             public const string RegistryHit = "location.registry.hit";
             public const string RegistryMiss = "location.registry.miss";
+            public const string RegistryNoSelectableMatches = "location.registry.no_selectable_matches";
+            public const string SearchPerformed = "location.search.performed";
             public const string GeocodingRequested = "location.geocoding.requested";
             public const string GeocodingFailed = "location.geocoding.failed";
             public const string ResolutionAmbiguous = "location.resolution.ambiguous";

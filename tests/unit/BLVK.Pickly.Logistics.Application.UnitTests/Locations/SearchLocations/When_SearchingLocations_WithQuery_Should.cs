@@ -65,14 +65,18 @@ public sealed partial class When_SearchingLocations_WithQuery_Should
         captured.CountryCode.ShouldBe("NG");
     }
 
-    private SearchLocationsHandler Handler() => new(
-        _repository,
-        _provider,
-        _lease,
-        _cache,
-        new ResolveLocationTelemetry(_telemetry),
-        Options.Create(ResolutionOptions()),
-        TimeProvider.System);
+    private SearchLocationsHandler Handler()
+    {
+        var options = Options.Create(ResolutionOptions());
+        return new SearchLocationsHandler(
+            _repository,
+            _provider,
+            _lease,
+            _cache,
+            new ResolveLocationTelemetry(_telemetry),
+            options,
+            TimeProvider.System);
+    }
 
     private static LocationResolutionOptions ResolutionOptions() => new()
     {

@@ -38,10 +38,16 @@ public sealed class SelectLocationCandidateHandler(
             return new SelectLocationCandidateResult(SelectLocationCandidateStatus.SelectionNotFound);
         }
 
+        var candidate = selection.Candidates[candidateIndex];
+        if (!LocationCandidateRegistrar.IsRegistrable(candidate, candidate.CountryCode))
+        {
+            return new SelectLocationCandidateResult(SelectLocationCandidateStatus.LocationUnusable);
+        }
+
         // An explicitly chosen candidate is not recorded as the identity of the original request text: another
         // sender typing the same text may have meant a different candidate.
         var registration = await registrar.RegisterWithOutcomeAsync(
-            selection.Candidates[candidateIndex],
+            candidate,
             selection.Provider,
             selection.ResolutionSource,
             resolutionKey: null,

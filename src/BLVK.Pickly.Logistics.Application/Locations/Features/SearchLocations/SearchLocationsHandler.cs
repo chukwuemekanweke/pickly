@@ -12,8 +12,8 @@ using System.Globalization;
 namespace BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
 
 /// <summary>
-/// Searches Pickly's public registry first and falls back to permanent provider geocoding when the registry does not
-/// contain a reliable full-address match. Provider candidates remain server-held until explicitly registered.
+/// Searches Pickly's public registry first and falls back to permanent provider geocoding only when the registry does
+/// not contain a selectable match. Provider candidates remain server-held until explicitly registered.
 /// </summary>
 public sealed class SearchLocationsHandler(
     ILocationReadModelRepository repository,
@@ -56,13 +56,30 @@ public sealed class SearchLocationsHandler(
             new LocationSearchRequest(terms, countryCode, limit),
             cancellationToken);
         var registryItems = locations.Select(LocationSearchItemResponse.FromRegistry).ToArray();
-        if (locations.Any(location => IsReliableRegistryMatch(query.Query, location.DisplayAddress)))
+        var selectableRegistryCount = registryItems.Count(item => item.IsSelectable);
+        var registryProperties = SearchProperties(query, locations.Count, selectableRegistryCount);
+        if (selectableRegistryCount > 0)
         {
-            telemetry.Record(query.ActorContext, countryCode, Observability.EventNames.Locations.RegistryHit);
+            registryProperties[Observability.PropertyNames.Locations.RegistryOutcome] = "selectable_matches";
+            telemetry.Record(
+                query.ActorContext,
+                countryCode,
+                Observability.EventNames.Locations.RegistryHit,
+                registryProperties);
+            RecordSearchPerformed(query, countryCode, registryItems.Length, "registry", registryProperties);
             return new SearchLocationsResult(SearchLocationsStatus.Success, registryItems);
         }
 
-        telemetry.Record(query.ActorContext, countryCode, Observability.EventNames.Locations.RegistryMiss);
+        registryProperties[Observability.PropertyNames.Locations.RegistryOutcome] = locations.Count == 0
+            ? "no_matches"
+            : "no_selectable_matches";
+        telemetry.Record(
+            query.ActorContext,
+            countryCode,
+            locations.Count == 0
+                ? Observability.EventNames.Locations.RegistryMiss
+                : Observability.EventNames.Locations.RegistryNoSelectableMatches,
+            registryProperties);
         var resolutionKey = LocationAddress.ComputeResolutionKey(query.Query, string.Empty, string.Empty, countryCode);
         var deadline = timeProvider.GetUtcNow() + settings.ResolutionLeaseWaitTimeout;
         var recordedContention = false;
@@ -124,6 +141,7 @@ public sealed class SearchLocationsHandler(
     {
         var outcomeCacheKey = LocationSelectionTokens.OutcomeCacheKey(resolutionKey);
         var outcome = await cache.GetAsync<CachedGeocodingOutcome>(outcomeCacheKey, cancellationToken);
+        var providerResponseFromCache = outcome is not null;
         if (outcome is null)
         {
             var startedAt = timeProvider.GetTimestamp();
@@ -139,6 +157,12 @@ public sealed class SearchLocationsHandler(
             RecordProviderOutcome(query, countryCode, geocoding, elapsed);
             if (geocoding.Status != GeocodingStatus.Success)
             {
+                RecordSearchPerformed(
+                    query,
+                    countryCode,
+                    registryItems.Count,
+                    registryItems.Count == 0 ? "none" : "registry",
+                    ProviderProperties(query, registryItems, geocoding.Candidates.Count, false, geocoding.Status.ToString()));
                 return MapProviderFailure(geocoding, registryItems);
             }
 
@@ -182,6 +206,12 @@ public sealed class SearchLocationsHandler(
             var fallback = area is null
                 ? effectiveRegistryItems.ToArray()
                 : effectiveRegistryItems.Concat([LocationSearchItemResponse.FromArea(area)]).Take(limit).ToArray();
+            RecordSearchPerformed(
+                query,
+                countryCode,
+                fallback.Length,
+                area is null ? (fallback.Length == 0 ? "none" : "registry") : "provider",
+                ProviderProperties(query, registryItems, 0, providerResponseFromCache, "success"));
             return new SearchLocationsResult(SearchLocationsStatus.Success, fallback);
         }
 
@@ -198,15 +228,17 @@ public sealed class SearchLocationsHandler(
 
         if (candidates.Length > 1)
         {
+            var ambiguousProperties = ProviderProperties(
+                query,
+                registryItems,
+                candidates.Length,
+                providerResponseFromCache,
+                "selection_required");
             telemetry.Record(
                 query.ActorContext,
                 countryCode,
                 Observability.EventNames.Locations.ResolutionAmbiguous,
-                new Dictionary<string, string>
-                {
-                    [Observability.PropertyNames.Locations.CandidateCount] =
-                        candidates.Length.ToString(CultureInfo.InvariantCulture)
-                });
+                ambiguousProperties);
         }
 
         var providerItems = candidates
@@ -214,9 +246,21 @@ public sealed class SearchLocationsHandler(
                 candidate,
                 LocationSelectionTokens.Create(selectionId, index)))
             .ToArray();
+        var registryCapacity = Math.Max(0, limit - providerItems.Length);
+        var items = effectiveRegistryItems
+            .Take(registryCapacity)
+            .Concat(providerItems)
+            .Take(limit)
+            .ToArray();
+        RecordSearchPerformed(
+            query,
+            countryCode,
+            items.Length,
+            effectiveRegistryItems.Count == 0 ? "provider" : "mixed",
+            ProviderProperties(query, registryItems, candidates.Length, providerResponseFromCache, "success"));
         return new SearchLocationsResult(
             SearchLocationsStatus.Success,
-            effectiveRegistryItems.Concat(providerItems).Take(limit).ToArray());
+            items);
     }
 
     private void RecordProviderOutcome(
@@ -234,6 +278,10 @@ public sealed class SearchLocationsHandler(
             [Observability.PropertyNames.Locations.DurationMilliseconds] =
                 elapsed.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)
         };
+        foreach (var property in telemetry.CreateSearchProperties(query.Query, "search"))
+        {
+            properties[property.Key] = property.Value;
+        }
         telemetry.Record(query.ActorContext, countryCode, Observability.EventNames.Locations.GeocodingRequested, properties);
         if (geocoding.Status != GeocodingStatus.Success)
         {
@@ -258,9 +306,54 @@ public sealed class SearchLocationsHandler(
             geocoding.RetryAfter)
     };
 
-    private static bool IsReliableRegistryMatch(string query, string displayAddress)
-        => string.Equals(
-            LocationSearchTerms.NormalizeForComparison(query),
-            LocationSearchTerms.NormalizeForComparison(displayAddress),
-            StringComparison.Ordinal);
+    private Dictionary<string, string> SearchProperties(
+        SearchLocationsQuery query,
+        int registryResultCount,
+        int selectableRegistryResultCount)
+    {
+        var properties = telemetry.CreateSearchProperties(query.Query, "search");
+        properties[Observability.PropertyNames.Locations.RegistryResultCount] =
+            registryResultCount.ToString(CultureInfo.InvariantCulture);
+        properties[Observability.PropertyNames.Locations.SelectableRegistryResultCount] =
+            selectableRegistryResultCount.ToString(CultureInfo.InvariantCulture);
+        return properties;
+    }
+
+    private Dictionary<string, string> ProviderProperties(
+        SearchLocationsQuery query,
+        IReadOnlyCollection<LocationSearchItemResponse> registryItems,
+        int providerCandidateCount,
+        bool fromCache,
+        string outcome)
+    {
+        var properties = SearchProperties(query, registryItems.Count, registryItems.Count(item => item.IsSelectable));
+        properties[Observability.PropertyNames.Locations.Provider] = geocodingProvider.ProviderName;
+        properties[Observability.PropertyNames.Locations.ProviderCandidateCount] =
+            providerCandidateCount.ToString(CultureInfo.InvariantCulture);
+        properties[Observability.PropertyNames.Locations.CandidateCount] =
+            providerCandidateCount.ToString(CultureInfo.InvariantCulture);
+        properties[Observability.PropertyNames.Locations.ProviderResponseFromCache] =
+            fromCache.ToString(CultureInfo.InvariantCulture);
+        properties[Observability.PropertyNames.Locations.Outcome] = outcome;
+        return properties;
+    }
+
+    private void RecordSearchPerformed(
+        SearchLocationsQuery query,
+        string countryCode,
+        int resultCount,
+        string resultSource,
+        IReadOnlyDictionary<string, string> context)
+    {
+        var properties = new Dictionary<string, string>(context)
+        {
+            [Observability.PropertyNames.Locations.ResultCount] = resultCount.ToString(CultureInfo.InvariantCulture),
+            [Observability.PropertyNames.Locations.ResultSource] = resultSource
+        };
+        telemetry.Record(
+            query.ActorContext,
+            countryCode,
+            Observability.EventNames.Locations.SearchPerformed,
+            properties);
+    }
 }
