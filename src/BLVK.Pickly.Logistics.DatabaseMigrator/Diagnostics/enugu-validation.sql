@@ -1,7 +1,7 @@
 /*
     Enugu reference-data validation (read-only).
 
-    Run after a deployment (PostDeploy 0002-0006):
+    Run after a deployment (PostDeploy 0002-0008):
       psql "$PICKLY_DB" -v ON_ERROR_STOP=1 -f enugu-validation.sql
 
     Prints one row per check (PASS / WARN / FAIL) and then raises an error, so psql exits non-zero, when any
@@ -69,14 +69,42 @@ WHERE ST_Area(ST_Intersection(a."Boundary", b."Boundary")) > 0;
 
 INSERT INTO enugu_validation
 SELECT 'locations: OSM-seeded streets and landmarks',
-       CASE WHEN count(*) FILTER (WHERE l."LocationType" = 'Street') >= 130
-             AND count(*) FILTER (WHERE l."LocationType" = 'Landmark') >= 43 THEN 'PASS' ELSE 'WARN' END,
-       count(*) FILTER (WHERE l."LocationType" = 'Street') || ' streets (130 seeded), '
-         || count(*) FILTER (WHERE l."LocationType" = 'Landmark') || ' landmarks (43 seeded); '
+       CASE WHEN count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Street') >= 746
+             AND count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Landmark') >= 94 THEN 'PASS' ELSE 'WARN' END,
+       count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Street') || ' streets (746 seeded), '
+         || count(DISTINCT l."Id") FILTER (WHERE l."LocationType" = 'Landmark') || ' landmarks (94 seeded); '
          || 'fewer means a row was skipped because an equivalent location already existed'
 FROM locations."Locations" l
-JOIN locations."LocationProviderReferences" r ON r."LocationId" = l."Id" AND r."Provider" = 'openstreetmap'
+JOIN locations."LocationProviderReferences" r
+  ON r."LocationId" = l."Id" AND r."Provider" = 'openstreetmap' AND r."IsDeleted" = FALSE
 WHERE l."IsDeleted" = FALSE;
+
+INSERT INTO enugu_validation
+SELECT 'locations: Annunciation hospital canonical point and provenance',
+       CASE WHEN count(*) = 1
+                  AND bool_and(l."LocationType" = 'Landmark'
+                      AND l."NormalizedAddress" = 'annunciation hospital|enugu|enugu|ng'
+                      AND (l."ResolutionSource" = 'Mapbox'
+                           OR (l."ResolutionSource" = 'InternallyRegistered'
+                               AND ST_DWithin(l."Coordinates", ST_SetSRID(ST_MakePoint(7.5919103, 6.4684403), 4326)::geography, 1))))
+            THEN 'PASS' ELSE 'FAIL' END,
+       count(*) || ' matching node/8753751530 reference(s)'
+FROM locations."LocationProviderReferences" r
+JOIN locations."Locations" l ON l."Id" = r."LocationId" AND l."IsDeleted" = FALSE
+WHERE r."Provider" = 'openstreetmap' AND r."FeatureId" = 'node/8753751530' AND r."IsDeleted" = FALSE;
+
+INSERT INTO enugu_validation
+SELECT 'locations: connected Annunciation road segments share one canonical street',
+       CASE WHEN count(DISTINCT r."FeatureId") = 2 AND count(DISTINCT r."LocationId") = 1
+            THEN 'PASS' ELSE 'FAIL' END,
+       count(DISTINCT r."FeatureId") || ' references mapped to ' || count(DISTINCT r."LocationId") || ' location(s)'
+FROM locations."LocationProviderReferences" r
+JOIN locations."Locations" l ON l."Id" = r."LocationId"
+WHERE r."Provider" = 'openstreetmap'
+  AND r."FeatureId" IN ('way/241655401', 'way/241655569')
+  AND r."IsDeleted" = FALSE AND l."IsDeleted" = FALSE
+  AND l."NormalizedAddress" = 'annunciation hospital road|enugu|enugu|ng'
+  AND l."LocationType" = 'Street';
 
 INSERT INTO enugu_validation
 SELECT 'locations: no duplicate canonical identities',

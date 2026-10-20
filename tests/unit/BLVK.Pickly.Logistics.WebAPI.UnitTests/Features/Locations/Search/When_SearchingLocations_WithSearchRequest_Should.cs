@@ -27,4 +27,19 @@ public sealed partial class When_SearchingLocations_WithSearchRequest_Should
         await context.GeocodingProvider.DidNotReceive()
             .ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task ReturnEmptySuccessWhenGeocodingProviderIsUnavailable()
+    {
+        var context = new LocationsControllerTestContext();
+        context.ProviderFails(GeocodingStatus.ProviderUnavailable);
+
+        var result = await context.CreateController().Search(
+            new SearchLocationsRequest("Unknown location"),
+            CancellationToken.None);
+
+        var response = result.Result.ShouldBeOfType<OkObjectResult>().Value
+            .ShouldBeOfType<LocationListResponse<LocationSearchItemResponse>>();
+        response.Items.ShouldBeEmpty();
+    }
 }

@@ -1,0 +1,18 @@
+{
+  "extract_scope": "Enugu North, South and East OSM relation areas",
+  "existing_seed_count": 173,
+  "extracted_elements": 4537,
+  "by_kind": {
+    "area": 95,
+    "landmark": 1194,
+    "street": 3248
+  },
+  "missing_by_ref": 4364,
+  "new_name_candidates": 4034,
+  "caveats": [
+    "OSM source entries are unverified",
+    "Repeated names can denote separate streets or segmented ways",
+    "Way/area center coordinates are not navigable pickup points",
+    "Review OSM ODbL attribution and derived-database obligations before distribution"
+  ]
+}

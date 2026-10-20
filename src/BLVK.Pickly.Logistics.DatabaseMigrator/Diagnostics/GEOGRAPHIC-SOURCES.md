@@ -91,18 +91,68 @@ adjacency check compares the tariff against the new shared edges.
 
 ## Locations
 
-The seed contains **173 locations: 130 streets (13 per zone) and 43 landmarks.**
+The base `0005` seed contains **173 locations: 130 streets (13 per zone) and 43 landmarks.**
 
-**Street selection rules:**
-- Same-name OSM ways within ~200 m are clustered into one street.
-- Names that form more than one cluster are excluded (82 names). These are the same name used in different
-  localities, so excluding them avoids merging different streets.
+### 2026-10-20 reviewed expansion
+
+A fresh six-query Overpass inventory covered the same three LGAs with `osm_base` timestamps from
+2026-10-20T13:34:39Z through 2026-10-20T13:39:51Z. It returned 4,537 distinct OSM features: 3,248 named highway
+ways, 1,194 named landmarks and 95 named areas. Of those, 4,364 were not present by OSM reference and 4,034 were
+not obvious normalized-name matches. These are raw review counts, not safe-to-import counts; segmented streets,
+areas, private premises, duplicates, misspellings and unverified names remain in the inventory.
+
+The street inventory was followed by batched `out tags geom` requests for the exact 3,248 way IDs. Eighteen current
+responses have `osm_base` timestamps from 2026-10-20T14:12:07Z through 2026-10-20T14:46:49Z. Public Overpass
+replicas repeatedly timed out on one 200-way batch; current split responses cover 50 of those ways and the remaining
+150 use the preserved 2026-07-24T11:04:51Z response. The fallback is retained explicitly in `raw-geometry` rather
+than silently represented as current data.
+
+Post-deploy `0008.enugu-locations-expansion.postdeploy.sql` makes 667 canonical additions: 51 reviewed landmarks and
+616 rule-reviewed streets. It also adds 194 new provider references to streets already seeded by `0005`. Landmark
+rows use mapped OSM nodes, not way/area centres; street coordinates come from actual way geometry:
+
+- **Annunciation Hospital** — one new landmark using OSM `node/8753751530` at 6.4684403 N,
+  7.5919103 E. OSM spells the tag `Announciation Specialist hospital`; the canonical spelling is supported by the
+  hospital's official site and provider directories. The shorter canonical display name keeps the landmark distinct
+  from Annunciation Hospital Road without inheriting the OSM spelling error. Because this is an OSM node, the coordinate is the mapped
+  hospital point rather than an `out center` approximation of a way.
+- **Annunciation Hospital Road** — no new street. OSM `way/241655569` shares node `2482826186` with the already
+  seeded `way/241655401`, proving the ways are connected segments of the same named physical street. The new way is
+  attached as a second provider reference to the existing canonical Location.
+- **New streets** — 616 canonical streets represented by 804 OSM ways. The review collapsed connected same-name
+  ways, retained every contributing way as provenance, and computed a representative point from geometry. Another
+  194 ways were connected to one of the 130 existing canonical streets and are attached as additional references.
+- **Other reviewed nodes** — 8 additional hospitals/clinics, 4 markets, 3 public-service landmarks, 9 educational
+  institutions, 9 churches, 9 bus stops, and 8 commercial landmarks (supermarkets, plazas and hotels). Canonical
+  spelling/casing is normalized where the OSM tag is clearly malformed. The full provider-reference-to-name mapping
+  is explicit in `0008`; no raw candidate file is executed as SQL.
+
+The expansion brings the reviewed seed to **840 canonical locations: 746 streets and 94 landmarks**, with 1,222 OSM
+provider references. It remains insert-only: if a usable Mapbox location already has the normalized identity, the
+new OSM reference attaches to that location rather than changing coordinates or creating a duplicate.
+
+`Bisalla Road` remains unresolved. No named OSM highway matched `Bisalla` or `Bisala`; only nearby POI address tags
+use `Bisala` (for example `node/2455133925`). Without a verifiable named way and geometry, no street or coordinate
+was invented.
+
+**Street selection rules for the `0008` expansion:**
+- Same-name OSM ways are grouped only when they share an exact geometry vertex. This prevents nearby but unrelated
+  roads from being merged merely because they have the same name.
+- Names forming more than one disconnected component are excluded. For names already in `0005`, only the component
+  containing the previously seeded way is eligible for additional provider references.
 - Length must be 300 m to 10 km. Intercity expressways are excluded.
 - The name must start with a capital letter and end in a street type (Road, Street, Avenue, Close, Crescent,
   Drive, Lane, Way).
-- Within each zone, streets are ranked by road class, then length.
-- **Representative point:** the midpoint of the street's longest merged segment. `FeatureId` is the OSM way at
-  that point.
+- Accepted road classes are primary, secondary, tertiary, unclassified, residential and living street; private,
+  prohibited, customer-only and permit-only access is excluded.
+- **Representative point:** the distance midpoint of the longest contributing OSM way. Every contributing way is
+  stored as a provider reference, rather than only the representative way.
+
+The deterministic review considered 2,478 connected components across 2,203 normalized names. It accepted 616 new
+streets and the connected components of all 130 existing streets. It excluded 372 disconnected duplicate-name
+components, 62 unconnected collisions with existing names, 17 manual data-quality cases, 177 invalid name shapes,
+14 unsuitable road classes, 1 overlong road and 1,089 sub-300-metre fragments. The complete component-level decision
+record is `EnuguLocationSources/2026-10-20/street-geometry-review.csv`.
 
 **Manually excluded street names** (OSM data-quality problems; not corrected, left out):
 
@@ -121,6 +171,7 @@ The seed contains **173 locations: 130 streets (13 per zone) and 43 landmarks.**
 | Link Road | generic name |
 | Robison Street | possible misspelling of Robinson Street |
 | Old Garriki Road | spelling conflicts with the Gariki place name |
+| Agu Enugu Street, Amauzam Road, Ideato Street, Isiagu Road, Okpuno Road | representative geometry point falls outside the active Enugu zone union |
 
 **Landmarks.** 43 distinct, well-known places were hand-picked from 216 OSM candidates: markets, hospitals,
 universities, stadiums, the airport, malls, parks and major hotels. Where OSM had duplicates (a node and a way,

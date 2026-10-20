@@ -157,13 +157,17 @@ public sealed class SearchLocationsHandler(
             RecordProviderOutcome(query, countryCode, geocoding, elapsed);
             if (geocoding.Status != GeocodingStatus.Success)
             {
+                IReadOnlyList<LocationSearchItemResponse> responseItems =
+                    geocoding.Status is GeocodingStatus.Timeout or GeocodingStatus.ProviderUnavailable
+                    ? []
+                    : registryItems;
                 RecordSearchPerformed(
                     query,
                     countryCode,
-                    registryItems.Count,
-                    registryItems.Count == 0 ? "none" : "registry",
+                    responseItems.Count,
+                    responseItems.Count == 0 ? "none" : "registry",
                     ProviderProperties(query, registryItems, geocoding.Candidates.Count, false, geocoding.Status.ToString()));
-                return MapProviderFailure(geocoding, registryItems);
+                return MapProviderFailure(geocoding, responseItems);
             }
 
             outcome = new CachedGeocodingOutcome(
@@ -293,6 +297,9 @@ public sealed class SearchLocationsHandler(
         GeocodingResult geocoding,
         IReadOnlyList<LocationSearchItemResponse> registryItems) => geocoding.Status switch
     {
+        GeocodingStatus.Timeout or GeocodingStatus.ProviderUnavailable => new SearchLocationsResult(
+            SearchLocationsStatus.Success,
+            registryItems),
         GeocodingStatus.RateLimited => new SearchLocationsResult(
             SearchLocationsStatus.ProviderRateLimited,
             registryItems,
