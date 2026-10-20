@@ -130,7 +130,7 @@ public sealed class When_HandlingDeliveryBookingRequests_Should
                 Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
                 Options.Create(new DeliveryNotificationOptions
                 {
-                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    ApplicationBaseUrl = "https://app.pikly.org/",
                     DisplayTimeZoneId = "Africa/Lagos"
                 }),
                 new FixedTimeProvider(Now));

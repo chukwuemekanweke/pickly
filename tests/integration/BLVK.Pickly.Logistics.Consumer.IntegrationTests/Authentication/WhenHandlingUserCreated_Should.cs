@@ -121,7 +121,8 @@ public sealed class WhenHandlingUserCreated_Should(ContainersFixture fixture)
             content.Content["LastName"].ShouldBe(_lastName);
             content.Content["OtpCode"].ShouldNotBeNullOrWhiteSpace();
             content.Content["OtpExpiresAtUtc"].ShouldNotBeNullOrWhiteSpace();
-            content.Content["Product"].ShouldBe("BLVK.Pickly.Logistics");
+            content.Content["IllustrationUrl"].ShouldBe(NotificationIllustrationUrls.ConfirmEmail);
+            content.Content["Product"].ShouldBe("Pikly");
 
             using var scope = CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IAppUserRepository>();

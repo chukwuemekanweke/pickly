@@ -702,7 +702,7 @@ public sealed class When_HandlingRiderOperations_Should
     private static IOptions<DeliveryNotificationOptions> NotificationOptions() =>
         Options.Create(new DeliveryNotificationOptions
         {
-            ApplicationBaseUrl = "https://app.pikly.ng/",
+            ApplicationBaseUrl = "https://app.pikly.org/",
             DisplayTimeZoneId = "Africa/Lagos"
         });
 

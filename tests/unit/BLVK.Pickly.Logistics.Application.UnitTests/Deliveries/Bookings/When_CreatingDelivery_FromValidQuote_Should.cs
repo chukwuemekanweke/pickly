@@ -243,7 +243,7 @@ public sealed class When_CreatingDelivery_FromValidQuote_Should
                 Options.Create(new DeliveryDispatchOptions { LeadTime = TimeSpan.FromMinutes(30) }),
                 Options.Create(new DeliveryNotificationOptions
                 {
-                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    ApplicationBaseUrl = "https://app.pikly.org/",
                     DisplayTimeZoneId = "Africa/Lagos"
                 }),
                 _timeProvider);

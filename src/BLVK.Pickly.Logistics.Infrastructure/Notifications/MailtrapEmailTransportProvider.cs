@@ -12,6 +12,7 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Notifications;
 
 internal sealed class MailtrapEmailTransportProvider(
     IOptions<EmailNotificationsOptions> options,
+    IHttpClientFactory httpClientFactory,
     ILogger<MailtrapEmailTransportProvider> logger) : IEmailTransportProvider
 {
     private static readonly ResiliencePipeline RetryPipeline = new ResiliencePipelineBuilder()
@@ -32,7 +33,8 @@ internal sealed class MailtrapEmailTransportProvider(
         var mailtrapOptions = options.Value.Mailtrap;
         mailtrapOptions.Validate();
 
-        using var factory = new MailtrapClientFactory(new MailtrapClientOptions(mailtrapOptions.ApiToken));
+        using var httpClient = httpClientFactory.CreateClient(NotificationHttpClientNames.Mailtrap);
+        using var factory = new MailtrapClientFactory(new MailtrapClientOptions(mailtrapOptions.ApiToken), httpClient);
         var client = factory.CreateClient();
         var request = CreateRequest(message);
         var emailClient = ResolveEmailClient(client, mailtrapOptions);

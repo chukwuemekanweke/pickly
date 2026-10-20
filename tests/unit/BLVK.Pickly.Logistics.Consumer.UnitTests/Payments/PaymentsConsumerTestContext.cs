@@ -73,7 +73,7 @@ internal sealed class PaymentsConsumerTestContext
             CommandSender,
             Options.Create(new DeliveryNotificationOptions
             {
-                ApplicationBaseUrl = "https://app.pikly.ng/",
+                ApplicationBaseUrl = "https://app.pikly.org/",
                 DisplayTimeZoneId = "Africa/Lagos"
             }),
             UnitOfWork,

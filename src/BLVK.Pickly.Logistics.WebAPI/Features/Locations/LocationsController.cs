@@ -34,7 +34,7 @@ public sealed class LocationsController(
     ICurrentActor currentActor) : ControllerBase
 {
     [HttpGet("search")]
-    [EnableRateLimiting(RateLimitingPolicyNames.LocationResolutionPolicy)]
+    [EnableRateLimiting(RateLimitingPolicyNames.LocationSearchPolicy)]
     [ProducesResponseType<LocationListResponse<LocationSearchItemResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

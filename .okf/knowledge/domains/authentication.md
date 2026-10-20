@@ -101,6 +101,10 @@ clients must use this continuation metadata instead of asking the user to re-ent
 
 Both `GET /sessions` (active sessions) and login-activity history expose the relevant IP address plus
 coarse `City`/`State`/`Country` fields, but neither endpoint calls a geolocation provider itself.
+The WebAPI processes one `X-Forwarded-For` hop only from configured trusted proxy addresses/networks (the default
+production Docker bridge range is `172.16.0.0/12`) before authentication controllers capture the client address.
+Captured IPv4-mapped IPv6 values are normalized to ordinary IPv4 text, so new sessions do not display Docker peer
+values such as `::ffff:172.18.0.1` when Caddy supplied the real client address.
 Location is resolved centrally per unique IP value and periodically refreshed when stale by
 `Jobs.Authentication.IpAddressLocationEnrichmentProcessor` (batched, via
 `IIpGeolocationService`/`IIpGeolocationProvider`), and persisted on the shared `IpAddress`/

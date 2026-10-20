@@ -56,8 +56,9 @@ public sealed class EmailConfirmationOtpSender(
                         ["OtpExpiresAtUtc"] = DateTimeFormatter.FormatHumanReadableUtc(
                             otp.ExpiresAtUtc,
                             timeProvider.GetUtcNow()),
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.ConfirmEmail,
                         ["VerifyUrl"] = string.Empty,
-                        ["Product"] = "BLVK.Pickly.Logistics"
+                        ["Product"] = "Pikly"
                     }))
             {
                 StakeholderId = stakeholder.StakeholderId,

@@ -306,7 +306,7 @@ public sealed class When_ResolvingExistingDeliveryPaymentAttempts_Should
                 CommandSender,
                 Options.Create(new DeliveryNotificationOptions
                 {
-                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    ApplicationBaseUrl = "https://app.pikly.org/",
                     DisplayTimeZoneId = "Africa/Lagos"
                 }),
                 TimeProvider.System,

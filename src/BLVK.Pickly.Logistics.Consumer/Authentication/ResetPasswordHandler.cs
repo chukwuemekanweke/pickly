@@ -65,7 +65,8 @@ public sealed class ResetPasswordHandler(
                         ["FirstName"] = stakeholder.FirstName,
                         ["LastName"] = stakeholder.LastName,
                         ["OtpCode"] = otp.Code,
-                    ["OtpExpiresAtUtc"] = DateTimeFormatter.FormatHumanReadableUtc(otp.ExpiresAtUtc, Clock.GetUtcNow())
+                        ["OtpExpiresAtUtc"] = DateTimeFormatter.FormatHumanReadableUtc(otp.ExpiresAtUtc, Clock.GetUtcNow()),
+                        ["IllustrationUrl"] = NotificationIllustrationUrls.ResetPassword
                     }))
             {
                 StakeholderId = stakeholder.StakeholderId,

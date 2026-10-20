@@ -17,7 +17,6 @@ using BLVK.Pickly.Logistics.WebAPI.Infrastructure;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.ApiDocumentation;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.RateLimiting;
 using FluentValidation;
-using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,10 +92,7 @@ builder.Services.AddBackendTelemetry(builder.Configuration);
 
 var app = builder.Build();
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+app.UseForwardedHeaders(ForwardedHeadersConfiguration.Create(builder.Configuration));
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors();

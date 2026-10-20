@@ -49,7 +49,7 @@ public sealed class When_ReconcilingPayments_WithConfiguredSchedule_Should
             .AddSingleton<IOptions<DeliveryNotificationOptions>>(
                 Options.Create(new DeliveryNotificationOptions
                 {
-                    ApplicationBaseUrl = "https://app.pikly.ng/",
+                    ApplicationBaseUrl = "https://app.pikly.org/",
                     DisplayTimeZoneId = "Africa/Lagos"
                 }))
             .AddApplication()

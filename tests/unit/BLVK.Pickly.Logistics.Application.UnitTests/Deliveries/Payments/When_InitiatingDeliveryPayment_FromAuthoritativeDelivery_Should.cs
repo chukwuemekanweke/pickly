@@ -130,7 +130,7 @@ public sealed class When_InitiatingDeliveryPayment_FromAuthoritativeDelivery_Sho
             commandSender,
             Options.Create(new DeliveryNotificationOptions
             {
-                ApplicationBaseUrl = "https://app.pikly.ng/",
+                ApplicationBaseUrl = "https://app.pikly.org/",
                 DisplayTimeZoneId = "Africa/Lagos"
             }),
             TimeProvider.System,

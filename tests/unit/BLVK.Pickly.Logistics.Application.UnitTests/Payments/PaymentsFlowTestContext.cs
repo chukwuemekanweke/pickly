@@ -112,7 +112,7 @@ internal sealed class PaymentsFlowTestContext
             UnitOfWork,
             Options.Create(new DeliveryNotificationOptions
             {
-                ApplicationBaseUrl = "https://app.pikly.ng/",
+                ApplicationBaseUrl = "https://app.pikly.org/",
                 DisplayTimeZoneId = "Africa/Lagos"
             }),
             Clock);

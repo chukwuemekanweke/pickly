@@ -38,7 +38,7 @@ public sealed class EmailConfirmationsController(
         var command = new SignUpOtpCommand(
             request.Email,
             request.Otp,
-            HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            HttpContext.GetClientIpAddress(),
             Request.Headers.UserAgent.ToString(),
             ActorContext.FromAnonymousActor(currentActor));
 

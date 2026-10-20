@@ -37,7 +37,7 @@ public sealed class GoogleLinksController(
             new LinkGoogleAccountCommand(
                 request.FlowToken,
                 request.Password,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+                HttpContext.GetClientIpAddress(),
                 Request.Headers.UserAgent.ToString(),
                 ActorContext.FromAnonymousActor(currentActor)),
             cancellationToken);
