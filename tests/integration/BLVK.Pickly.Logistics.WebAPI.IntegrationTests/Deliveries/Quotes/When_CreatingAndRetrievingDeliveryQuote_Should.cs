@@ -115,6 +115,22 @@ public sealed class When_CreatingAndRetrievingDeliveryQuote_Should(ContainersFix
     }
 
     [Fact]
+    public async Task PriceUsingStraightLineDistanceWhenRoutingProviderIsUnavailable()
+    {
+        DeliveryRouteProvider.Responder = _ => new DeliveryRouteResult(DeliveryRouteStatus.ProviderUnavailable);
+        var request = new CreateDeliveryQuoteRequest(_savedPickup.Id, _dropOff.Id, "Instant", "PayOnDelivery", _vehicle.Id, [new("Parcel", 2, 3m)]);
+
+        using var response = await Client.PostAsJsonAsync("/api/v1/delivery-quotes", request);
+        var created = await response.Content.ReadFromJsonAsync<DeliveryQuoteResponse>();
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        created.ShouldNotBeNull();
+        created.Pricing.DistanceCharge.ShouldBe(31.35m);
+        created.Pricing.TotalAmount.ShouldBe(211.35m);
+        DeliveryRouteProvider.RequestCount.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task ConfirmBookingAtomically_AndReturnOriginalForAnyRetry()
     {
         var quoteRequest = new CreateDeliveryQuoteRequest(

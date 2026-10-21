@@ -52,8 +52,10 @@ non-overlapping with unique priorities) are seeded by post-deploy script 0004; s
 
 `IDeliveryRouteProvider` receives ids and coordinates loaded from the shared Location Registry. The Mapbox client calls
 Directions v5 with `overview=false`, stores no geometry or raw response, validates supported profiles and distinguishes
-no-route, throttling, timeout, configuration, invalid-response and provider failures. Straight-line PostGIS distance is
-never a commercial fallback. Default HTTP request logging is removed because the token is in the query string.
+no-route, throttling, timeout, configuration, invalid-response and provider failures. Quote preparation uses a
+Haversine straight-line distance when Mapbox is throttled, unavailable, times out, or returns an invalid response, so
+pricing can continue during a provider outage. A valid no-route response and local profile or configuration errors do
+not fall back. Default HTTP request logging is removed because the token is in the query string.
 
 Successful scalar distance/duration results use Redis `IJsonCache`; no geometry or provider response is retained. The
 `delivery-route:v2` key includes provider, ordered canonical origin/destination `LocationId`s, profile, schedule

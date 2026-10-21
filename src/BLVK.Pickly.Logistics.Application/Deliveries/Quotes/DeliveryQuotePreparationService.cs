@@ -51,6 +51,14 @@ public sealed class DeliveryQuotePreparationService(IRepository<SavedPickupLocat
             if (!routeByProfile.TryGetValue(vehicle.RoutingProfile, out var route))
             {
                 route = await routeProvider.GetRouteAsync(new(origin.Id, origin.Coordinates, destination.Id, destination.Coordinates, vehicle.RoutingProfile, scheduledPickupAtUtc ?? now), cancellationToken);
+                if (IsStraightLineFallbackEligible(route.Status))
+                {
+                    route = new(
+                        DeliveryRouteStatus.Success,
+                        StraightLineDistanceCalculator.CalculateMeters(origin.Coordinates, destination.Coordinates),
+                        Provider: "straight-line",
+                        RoutingProfile: vehicle.RoutingProfile);
+                }
                 routeByProfile[vehicle.RoutingProfile] = route;
             }
             if (route.Status != DeliveryRouteStatus.Success)
@@ -81,4 +89,10 @@ public sealed class DeliveryQuotePreparationService(IRepository<SavedPickupLocat
 
     private static bool HasAmbiguousTopPriority(IReadOnlyList<DeliveryZoneReadModel> matchingZones) =>
         matchingZones.Count > 1 && matchingZones[0].Priority == matchingZones[1].Priority;
+
+    private static bool IsStraightLineFallbackEligible(DeliveryRouteStatus status) =>
+        status is DeliveryRouteStatus.RateLimited or
+            DeliveryRouteStatus.ProviderUnavailable or
+            DeliveryRouteStatus.InvalidResponse or
+            DeliveryRouteStatus.Timeout;
 }
