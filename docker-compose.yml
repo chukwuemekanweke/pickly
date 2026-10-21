@@ -41,6 +41,10 @@ services:
       Authentication__Google__FlowLifetime: 00:10:00
       Locations__Mapbox__AccessToken: ${MAPBOX_ACCESS_TOKEN:-}
       Deliveries__Routing__Mapbox__AccessToken: ${MAPBOX_ACCESS_TOKEN:-}
+      Locations__Geoapify__ApiKey: ${GEOAPIFY_API_KEY:-}
+      Deliveries__Routing__Geoapify__ApiKey: ${GEOAPIFY_API_KEY:-}
+      Locations__LocationIQ__ApiKey: ${LOCATIONIQ_API_KEY:-}
+      Deliveries__Routing__LocationIQ__ApiKey: ${LOCATIONIQ_API_KEY:-}
       ObjectStorage__CloudflareR2__Endpoint: ${CLOUDFLARE_R2_ENDPOINT:-}
       ObjectStorage__CloudflareR2__ApplicationFolder: ${CLOUDFLARE_R2_APPLICATION_FOLDER:-}
       ObjectStorage__CloudflareR2__PublicBucketName: ${CLOUDFLARE_R2_PUBLIC_BUCKET_NAME:-}

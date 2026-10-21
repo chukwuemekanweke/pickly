@@ -1,5 +1,6 @@
 using BLVK.Pickly.Logistics.Application.Locations.Features.ResolveLocation;
 using BLVK.Pickly.Logistics.Domain.Locations.Enums;
+using BLVK.Pickly.Logistics.Domain.Locations.Services;
 using Shouldly;
 
 namespace BLVK.Pickly.Logistics.Application.UnitTests.Locations.ResolveLocation;
@@ -23,5 +24,22 @@ public sealed partial class When_ResolvingLocation_WithConfidentProviderMatch_Sh
         result.Location.Coordinates.Longitude.ShouldBe(7.5221m);
         registered.Visibility.ShouldBe(LocationVisibility.Public);
         registered.ResolutionKeys.ShouldHaveSingleItem().Key.ShouldBe(LocationResolutionTestContext.ResolutionKey());
+    }
+
+    [Fact]
+    public async Task PersistIdentityFromActualProviderResult()
+    {
+        var context = new LocationResolutionTestContext();
+        context.GeocodingProvider.ForwardGeocodeAsync(Arg.Any<GeocodingRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GeocodingResult(
+                GeocodingStatus.Success,
+                [LocationResolutionTestContext.Candidate()],
+                Provider: "geoapify",
+                ResolutionSource: LocationResolutionSource.Geoapify));
+
+        var result = await context.ResolveHandler().HandleAsync(context.Command(), CancellationToken.None);
+
+        result.Location!.ResolutionSource.ShouldBe(LocationResolutionSource.Geoapify);
+        context.LocationItems.ShouldHaveSingleItem().ProviderReferences.ShouldHaveSingleItem().Provider.ShouldBe("geoapify");
     }
 }

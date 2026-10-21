@@ -60,12 +60,12 @@ committed files.
 | Service | Required settings |
 |---|---|
 | DatabaseMigrator | `ConnectionStrings__PostgresWrite` (compose: `DATABASE_URL`). The role must be able to create the database (first run only) and the `postgis` extension; pre-create the extension on managed PostgreSQL. |
-| WebAPI | `ConnectionStrings__PostgresWrite` / `PostgresRead` / `Redis`; `Jwt__SigningKey` (replace the template placeholder); `Locations__Mapbox__AccessToken` **and** `Deliveries__Routing__Mapbox__AccessToken` (compose maps both from `MAPBOX_ACCESS_TOKEN`); `Riders__Matching__*` (appsettings defaults). |
+| WebAPI | `ConnectionStrings__PostgresWrite` / `PostgresRead` / `Redis`; `Jwt__SigningKey` (replace the template placeholder); `Locations__Geoapify__ApiKey`, `Deliveries__Routing__Geoapify__ApiKey`, `Locations__LocationIQ__ApiKey`, and `Deliveries__Routing__LocationIQ__ApiKey` (compose maps these from `GEOAPIFY_API_KEY` and `LOCATIONIQ_API_KEY`); `Riders__Matching__*` (appsettings defaults). |
 | Jobs | Postgres, Redis, `Messaging__RabbitMq__*` (`RABBITMQ_*`), `Riders__Matching__*`, `Jobs__Riders__Matching__PollInterval` (10 s). `RiderMatchingProcessor` is always registered; matching only happens while Jobs runs. |
 | Consumer | Postgres, Redis, RabbitMQ, `Notifications__Email__Mailtrap__ApiToken` (`MAILTRAP_TOKEN`). It sends the registration OTP to senders (test riders are created already confirmed). |
 | Payments (WebAPI, Test B) | Not in compose. Add sandbox values as WebAPI environment variables: `Payments__Credo__PublicKey`, `__SecretKey`, `__CallbackUrl`, or `Payments__SafeHaven__ClientId`, `__ClientAssertion`, `__CallbackUrl`. The provider webhooks must reach `/api/v1/payments/webhooks/...`. |
 
-An empty routing token does not fail startup; quotes then fail with `routing_dependency_unavailable`.
+Empty routing keys do not fail startup; quotes then fail with `routing_dependency_unavailable` after bounded provider failover.
 
 ## 2. Deploy
 

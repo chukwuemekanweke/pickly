@@ -16,7 +16,7 @@ internal sealed class MapboxGeocodingClient(
     HttpClient httpClient,
     IOptions<MapboxGeocodingOptions> options,
     TimeProvider timeProvider,
-    ILogger<MapboxGeocodingClient> logger) : ILocationGeocodingProvider
+    ILogger<MapboxGeocodingClient> logger) : IGeocodingProviderClient
 {
     public const string Provider = "mapbox";
     private const string ForwardPath = "search/geocode/v6/forward";
@@ -48,41 +48,48 @@ internal sealed class MapboxGeocodingClient(
                     await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
                     {
                         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-                        return MapboxFeatureParser.Parse(document.RootElement);
+                        return MapboxFeatureParser.Parse(document.RootElement) with
+                        {
+                            Provider = Provider,
+                            ResolutionSource = LocationResolutionSource.Mapbox
+                        };
                     }
                 case HttpStatusCode.TooManyRequests:
                     logger.LogWarning("Mapbox geocoding rate limit reached");
-                    return GeocodingResult.Failed(GeocodingStatus.RateLimited, ResolveRetryAfter(response, settings));
+                    return Failed(GeocodingStatus.RateLimited, ResolveRetryAfter(response, settings));
                 case HttpStatusCode.Forbidden:
                     logger.LogError("Mapbox rejected the geocoding request");
-                    return GeocodingResult.Failed(GeocodingStatus.ProviderUnavailable);
+                    return Failed(GeocodingStatus.ProviderUnavailable);
                 case HttpStatusCode.Unauthorized:
                     logger.LogError("Mapbox rejected the configured access token");
-                    return GeocodingResult.Failed(GeocodingStatus.ProviderUnavailable);
+                    return Failed(GeocodingStatus.ProviderUnavailable);
                 case >= HttpStatusCode.InternalServerError:
                     logger.LogWarning("Mapbox geocoding is unavailable with status {StatusCode}", (int)response.StatusCode);
-                    return GeocodingResult.Failed(GeocodingStatus.ProviderUnavailable);
+                    return Failed(GeocodingStatus.ProviderUnavailable);
                 default:
                     logger.LogWarning("Mapbox geocoding rejected the request with status {StatusCode}", (int)response.StatusCode);
-                    return GeocodingResult.Failed(GeocodingStatus.InvalidResponse);
+                    return Failed(GeocodingStatus.InvalidResponse);
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning("Mapbox geocoding timed out after {TimeoutSeconds} seconds", settings.Timeout.TotalSeconds);
-            return GeocodingResult.Failed(GeocodingStatus.Timeout);
+            return Failed(GeocodingStatus.Timeout);
         }
         catch (HttpRequestException exception)
         {
             logger.LogWarning("Mapbox geocoding transport failure: {FailureType}", exception.HttpRequestError);
-            return GeocodingResult.Failed(GeocodingStatus.ProviderUnavailable);
+            return Failed(GeocodingStatus.ProviderUnavailable);
         }
         catch (JsonException)
         {
             logger.LogWarning("Mapbox geocoding returned malformed JSON");
-            return GeocodingResult.Failed(GeocodingStatus.InvalidResponse);
+            return Failed(GeocodingStatus.InvalidResponse);
         }
     }
+
+    private static GeocodingResult Failed(GeocodingStatus status, TimeSpan? retryAfter = null) =>
+        GeocodingResult.Failed(status, retryAfter, Provider, LocationResolutionSource.Mapbox);
 
     internal static string BuildRequestUri(GeocodingRequest request, string accessToken)
     {

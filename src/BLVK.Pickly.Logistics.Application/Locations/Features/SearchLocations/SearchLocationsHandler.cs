@@ -153,6 +153,7 @@ public sealed class SearchLocationsHandler(
                     countryCode,
                     settings.MaxProviderCandidates),
                 cancellationToken);
+            geocoding = EnsureProviderIdentity(geocoding);
             var elapsed = timeProvider.GetElapsedTime(startedAt);
             RecordProviderOutcome(query, countryCode, geocoding, elapsed);
             if (geocoding.Status != GeocodingStatus.Success)
@@ -166,13 +167,13 @@ public sealed class SearchLocationsHandler(
                     countryCode,
                     responseItems.Count,
                     responseItems.Count == 0 ? "none" : "registry",
-                    ProviderProperties(query, registryItems, geocoding.Candidates.Count, false, geocoding.Status.ToString()));
+                    ProviderProperties(query, registryItems, geocoding.Provider, geocoding.Candidates.Count, false, geocoding.Status.ToString()));
                 return MapProviderFailure(geocoding, responseItems);
             }
 
             outcome = new CachedGeocodingOutcome(
-                geocodingProvider.ProviderName,
-                geocodingProvider.ResolutionSource,
+                geocoding.Provider,
+                geocoding.ResolutionSource,
                 geocoding.Candidates);
             await cache.SetAsync(outcomeCacheKey, outcome, settings.CandidateSelectionLifetime, cancellationToken);
         }
@@ -215,7 +216,7 @@ public sealed class SearchLocationsHandler(
                 countryCode,
                 fallback.Length,
                 area is null ? (fallback.Length == 0 ? "none" : "registry") : "provider",
-                ProviderProperties(query, registryItems, 0, providerResponseFromCache, "success"));
+                ProviderProperties(query, registryItems, outcome.Provider, 0, providerResponseFromCache, "success"));
             return new SearchLocationsResult(SearchLocationsStatus.Success, fallback);
         }
 
@@ -235,6 +236,7 @@ public sealed class SearchLocationsHandler(
             var ambiguousProperties = ProviderProperties(
                 query,
                 registryItems,
+                outcome.Provider,
                 candidates.Length,
                 providerResponseFromCache,
                 "selection_required");
@@ -246,7 +248,7 @@ public sealed class SearchLocationsHandler(
         }
 
         var providerItems = candidates
-            .Select((candidate, index) => LocationSearchItemResponse.FromMapbox(
+            .Select((candidate, index) => LocationSearchItemResponse.FromProvider(
                 candidate,
                 LocationSelectionTokens.Create(selectionId, index)))
             .ToArray();
@@ -261,11 +263,19 @@ public sealed class SearchLocationsHandler(
             countryCode,
             items.Length,
             effectiveRegistryItems.Count == 0 ? "provider" : "mixed",
-            ProviderProperties(query, registryItems, candidates.Length, providerResponseFromCache, "success"));
+            ProviderProperties(query, registryItems, outcome.Provider, candidates.Length, providerResponseFromCache, "success"));
         return new SearchLocationsResult(
             SearchLocationsStatus.Success,
             items);
     }
+
+    private GeocodingResult EnsureProviderIdentity(GeocodingResult result) => result with
+    {
+        Provider = string.IsNullOrWhiteSpace(result.Provider) ? geocodingProvider.ProviderName : result.Provider,
+        ResolutionSource = result.ResolutionSource == default
+            ? geocodingProvider.ResolutionSource
+            : result.ResolutionSource
+    };
 
     private void RecordProviderOutcome(
         SearchLocationsQuery query,
@@ -275,7 +285,7 @@ public sealed class SearchLocationsHandler(
     {
         var properties = new Dictionary<string, string>
         {
-            [Observability.PropertyNames.Locations.Provider] = geocodingProvider.ProviderName,
+            [Observability.PropertyNames.Locations.Provider] = geocoding.Provider,
             [Observability.PropertyNames.Locations.Outcome] = geocoding.Status.ToString(),
             [Observability.PropertyNames.Locations.CandidateCount] =
                 geocoding.Candidates.Count.ToString(CultureInfo.InvariantCulture),
@@ -329,12 +339,13 @@ public sealed class SearchLocationsHandler(
     private Dictionary<string, string> ProviderProperties(
         SearchLocationsQuery query,
         IReadOnlyCollection<LocationSearchItemResponse> registryItems,
+        string provider,
         int providerCandidateCount,
         bool fromCache,
         string outcome)
     {
         var properties = SearchProperties(query, registryItems.Count, registryItems.Count(item => item.IsSelectable));
-        properties[Observability.PropertyNames.Locations.Provider] = geocodingProvider.ProviderName;
+        properties[Observability.PropertyNames.Locations.Provider] = provider;
         properties[Observability.PropertyNames.Locations.ProviderCandidateCount] =
             providerCandidateCount.ToString(CultureInfo.InvariantCulture);
         properties[Observability.PropertyNames.Locations.CandidateCount] =
