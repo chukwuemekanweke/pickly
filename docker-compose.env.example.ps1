@@ -11,6 +11,7 @@ $env:MAILTRAP_FROM_ADDRESS = ""
 $env:MAILTRAP_FROM_NAME = "BLVK.Pickly.Logistics"
 $env:GOOGLE_AUTHENTICATION_ENABLED = "true"
 $env:GOOGLE_CLIENT_ID = ""
+$env:CORS_ALLOWED_ORIGINS_0 = "https://app.pikly.org"
 $env:MAPBOX_ACCESS_TOKEN = ""
 # Set to "true" only when the Mapbox account permits permanent geocoding storage.
 $env:MAPBOX_PERMANENT_STORAGE_ENABLED = "false"

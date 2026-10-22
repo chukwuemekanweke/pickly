@@ -15,6 +15,7 @@ using BLVK.Pickly.Logistics.Infrastructure.Storage;
 using BLVK.Pickly.Logistics.WebAPI.Features.Authentication.Registrations;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.ApiDocumentation;
+using BLVK.Pickly.Logistics.WebAPI.Infrastructure.Cors;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.RateLimiting;
 using FluentValidation;
 
@@ -22,25 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddControllers();
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        if (builder.Environment.IsProduction())
-        {
-            policy
-                .WithOrigins("http://localhost:9000", "https://localhost:9000")
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-            return;
-        }
-
-        policy
-            .AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
+builder.Services.AddConfiguredCors(builder.Configuration);
 builder.Services.AddValidatorsFromAssemblyContaining<SignUpValidator>();
 builder.Services
     .AddApiVersioning(options =>

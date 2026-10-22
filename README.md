@@ -86,7 +86,21 @@ Avatar files are uploaded by the browser directly to the private R2 bucket throu
 
 Configure `ObjectStorage:CloudflareR2` with the R2 S3 API endpoint, public and private bucket names, credentials, an application folder, and the public CDN/custom-domain base URL. `PublicBaseUrl` is used only for completed public objects; presigned uploads always use the S3 API endpoint.
 
-The private bucket also needs environment-specific CORS configuration. Allow `PUT` from each frontend origin, allow the `Content-Type` request header, and optionally expose `ETag`. Do not use a wildcard production origin unless that access is intentional.
+The private bucket also needs environment-specific CORS configuration because uploads go directly from the browser to R2. For production, apply this rule to the configured private bucket (R2 settings are not managed by this repository):
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://app.pikly.org"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Do not use a wildcard production origin. Add development origins as separate rules only when browser uploads from those origins are required.
 
 Configure an R2 lifecycle rule that deletes objects under this prefix after a short retention period:
 
@@ -97,6 +111,17 @@ Configure an R2 lifecycle rule that deletes objects under this prefix after a sh
 After completion, the API records a `DeleteQuarantinedObject` command in the outbox with the upload state change. The Consumer handles that reusable command and deletes the private object through the configured storage provider. The lifecycle rule remains the fallback for abandoned uploads or commands that exhaust their retries. Keep the private bucket non-public; only validated copies belong in the configured public bucket.
 
 The presigned upload workflow is implemented by `FileUploadService`. Feature modules provide an `IFileUploadPolicy` that defines their size limit, allowed content types and extensions, signature validation, expiry, object-key layout, and whether the validated object is promoted to public or private storage. All modules persist the common lifecycle in `FileUploadSessions`, scoped by tenant, owner type, owner ID, purpose, and policy key. Each module supplies a server-controlled owner-type string, such as `stakeholder` or `contract`, so IDs from different aggregate types cannot be confused. `InitiatedByStakeholderId` separately records the actor that started the upload when one exists and remains nullable for system-initiated uploads. A module creates its own association record only when the completed file has additional domain meaning, such as a KYC document or contract attachment referencing the shared session. Avatars need no association table because completion updates the stakeholder profile directly. `AvatarUploadPolicy` is the profile-avatar implementation; document modules can provide their own policy without duplicating session columns, storage validation, or promotion logic.
+
+## WebAPI cross-origin configuration
+
+The WebAPI reads exact browser origins from `Cors:AllowedOrigins`. The default production origin is `https://app.pikly.org`; `appsettings.Development.json` replaces it with the supported localhost origins. Container deployments can override or extend the list with indexed ASP.NET configuration keys:
+
+```text
+Cors__AllowedOrigins__0=https://app.pikly.org
+Cors__AllowedOrigins__1=https://another-frontend.example
+```
+
+The Compose template maps `CORS_ALLOWED_ORIGINS_0` to the first key. Origins must be exact `http(s)://host[:port]` values without paths or trailing slashes. Cross-origin cookies are not enabled.
 
 ## Git workflow automation
 

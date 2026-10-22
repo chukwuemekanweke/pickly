@@ -37,6 +37,9 @@ status: stable
 - Uploads use a presigned-URL flow: the client requests a presigned upload (`ObjectStoragePresignedUploadRequest`/`Result`), uploads directly to R2, then the app promotes the object from a
   quarantine/staging visibility to its final visibility (`ObjectStoragePromotionRequest`, `ObjectStorageVisibility`) once validated. This is the pattern the `AvatarUploads` and `Common/FileUploads`
   features implement — a `FileUploadSession` entity tracks the lifecycle.
+- Because the browser sends the presigned `PUT` directly to the private R2 bucket, API CORS does not cover that hop.
+  R2 CORS is managed outside this repository and production must allow only `https://app.pikly.org`, method `PUT`, and
+  request header `Content-Type`; expose `ETag` so the client can read the upload result. Do not use a wildcard production origin.
 - Rejected/orphaned uploads are cleaned up asynchronously via `Contracts.Commands.Storage.DeleteQuarantinedObject`, dispatched through the outbox (see [[transactional-outbox]]), not deleted synchronously in the request path.
 
 ## Constraint

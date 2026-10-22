@@ -28,6 +28,8 @@ endpoint/handler/background-service covering the most meaningful end-to-end path
 - Mirror the production feature-folder structure (see [[vertical-slices]]); one endpoint scenario per file.
 - Multi-action controllers get endpoint-specific subfolders under the controller's feature folder; single-action controllers keep the test directly in the feature folder.
 - Every WebAPI action, every Consumer handler, and every Jobs background service gets an integration test when added.
+- Cross-cutting HTTP security behavior may use focused middleware integration tests; cover both allowed and denied
+  cases when the behavior depends on request headers such as CORS origins and preflight metadata.
 
 ## Lifecycle
 

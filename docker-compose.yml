@@ -33,6 +33,7 @@ services:
       GITHUB_PAT: ${GITHUB_PAT}
       ASPNETCORE_ENVIRONMENT: Container
       ASPNETCORE_URLS: http://+:8080
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGINS_0:-https://app.pikly.org}
       ConnectionStrings__PostgresWrite: ${DATABASE_URL:-}
       ConnectionStrings__PostgresRead: ${DATABASE_URL_POOLED:-${DATABASE_URL:-}}
       ConnectionStrings__Redis: ${REDIS_CONNECTION_STRING:-}

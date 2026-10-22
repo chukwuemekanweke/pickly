@@ -13,6 +13,10 @@ tags:
 governance: constraint
 code_refs:
     - .github/workflows/ci.yml
+    - docker-compose.yml
+    - src/BLVK.Pickly.Logistics.WebAPI/Program.cs
+    - src/BLVK.Pickly.Logistics.WebAPI/Infrastructure/Cors/**
+    - src/BLVK.Pickly.Logistics.WebAPI/appsettings*.json
 sources:
     - kind: file
       path: .github/workflows/ci.yml
@@ -62,3 +66,12 @@ requests to the WebAPI's loopback binding at `127.0.0.1:8080` and must preserve 
 addresses/networks; its default production configuration includes the private Docker bridge range. `/metrics` is
 deliberately answered with `404` instead of being exposed publicly. The application deployment workflow leaves this
 long-running ingress container untouched.
+
+## Browser origins
+
+The WebAPI default CORS policy is configuration-driven through `Cors:AllowedOrigins`; production allows the exact
+`https://app.pikly.org` origin. The server-managed Compose file maps indexed launcher variables such as
+`CORS_ALLOWED_ORIGINS_0` to `Cors__AllowedOrigins__0`. Production and `Container` deployments must never use a wildcard
+origin. Allowed methods and headers are explicit, and cross-origin credentials remain disabled because authentication
+uses bearer tokens rather than cross-origin cookies. Before editing `/opt/pickly/compose.yml` or `/opt/pickly/app.env`,
+create timestamped backups; validate the fully interpolated Compose model before recreating services.

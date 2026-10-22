@@ -8,6 +8,7 @@ export MAILTRAP_FROM_ADDRESS=""
 export MAILTRAP_FROM_NAME="BLVK.Pickly.Logistics"
 export GOOGLE_AUTHENTICATION_ENABLED="true"
 export GOOGLE_CLIENT_ID=""
+export CORS_ALLOWED_ORIGINS_0="https://app.pikly.org"
 export MAPBOX_ACCESS_TOKEN=""
 # Set to "true" only when the Mapbox account and commercial terms permit Geocoding v6 permanent storage.
 export MAPBOX_PERMANENT_STORAGE_ENABLED="false"
