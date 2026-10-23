@@ -9,10 +9,13 @@ using System.Text.Json;
 
 namespace BLVK.Pickly.Logistics.Infrastructure.Deliveries;
 
-internal sealed class MapboxDeliveryRouteProvider(HttpClient httpClient, IJsonCache cache, IOptions<DeliveryRoutingOptions> options, TimeProvider timeProvider, ILogger<MapboxDeliveryRouteProvider> logger, IDistributedLease? distributedLease = null) : IDeliveryRouteProvider
+internal sealed class MapboxDeliveryRouteProvider(HttpClient httpClient, IJsonCache cache, IOptions<DeliveryRoutingOptions> options, TimeProvider timeProvider, ILogger<MapboxDeliveryRouteProvider> logger, IDistributedLease? distributedLease = null) : IRoutingProviderClient
 {
+    public const string Provider = "mapbox";
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Gates = new(StringComparer.Ordinal);
     private static readonly HashSet<string> Profiles = ["driving", "driving-traffic", "walking", "cycling"];
+    public string ProviderName => Provider;
+    public bool SupportsProfile(string profile) => Profiles.Contains(profile);
     public async Task<DeliveryRouteResult> GetRouteAsync(DeliveryRouteRequest request, CancellationToken cancellationToken)
     {
         var profile = request.RoutingProfile?.Trim().ToLowerInvariant() ?? string.Empty;

@@ -24,12 +24,12 @@ public sealed record LocationSearchItemResponse(
             null,
             location.LocationType is LocationType.Street or LocationType.Landmark);
 
-    public static LocationSearchItemResponse FromMapbox(GeocodingCandidate candidate, string selectionToken) =>
-        new(null, selectionToken, candidate.DisplayAddress, LocationSearchSource.Mapbox,
+    public static LocationSearchItemResponse FromProvider(GeocodingCandidate candidate, string selectionToken) =>
+        new(null, selectionToken, candidate.DisplayAddress, LocationSearchSource.Provider,
             candidate.Precision == GeocodingPrecision.Landmark ? LocationType.Landmark : LocationType.Street,
             candidate.Precision, true);
 
     public static LocationSearchItemResponse FromArea(GeocodingCandidate candidate) =>
-        new(null, null, candidate.DisplayAddress, LocationSearchSource.Mapbox, LocationType.Area,
+        new(null, null, candidate.DisplayAddress, LocationSearchSource.Provider, LocationType.Area,
             candidate.Precision, false);
 }

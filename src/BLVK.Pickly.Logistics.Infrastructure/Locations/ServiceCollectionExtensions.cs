@@ -13,22 +13,109 @@ public static class ServiceCollectionExtensions
         var resolutionOptions = configuration.GetSection(LocationResolutionOptions.SectionName).Get<LocationResolutionOptions>()
             ?? throw new InvalidOperationException($"Configuration section '{LocationResolutionOptions.SectionName}' is required.");
         resolutionOptions.Validate();
-        var mapboxOptions = configuration.GetSection(MapboxGeocodingOptions.SectionName).Get<MapboxGeocodingOptions>()
-            ?? throw new InvalidOperationException($"Configuration section '{MapboxGeocodingOptions.SectionName}' is required.");
-        mapboxOptions.Validate();
-
         services.Configure<LocationResolutionOptions>(configuration.GetSection(LocationResolutionOptions.SectionName));
-        services.Configure<MapboxGeocodingOptions>(configuration.GetSection(MapboxGeocodingOptions.SectionName));
-        // The request URI carries the access token (Mapbox only accepts it as a query parameter), so the default
-        // HttpClientFactory request loggers are removed and the client logs its own token-free messages.
-        services.AddHttpClient<ILocationGeocodingProvider, MapboxGeocodingClient>(client =>
+        var selectionSection = configuration.GetSection(GeocodingProviderSelectionOptions.SectionName);
+        var selectionOptions = selectionSection.Get<GeocodingProviderSelectionOptions>();
+        if (selectionOptions is null)
+        {
+            AddLegacyMapboxClient(services, configuration);
+            return services;
+        }
+
+        var knownProviders = new HashSet<string>(StringComparer.Ordinal)
+        {
+            GeoapifyGeocodingClient.Provider,
+            LocationIqGeocodingClient.Provider,
+            MapboxGeocodingClient.Provider
+        };
+        selectionOptions.Validate(knownProviders);
+        services.Configure<GeocodingProviderSelectionOptions>(selectionSection);
+
+        foreach (var provider in selectionOptions.Providers.Select(GeocodingProviderSelectionOptions.Normalize))
+        {
+            switch (provider)
             {
-                client.BaseAddress = new Uri(mapboxOptions.BaseUrl);
-                client.Timeout = mapboxOptions.Timeout;
-            })
-            .RemoveAllLoggers()
-            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(mapboxOptions.MaxRetries));
+                case GeoapifyGeocodingClient.Provider:
+                    AddGeoapifyClient(services, configuration);
+                    break;
+                case LocationIqGeocodingClient.Provider:
+                    AddLocationIqClient(services, configuration);
+                    break;
+                case MapboxGeocodingClient.Provider:
+                    AddMapboxClient(services, configuration);
+                    break;
+            }
+        }
+
+        services.AddTransient<ILocationGeocodingProvider, RoundRobinGeocodingProvider>();
 
         return services;
+    }
+
+    private static void AddGeoapifyClient(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(GeoapifyGeocodingOptions.SectionName);
+        var options = section.Get<GeoapifyGeocodingOptions>()
+            ?? throw new InvalidOperationException($"Configuration section '{GeoapifyGeocodingOptions.SectionName}' is required.");
+        options.Validate();
+        services.Configure<GeoapifyGeocodingOptions>(section);
+        services.AddHttpClient<GeoapifyGeocodingClient>(client =>
+            {
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            })
+            .RemoveAllLoggers()
+            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(options.MaxRetries));
+        services.AddTransient<IGeocodingProviderClient>(provider => provider.GetRequiredService<GeoapifyGeocodingClient>());
+    }
+
+    private static void AddLocationIqClient(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(LocationIqGeocodingOptions.SectionName);
+        var options = section.Get<LocationIqGeocodingOptions>()
+            ?? throw new InvalidOperationException($"Configuration section '{LocationIqGeocodingOptions.SectionName}' is required.");
+        options.Validate();
+        services.Configure<LocationIqGeocodingOptions>(section);
+        services.AddHttpClient<LocationIqGeocodingClient>(client =>
+            {
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            })
+            .RemoveAllLoggers()
+            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(options.MaxRetries));
+        services.AddTransient<IGeocodingProviderClient>(provider => provider.GetRequiredService<LocationIqGeocodingClient>());
+    }
+
+    private static void AddMapboxClient(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(MapboxGeocodingOptions.SectionName);
+        var options = section.Get<MapboxGeocodingOptions>()
+            ?? throw new InvalidOperationException($"Configuration section '{MapboxGeocodingOptions.SectionName}' is required.");
+        options.Validate();
+        services.Configure<MapboxGeocodingOptions>(section);
+        services.AddHttpClient<MapboxGeocodingClient>(client =>
+            {
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            })
+            .RemoveAllLoggers()
+            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(options.MaxRetries));
+        services.AddTransient<IGeocodingProviderClient>(provider => provider.GetRequiredService<MapboxGeocodingClient>());
+    }
+
+    private static void AddLegacyMapboxClient(IServiceCollection services, IConfiguration configuration)
+    {
+        var section = configuration.GetSection(MapboxGeocodingOptions.SectionName);
+        var options = section.Get<MapboxGeocodingOptions>()
+            ?? throw new InvalidOperationException($"Configuration section '{MapboxGeocodingOptions.SectionName}' is required.");
+        options.Validate();
+        services.Configure<MapboxGeocodingOptions>(section);
+        services.AddHttpClient<ILocationGeocodingProvider, MapboxGeocodingClient>(client =>
+            {
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            })
+            .RemoveAllLoggers()
+            .AddPolicyHandler(HttpRetryPolicies.CreateServerErrorRetryPolicy(options.MaxRetries));
     }
 }

@@ -9,7 +9,7 @@ tags:
     - locations
     - postgis
     - geocoding
-    - mapbox
+    - geocoding-providers
 governance: constraint
 code_refs:
     - src/BLVK.Pickly.Logistics.Domain/Locations/**
@@ -30,6 +30,10 @@ sources:
       path: src/BLVK.Pickly.Logistics.Domain/Locations/Entities/Location.cs
     - kind: file
       path: src/BLVK.Pickly.Logistics.Application/Locations/Features/ResolveLocation/ResolveLocationHandler.cs
+    - kind: url
+      url: https://apidocs.geoapify.com/docs/geocoding/
+    - kind: url
+      url: https://docs.locationiq.com/docs/search-forward-geocoding
 generated:
     at: "2026-10-15T00:00:00Z"
     by: claude
@@ -40,7 +44,8 @@ status: stable
 `Location` (schema `locations`) is a canonical, reusable physical place shared by every sender. It holds only
 canonical data: `LocationAddress` (display/normalized address, line, city, state, ISO country), WGS84
 `GeographicCoordinates`, `LocationType` (`Street`, `Landmark`, `Area`), `ResolutionSource` (`Mapbox`,
-`InternallyRegistered`), `ResolutionStatus` (`Resolved`, `Retired`), `Visibility` and `ResolvedAtUtc`. It must never
+`InternallyRegistered`, `Geoapify`, `LocationIq`), `ResolutionStatus` (`Resolved`, `Retired`), `Visibility` and
+`ResolvedAtUtc`. It must never
 carry sender data (labels, directions, phone numbers, access codes) — those live on referencing records such as
 `SavedPickupLocation` (see [[deliveries]]). A location is usable only while `Resolved`, not soft-deleted, and typed as
 a `Street` or `Landmark`; areas may be discoverable context but are never usable as pickup or delivery points.
@@ -88,10 +93,11 @@ location already owns the normalized identity, the OSM reference is attached to 
 
 - `GET /api/v1/locations/search` is the only public resolution entry point. It authenticates the sender, bounds and
   normalizes the query, and searches resolved public registry locations first. Indexed partial street/landmark matches
-  are sufficient to suppress Mapbox as soon as one usable registry result exists; full normalized display-address
+  are sufficient to suppress external geocoding as soon as one usable registry result exists; full normalized display-address
   equality is not required for discovery. Exact-address identity resolution retains its stricter matching rules.
 - When registry results are not reliable, search takes the cross-instance resolution lease, reuses a cached recent
-  permanent-geocoding outcome when available, and otherwise calls Mapbox. Search never creates a `Location`.
+  permanent-geocoding outcome when available, and otherwise calls the configured geocoding selector. Search never
+  creates a `Location`.
 - Registry and provider matches share one result contract with `LocationType` and `IsSelectable`. Registered streets
   and landmarks contain a `LocationId`; new verified ones contain an opaque selection token. Registered areas may
   retain their real `LocationId` but are explicitly nonselectable; provider area suggestions contain neither an id nor
@@ -123,7 +129,26 @@ one autocommit upsert that only steals expired leases; waiters poll the registry
 `ResolutionInProgress` (409). The provider call happens outside any transaction; `LocationRegistrationStore` then
 uses a short transaction with an advisory lock on the provider feature, and the unique index is the final guard.
 
-## Mapbox
+## Geocoding providers and orchestration
+
+`RoundRobinGeocodingProvider` is the application-facing `ILocationGeocodingProvider`. It uses the configured order,
+an instance-local atomic counter and a bounded `Retry-After` cooldown. Geoapify and LocationIQ are enabled in that
+order by default; Mapbox remains implemented for historical/configurable use but is not active by default. A logical
+operation attempts each eligible provider at most once and fails over only for throttling, timeout, transport or
+provider-unavailable outcomes. Empty success, invalid response and caller cancellation do not trigger failover.
+The actual provider and stable `LocationResolutionSource` travel on `GeocodingResult`, through recent-outcome and
+pending-selection caches, into registration and telemetry; the selector's own identity is never persisted.
+
+`GeoapifyGeocodingClient` uses Geoapify's country-filtered forward-geocoding schema and stable `place_id`; buildings
+remain nonregistrable premises because their parent street has no separately supplied stable identity.
+`LocationIqGeocodingClient` prefers scoped `osm_type/osm_id` identity, treats popularity as distinct from match
+confidence, and therefore reports unknown confidence unless reliable confidence metadata exists. It likewise never
+promotes premises into fabricated streets. Provider names on `LocationProviderReference` preserve provenance and
+allow the required Geoapify/LocationIQ/OpenStreetMap attribution to be associated with persisted canonical data.
+Production use assumes the operator's provider agreements authorize permanent storage; this repository stores only
+canonical fields and provenance, while recent request outcomes remain bounded by candidate-selection lifetime.
+
+## Mapbox compatibility
 
 `MapboxGeocodingClient` calls Geocoding v6 forward (`search/geocode/v6/forward`) with structured fields for internal
 address requests and sanitized free text (`q`) for unified search. Every request uses `permanent=true`,
@@ -142,8 +167,9 @@ Search Box results do not carry the same storage rights and must not be persiste
   for interactive address entry, while candidate registration retains the stricter per-user
   `LocationResolutionPolicy` (20 requests per 10 minutes by default). Both sit on top of the authenticated global
   limiter. Query length, radius, limits and supported countries are bounded (`LocationResolutionOptions`).
-  Location-resolution and Mapbox operational options contain no C# policy defaults; both configuration sections are
-  required and validated during service registration.
+  Location-resolution, provider-selection and enabled-provider operational options contain no C# policy defaults;
+  their configuration sections are required and validated during service registration. Unknown and duplicate
+  provider identifiers are rejected.
 - Search telemetry records the actual trimmed search term, normalized search term, registry/selectable/provider/result
   counts, lookup outcome, source, cache use, country and resolution origin as structured event properties.
 - Production PostgreSQL must have the PostGIS extension available; the migration runs `CREATE EXTENSION IF NOT
@@ -153,7 +179,7 @@ Search Box results do not carry the same storage rights and must not be persiste
 
 Delivery quote creation loads usable canonical street/landmark locations by id, resolves delivery-zone membership
 against their representative coordinates and copies their address/coordinates into immutable quote snapshots; it
-never geocodes or modifies a `Location`. The same `LocationId` and coordinate drive Mapbox routing, Redis cache keys,
+never geocodes or modifies a `Location`. The same `LocationId` and coordinate drive provider routing, Redis cache keys,
 and PostGIS membership. A long street intentionally has one representative point and one zone; no routing anchor,
 street segmentation, or multi-zone membership exists. See
 [[delivery-pricing-and-quotes]].

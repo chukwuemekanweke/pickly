@@ -47,6 +47,7 @@ public sealed class ProviderLocationResolver(
                     request.CountryCode,
                     settings.MaxProviderCandidates),
                 cancellationToken);
+            geocoding = EnsureProviderIdentity(geocoding);
             var elapsed = timeProvider.GetElapsedTime(startedAt);
 
             RecordProviderOutcome(request, geocoding, elapsed);
@@ -55,8 +56,8 @@ public sealed class ProviderLocationResolver(
                 return MapProviderFailure(geocoding);
             }
 
-            provider = geocodingProvider.ProviderName;
-            resolutionSource = geocodingProvider.ResolutionSource;
+            provider = geocoding.Provider;
+            resolutionSource = geocoding.ResolutionSource;
             candidates = geocoding.Candidates;
         }
 
@@ -98,6 +99,14 @@ public sealed class ProviderLocationResolver(
         return await UnresolvedAsync(request, evaluation.ApproximateAnchor, settings, cancellationToken);
     }
 
+    private GeocodingResult EnsureProviderIdentity(GeocodingResult result) => result with
+    {
+        Provider = string.IsNullOrWhiteSpace(result.Provider) ? geocodingProvider.ProviderName : result.Provider,
+        ResolutionSource = result.ResolutionSource == default
+            ? geocodingProvider.ResolutionSource
+            : result.ResolutionSource
+    };
+
     private void RecordProviderOutcome(
         ResolveLocationCommand request,
         GeocodingResult geocoding,
@@ -108,7 +117,7 @@ public sealed class ProviderLocationResolver(
             Observability.EventNames.Locations.GeocodingRequested,
             new Dictionary<string, string>
             {
-                [Observability.PropertyNames.Locations.Provider] = geocodingProvider.ProviderName,
+                [Observability.PropertyNames.Locations.Provider] = geocoding.Provider,
                 [Observability.PropertyNames.Locations.Outcome] = geocoding.Status.ToString(),
                 [Observability.PropertyNames.Locations.CandidateCount] =
                     geocoding.Candidates.Count.ToString(CultureInfo.InvariantCulture),
@@ -123,7 +132,7 @@ public sealed class ProviderLocationResolver(
                 Observability.EventNames.Locations.GeocodingFailed,
                 new Dictionary<string, string>
                 {
-                    [Observability.PropertyNames.Locations.Provider] = geocodingProvider.ProviderName,
+                    [Observability.PropertyNames.Locations.Provider] = geocoding.Provider,
                     [Observability.PropertyNames.Locations.Outcome] = geocoding.Status.ToString()
                 });
         }

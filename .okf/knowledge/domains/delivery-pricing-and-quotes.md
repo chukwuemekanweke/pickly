@@ -1,9 +1,9 @@
 ---
 type: domain
 title: Delivery Pricing, Routing, Zones and Quotes
-description: Configurable vehicle eligibility, PostGIS zones, Mapbox routing, additive pricing and immutable sender-owned quotes
+description: Configurable vehicle eligibility, PostGIS zones, multi-provider routing, additive pricing and immutable sender-owned quotes
 resource: okf://knowledge/domains/delivery-pricing-and-quotes
-tags: [constraint, domain, deliveries, pricing, quotes, postgis, mapbox]
+tags: [constraint, domain, deliveries, pricing, quotes, postgis, routing-providers]
 code_refs:
     - src/BLVK.Pickly.Logistics.Domain/Deliveries/Entities/VehicleCategory.cs
     - src/BLVK.Pickly.Logistics.Domain/Deliveries/Entities/DeliveryZone.cs
@@ -25,6 +25,10 @@ sources:
       path: src/BLVK.Pickly.Logistics.Domain/Deliveries/Services/DeliveryPricingCalculator.cs
     - kind: url
       url: https://docs.mapbox.com/api/navigation/directions/
+    - kind: url
+      url: https://apidocs.geoapify.com/docs/routing/
+    - kind: url
+      url: https://docs.locationiq.com/reference/directions
 generated:
     at: "2026-10-16T00:00:00Z"
     by: codex
@@ -35,8 +39,9 @@ governance: constraint
 
 `VehicleCategory` is persisted configuration, not an enum. Active categories are weight-eligible when their
 `MaximumWeightKg` covers `sum(quantity * WeightKg)`; dimensions are not claimed because parcels have no dimension
-input. `RoutingProfile` must be an official Mapbox Directions profile (`driving`, `driving-traffic`, `walking`, or
-`cycling`); commercial vehicle names do not imply provider-specific road restrictions. Options rank by total, then
+input. `RoutingProfile` uses the provider-neutral configured set (`driving`, `driving-traffic`, `walking`, or
+`cycling`); provider adapters translate supported profiles and the selector excludes adapters that do not support a
+requested profile. Commercial vehicle names do not imply provider-specific road restrictions. Options rank by total, then
 capacity, code and id. Quote creation always repeats eligibility, routing and pricing validation.
 
 ## Zones and spatial semantics
@@ -50,15 +55,20 @@ non-overlapping with unique priorities) are seeded by post-deploy script 0004; s
 
 ## Routing and reuse
 
-`IDeliveryRouteProvider` receives ids and coordinates loaded from the shared Location Registry. The Mapbox client calls
-Directions v5 with `overview=false`, stores no geometry or raw response, validates supported profiles and distinguishes
-no-route, throttling, timeout, configuration, invalid-response and provider failures. Quote preparation uses a
-Haversine straight-line distance when Mapbox is throttled, unavailable, times out, or returns an invalid response, so
+`IDeliveryRouteProvider` receives ids and coordinates loaded from the shared Location Registry.
+`RoundRobinDeliveryRouteProvider` selects configured eligible adapters using an instance-local atomic sequence separate
+from geocoding. Geoapify and LocationIQ are enabled in that order by default; Mapbox remains available but disabled by
+default. Geoapify maps driving/walking/cycling profiles to its modes and uses approximated traffic for
+`driving-traffic`; LocationIQ supports driving and walking. Adapters store no geometry or raw response and distinguish
+no-route, throttling, timeout, configuration, invalid-response and provider failures. One logical operation attempts
+each eligible provider at most once only for transient outcomes, uses bounded `Retry-After` cooldowns, and preserves
+the actual provider in `DeliveryRouteResult`. Quote preparation uses a Haversine straight-line distance when routing
+is throttled, unavailable, times out, or returns an invalid response, so
 pricing can continue during a provider outage. A valid no-route response and local profile or configuration errors do
 not fall back. Default HTTP request logging is removed because the token is in the query string.
 
 Successful scalar distance/duration results use Redis `IJsonCache`; no geometry or provider response is retained. The
-`delivery-route:v2` key includes provider, ordered canonical origin/destination `LocationId`s, profile, schedule
+`delivery-route:v3` key includes actual provider, ordered canonical origin/destination `LocationId`s, profile, schedule
 version, routing-window id, and applicable local date. Configurable windows cover every local time (including
 overnight periods) in the configured service-area time zone and are selected from the instant or scheduled departure
 using `TimeProvider`. Entries expire at `min(window end, calculated-at + configured maximum age)`, with the maximum
