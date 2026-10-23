@@ -46,6 +46,7 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<IpAddress> IpAddresses => Set<IpAddress>();
     public DbSet<IpAddressLocation> IpAddressLocations => Set<IpAddressLocation>();
     public DbSet<LoginActivity> LoginActivities => Set<LoginActivity>();
+    public DbSet<DeviceAccount> DeviceAccounts => Set<DeviceAccount>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryItem> DeliveryItems => Set<DeliveryItem>();

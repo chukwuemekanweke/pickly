@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Authentication Domain
-description: Sign-up/sign-in, TOTP MFA and recovery codes, sessions and refresh tokens, Google sign-in, password reset, session revocation, and the ASP.NET Core Identity base
+description: Sign-up/sign-in, device test-account sign-in, TOTP MFA and recovery codes, sessions and refresh tokens, Google sign-in, password reset, session revocation, and the ASP.NET Core Identity base
 resource: okf://knowledge/domains/authentication
 tags:
     - context
@@ -36,7 +36,21 @@ status: stable
 ## Scope
 
 Sign-up (with email OTP confirmation), sign-in (including Google sign-in), session lifecycle (list/refresh/logout/revoke-other/revoke-single sessions), password change/reset, email-existence checks,
-authenticator-app MFA and recovery codes, login-activity recording/history and IP-address-location enrichment, and active-session/device management.
+authenticator-app MFA and recovery codes, device-identifier test-account authentication, login-activity recording/history and IP-address-location enrichment, and active-session/device management.
+
+## Device test-account authentication
+
+`POST /api/v1/authentication/sessions/device` accepts an opaque device identifier and returns the same
+access-token/refresh-token response shape as password sign-in. The first request creates a verified,
+passwordless Identity user plus a verified customer `Stakeholder` populated with test profile data and records the
+permanent identifier-to-user/stakeholder association in `authentication.DeviceAccounts`. Later requests
+reuse that association and create only a new authentication session.
+
+Creation runs in one database transaction and takes a PostgreSQL transaction-scoped advisory lock derived
+from the normalized identifier before checking the mapping. This prevents simultaneous first requests from
+creating multiple accounts; the unique identifier index remains the database invariant. The handler owns
+account creation and token issuance, while `IDeviceAccountLock`/`DeviceAccountLock` owns only the
+provider-specific locking mechanic.
 
 ## Foundation
 

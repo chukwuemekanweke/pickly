@@ -3,6 +3,7 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.ChangePassword;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.CheckEmailExistence;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.CompletePasswordReset;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.CompleteTwoFactorChallenge;
+using BLVK.Pickly.Logistics.Application.Authentication.Features.DeviceSignIn;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.DisableTwoFactor;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.GetLoginActivityHistory;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.GetTwoFactorStatus;
@@ -110,6 +111,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SetupTwoFactorHandler>();
         services.AddScoped<VerifyTwoFactorEnrollmentHandler>();
         services.AddScoped<DisableTwoFactorHandler>();
+        services.AddScoped<DeviceSignInHandler>();
         services.AddScoped<RequestEmailConfirmationOtpHandler>();
         services.AddScoped<RequestPasswordResetHandler>();
         services.AddScoped<ProcessMailtrapDeliveryWebhookHandler>();

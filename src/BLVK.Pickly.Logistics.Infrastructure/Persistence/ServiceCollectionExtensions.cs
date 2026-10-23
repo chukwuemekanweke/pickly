@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
         services.AddScoped<IAppUserRepository, AppUserRepository>();
+        services.AddScoped<IDeviceAccountLock, DeviceAccountLock>();
         services.AddScoped<IPickupLocationConsistencyLock, PickupLocationConsistencyLock>();
         services.AddScoped<IDeliveryPaymentInitiationConsistencyLock, PaymentInitiationConsistencyLock>();
         services.AddScoped<IDeliveryBookingPersistence, DeliveryBookingPersistence>();

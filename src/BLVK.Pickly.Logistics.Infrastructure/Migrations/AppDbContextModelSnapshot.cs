@@ -258,6 +258,61 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.ToTable("Sessions", "authentication");
                 });
 
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Authentication.Entities.DeviceAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("StakeholderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppUserId")
+                        .IsUnique();
+
+                    b.HasIndex("Identifier")
+                        .IsUnique();
+
+                    b.HasIndex("StakeholderId")
+                        .IsUnique();
+
+                    b.ToTable("DeviceAccounts", "authentication");
+                });
+
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Authentication.Entities.IpAddress", b =>
                 {
                     b.Property<Guid>("Id")
@@ -795,6 +850,7 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
                     b.HasIndex("RiderId")
                         .IsUnique()
+                        .HasDatabaseName("IX_Deliveries_RiderId")
                         .HasFilter("\"RiderId\" IS NOT NULL AND \"Status\" IN (4, 5, 6) AND \"IsDeleted\" = FALSE");
 
                     b.HasIndex("TrackingId")
@@ -2895,6 +2951,7 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
                     b.HasIndex("DeliveryId")
                         .IsUnique()
+                        .HasDatabaseName("IX_DeliveryMatchingSessions_DeliveryId")
                         .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
 
                     b.HasIndex("Status", "NextAttemptAtUtc")
@@ -3017,12 +3074,14 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
 
                     b.HasIndex("DeliveryId")
                         .IsUnique()
+                        .HasDatabaseName("IX_RiderDeliveryOffers_DeliveryId")
                         .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
 
                     b.HasIndex("MatchingSessionId");
 
                     b.HasIndex("RiderProfileId")
                         .IsUnique()
+                        .HasDatabaseName("IX_RiderDeliveryOffers_RiderProfileId")
                         .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
 
                     b.HasIndex("Status", "ExpiresAtUtc")
@@ -3516,6 +3575,21 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.Navigation("LastIpAddress");
 
                     b.Navigation("Stakeholder");
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Authentication.Entities.DeviceAccount", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Authentication.Entities.AppUser", null)
+                        .WithOne()
+                        .HasForeignKey("BLVK.Pickly.Logistics.Domain.Authentication.Entities.DeviceAccount", "AppUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Stakeholders.Entities.Stakeholder", null)
+                        .WithOne()
+                        .HasForeignKey("BLVK.Pickly.Logistics.Domain.Authentication.Entities.DeviceAccount", "StakeholderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Authentication.Entities.IpAddressLocation", b =>

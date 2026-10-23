@@ -3,6 +3,7 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.ChangePassword;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.CheckEmailExistence;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.CompletePasswordReset;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.CompleteTwoFactorChallenge;
+using BLVK.Pickly.Logistics.Application.Authentication.Features.DeviceSignIn;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.GoogleSignIn;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.GoogleSignUp;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.LinkGoogleAccount;
@@ -16,6 +17,7 @@ using BLVK.Pickly.Logistics.Application.Authentication.Features.SignUp;
 using BLVK.Pickly.Logistics.Application.Authentication.Features.SignUpOtp;
 using BLVK.Pickly.Logistics.Application.Authentication.Stakeholders;
 using BLVK.Pickly.Logistics.Domain.Authentication.Entities;
+using BLVK.Pickly.Logistics.Domain.Authentication.Persistence;
 using BLVK.Pickly.Logistics.Domain.Authentication.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Authentication.Services;
 using BLVK.Pickly.Logistics.Domain.Common.Auditing;
@@ -49,6 +51,8 @@ internal sealed class AuthenticationFlowTestContext
     public IRegistrationPolicyProvider RegistrationPolicyProvider { get; } = Substitute.For<IRegistrationPolicyProvider>();
     public IIpGeolocationService IpGeolocationService { get; } = Substitute.For<IIpGeolocationService>();
     public IRepository<Country> CountryRepository { get; } = Substitute.For<IRepository<Country>>();
+    public IRepository<DeviceAccount> DeviceAccountRepository { get; } = Substitute.For<IRepository<DeviceAccount>>();
+    public IDeviceAccountLock DeviceAccountLock { get; } = Substitute.For<IDeviceAccountLock>();
     public IStakeholderReadModelRepository StakeholderReadModelRepository { get; } = Substitute.For<IStakeholderReadModelRepository>();
     public IRepository<StakeholderType> StakeholderTypeRepository { get; } = Substitute.For<IRepository<StakeholderType>>();
     public IRepository<Stakeholder> StakeholderRepository { get; } = Substitute.For<IRepository<Stakeholder>>();
@@ -134,6 +138,17 @@ internal sealed class AuthenticationFlowTestContext
         UnitOfWork,
         Clock,
         TwoFactorChallengeService);
+    public DeviceSignInHandler CreateDeviceSignInHandler() => new(
+        IdentityService,
+        SessionIssuer,
+        DeviceAccountLock,
+        DeviceAccountRepository,
+        StakeholderRepository,
+        StakeholderTypeRepository,
+        CountryRepository,
+        EventPublisher,
+        UnitOfWork,
+        Clock);
     public GoogleSignInHandler CreateGoogleSignInHandler()
     {
         return new GoogleSignInHandler(
@@ -262,6 +277,16 @@ internal sealed class AuthenticationFlowTestContext
         new(
             email ?? AuthenticationTestData.Email(),
             password ?? AuthenticationTestData.StrongPassword(),
+            ipAddress ?? AuthenticationTestData.IpAddress(),
+            userAgent ?? AuthenticationTestData.UserAgent(),
+            TestActorContext());
+
+    public static DeviceSignInCommand CreateDeviceSignInCommand(
+        string? deviceIdentifier = null,
+        string? ipAddress = null,
+        string? userAgent = null) =>
+        new(
+            deviceIdentifier ?? Guid.CreateVersion7().ToString("N"),
             ipAddress ?? AuthenticationTestData.IpAddress(),
             userAgent ?? AuthenticationTestData.UserAgent(),
             TestActorContext());

@@ -32,6 +32,7 @@ public static class EndpointUrl
         public const string Route = $"api/{Versions.V1Route}/authentication/sessions";
         public static readonly string V1 = ToV1(Route);
         public static readonly string GoogleV1 = $"{V1}/google";
+        public static readonly string DeviceV1 = $"{V1}/device";
         public static readonly string RefreshV1 = $"{V1}/refresh";
         public static readonly string LogoutV1 = $"{V1}/logout";
         public static readonly string TwoFactorV1 = $"{V1}/two-factor";
