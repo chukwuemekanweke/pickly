@@ -54,14 +54,22 @@ lines and every batch goes through `ExecuteSqlRawAsync`.
 ## Current post-deploy seeds
 
 0002 `rider` stakeholder type, 0003 vehicle categories, 0004 Enugu zones, 0005 Enugu OSM locations, 0006 ENU-V1
-tariff, 0007 MVP test rider accounts, and 0008 the reviewed 51-landmark/616-street Enugu location expansion. All seed data lives in
-`Scripts/PostDeploy`; there is no separate manual or environment-specific script path.
+tariff, 0007 MVP test rider accounts, 0008 the reviewed 51-landmark/616-street Enugu location expansion, and 0009 a
+small two-week delivery-history fixture. All seed data lives in `Scripts/PostDeploy`; there is no separate manual or
+environment-specific script path.
 
 0007 is temporary dummy data that runs in every environment: it creates confirmed rider logins with a shared test
 password hash (the password itself is never written in the repository), never resets an existing account, and skips
 rather than fails on anything it cannot apply. Its rows are tagged `system:test-rider-fixture`; removal is deleting
 0007 and running `Diagnostics/remove-test-rider-accounts.sql`. Fixture scripts never create payments or rider GPS
 presence.
+
+0009 creates a demo customer, five completed Pay On Delivery jobs per approved test rider over the preceding two
+weeks, and four assigned jobs for active-delivery UI testing. Stable tracking IDs make it rerunnable without moving
+or duplicating the historical rows. On its first successful execution, it completes non-fixture deliveries in
+RiderAssigned, PickedUp or InTransit and appends the missing lifecycle history. Durable
+`system:delivery-history-fixture` provenance then makes every later invocation a no-op with no persistent data changes.
+All created rows use that audit provenance.
 
 `DatabaseMigrator/Diagnostics/` holds read-only tooling that the migrator never runs and that is not in the build
 output: `enugu-validation.sql` (PASS/WARN/FAIL report, non-zero exit on FAIL), `rider-matching-diagnostics.sql`, `remove-test-rider-accounts.sql`,
