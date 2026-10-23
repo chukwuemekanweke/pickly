@@ -1,3 +1,4 @@
+using BLVK.Pickly.Logistics.Application.Operations;
 using BLVK.Pickly.Logistics.Application.Operations.Features.GetOperationsSnapshot;
 using BLVK.Pickly.Logistics.Domain.Deliveries.Enums;
 using BLVK.Pickly.Logistics.Domain.Operations.ReadModels;
@@ -49,6 +50,12 @@ public sealed class When_GettingOperationsSnapshot_ForPastDay_Should
                 new DeliveryTransitionDailyCount(date, DeliveryStatus.Cancelled, 2, 0),
                 new DeliveryTransitionDailyCount(date, DeliveryStatus.DeliveryFailed, 1, 1)
             ]);
+        reader.GetCompletedDeliveryRevenueDailyTotalsAsync(dayStart, dayStart.AddDays(1), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new DeliveryRevenueDailyTotal(date, "USD", 40.00m),
+                new DeliveryRevenueDailyTotal(date, "NGN", 12500.50m)
+            ]);
         var sut = new GetOperationsSnapshotHandler(reader, new FixedTimeProvider(now));
 
         var result = await sut.HandleAsync(new(date), CancellationToken.None);
@@ -66,6 +73,11 @@ public sealed class When_GettingOperationsSnapshot_ForPastDay_Should
             Completed: 9,
             Cancelled: 2,
             Failed: 1));
+        snapshot.Revenue.ShouldBe(
+        [
+            new RevenueAmountResponse("NGN", 12500.50m),
+            new RevenueAmountResponse("USD", 40.00m)
+        ]);
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider

@@ -25,6 +25,11 @@ public sealed class When_GettingOperationsTimeSeries_WithDefaultRange_Should
                 Arg.Any<DateTimeOffset>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
+        reader.GetCompletedDeliveryRevenueDailyTotalsAsync(
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
         var sut = new GetOperationsTimeSeriesHandler(reader, new FixedTimeProvider(now));
 
         var result = await sut.HandleAsync(new(From: null, To: null), CancellationToken.None);
@@ -38,7 +43,8 @@ public sealed class When_GettingOperationsTimeSeries_WithDefaultRange_Should
             day.CompletedDeliveries == 0 &&
             day.ScheduledDeliveries == 0 &&
             day.RidersCompletingDeliveries == 0 &&
-            day.RidersAssignedDeliveries == 0);
+            day.RidersAssignedDeliveries == 0 &&
+            day.Revenue.Count == 0);
         await reader.Received(1).GetDeliveryTransitionDailyCountsAsync(
             fromUtc,
             toUtc,
@@ -48,6 +54,7 @@ public sealed class When_GettingOperationsTimeSeries_WithDefaultRange_Should
                 statuses.Contains(DeliveryStatus.RiderAssigned)),
             Arg.Any<CancellationToken>());
         await reader.Received(1).GetScheduledPickupDailyCountsAsync(fromUtc, toUtc, Arg.Any<CancellationToken>());
+        await reader.Received(1).GetCompletedDeliveryRevenueDailyTotalsAsync(fromUtc, toUtc, Arg.Any<CancellationToken>());
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider

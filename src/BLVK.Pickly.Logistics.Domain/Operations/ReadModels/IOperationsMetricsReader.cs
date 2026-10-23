@@ -25,6 +25,12 @@ public interface IOperationsMetricsReader
         IReadOnlyCollection<DeliveryStatus> statuses,
         CancellationToken cancellationToken);
 
+    /// <summary>Sums the charges of deliveries completed per UTC day and currency within [from, to).</summary>
+    Task<IReadOnlyList<DeliveryRevenueDailyTotal>> GetCompletedDeliveryRevenueDailyTotalsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        CancellationToken cancellationToken);
+
     /// <summary>Counts scheduled deliveries per UTC pickup day within [from, to).</summary>
     Task<IReadOnlyList<ScheduledPickupDailyCount>> GetScheduledPickupDailyCountsAsync(
         DateTimeOffset fromUtc,

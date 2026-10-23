@@ -82,6 +82,43 @@ public sealed class When_ReadingOperationsMetrics_Should(ContainersFixture fixtu
     }
 
     [Fact]
+    public async Task SumCompletedDeliveryChargesByDayAndCurrency()
+    {
+        var dayStart = new DateTimeOffset(2035, 1, 1, 0, 0, 0, TimeSpan.Zero).AddDays(Random.Shared.Next(0, 3000));
+        var completedAt = dayStart.AddHours(15);
+        // Each persisted delivery has its own test currency, so totals for it are isolated from other tests.
+        var (completed, currencyId) = await PersistDeliveryAsync($"PKY-{Guid.CreateVersion7():N}");
+        var (assignedOnly, otherCurrencyId) = await PersistDeliveryAsync($"PKY-{Guid.CreateVersion7():N}");
+        await TransitionAsync(assignedOnly.Id, delivery =>
+            delivery.AssignRider(assignedOnly.SenderId, completedAt, "test-rider", "operations_metrics_test"));
+        await TransitionAsync(completed.Id, delivery =>
+        {
+            delivery.AssignRider(completed.SenderId, completedAt.AddHours(-2), "test-rider", "operations_metrics_test");
+            delivery.MarkPickedUp(completedAt.AddHours(-1), "test-rider", "operations_metrics_test");
+            delivery.MarkInTransit(completedAt.AddMinutes(-30), "test-rider", "operations_metrics_test");
+            delivery.ConfirmFullCashCollection(Guid.CreateVersion7(), delivery.Charge.Amount, currencyId, completedAt);
+            delivery.ConfirmProofOfDelivery(Guid.CreateVersion7());
+            delivery.Complete(completedAt, "test-rider", "operations_metrics_test");
+        });
+        using var scope = CreateScope();
+        var currencyCodes = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Currencies
+            .Where(currency => currency.Id == currencyId || currency.Id == otherCurrencyId)
+            .ToDictionaryAsync(currency => currency.Id, currency => currency.CurrencyCode);
+        var reader = scope.ServiceProvider.GetRequiredService<IOperationsMetricsReader>();
+
+        var totals = await reader.GetCompletedDeliveryRevenueDailyTotalsAsync(
+            dayStart,
+            dayStart.AddDays(1),
+            CancellationToken.None);
+
+        totals.ShouldContain(new DeliveryRevenueDailyTotal(
+            DateOnly.FromDateTime(dayStart.UtcDateTime),
+            currencyCodes[currencyId],
+            completed.Charge.Amount));
+        totals.ShouldNotContain(total => total.CurrencyCode == currencyCodes[otherCurrencyId]);
+    }
+
+    [Fact]
     public async Task ServeMetricsAndDashboardAnonymously()
     {
         var snapshot = await Client.GetAsync("/api/v1/operations/metrics/snapshot");
@@ -120,8 +157,9 @@ public sealed class When_ReadingOperationsMetrics_Should(ContainersFixture fixtu
         using var scope = CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var delivery = await dbContext.Deliveries.SingleAsync(item => item.Id == deliveryId);
+        var existingHistory = delivery.StatusHistory.Count;
         transition(delivery);
-        dbContext.DeliveryStatusHistory.Add(delivery.StatusHistory.Last());
+        dbContext.DeliveryStatusHistory.AddRange(delivery.StatusHistory.Skip(existingHistory));
         await dbContext.SaveChangesAsync();
     }
 

@@ -23,6 +23,11 @@ public sealed class When_GettingOperationsSnapshot_ForCurrentDay_Should
                 Arg.Any<IReadOnlyCollection<DeliveryStatus>>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
+        reader.GetCompletedDeliveryRevenueDailyTotalsAsync(
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
         var sut = new GetOperationsSnapshotHandler(reader, new FixedTimeProvider(now));
 
         var result = await sut.HandleAsync(new(Date: null), CancellationToken.None);
@@ -33,12 +38,17 @@ public sealed class When_GettingOperationsSnapshot_ForCurrentDay_Should
         snapshot.IsDayComplete.ShouldBeFalse();
         snapshot.Riders.ShouldBe(new RiderCountsResponse(2, 0, 0, 2));
         snapshot.Deliveries.ShouldBe(new DeliveryCountsResponse(0, 0, 0, 0, 0, 0));
+        snapshot.Revenue.ShouldBeEmpty();
         await reader.Received(1).GetDeliveryStatusCountsAsync(now, Arg.Any<CancellationToken>());
         await reader.Received(1).GetRiderAvailabilityCountsAsync(now, Arg.Any<CancellationToken>());
         await reader.Received(1).GetDeliveryTransitionDailyCountsAsync(
             dayStart,
             dayStart.AddDays(1),
             Arg.Any<IReadOnlyCollection<DeliveryStatus>>(),
+            Arg.Any<CancellationToken>());
+        await reader.Received(1).GetCompletedDeliveryRevenueDailyTotalsAsync(
+            dayStart,
+            dayStart.AddDays(1),
             Arg.Any<CancellationToken>());
     }
 

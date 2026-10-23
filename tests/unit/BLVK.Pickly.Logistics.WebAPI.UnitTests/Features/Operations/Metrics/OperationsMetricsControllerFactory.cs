@@ -36,6 +36,11 @@ internal static class OperationsMetricsControllerFactory
                 Arg.Any<DateTimeOffset>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
+        reader.GetCompletedDeliveryRevenueDailyTotalsAsync(
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<DateTimeOffset>(),
+                Arg.Any<CancellationToken>())
+            .Returns([]);
         return reader;
     }
 

@@ -36,10 +36,20 @@ public sealed class GetOperationsSnapshotHandler(
             dayEnd,
             DayOutcomeStatuses,
             cancellationToken);
+        var revenue = await reader.GetCompletedDeliveryRevenueDailyTotalsAsync(dayStart, dayEnd, cancellationToken);
 
         return new(
             GetOperationsSnapshotStatus.Success,
-            new(date, asOf, isDayComplete, CountRiders(riderStates), CountDeliveries(deliveryStates, outcomes)));
+            new(
+                date,
+                asOf,
+                isDayComplete,
+                CountRiders(riderStates),
+                CountDeliveries(deliveryStates, outcomes),
+                revenue
+                    .OrderBy(total => total.CurrencyCode, StringComparer.Ordinal)
+                    .Select(total => new RevenueAmountResponse(total.CurrencyCode, total.Amount))
+                    .ToArray()));
     }
 
     private static RiderCountsResponse CountRiders(IReadOnlyList<RiderAvailabilityCount> states)

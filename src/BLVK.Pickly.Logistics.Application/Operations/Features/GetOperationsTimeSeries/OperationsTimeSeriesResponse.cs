@@ -9,9 +9,11 @@ public sealed record OperationsTimeSeriesResponse(
 /// <param name="ScheduledDeliveries">Scheduled deliveries whose pickup falls on the day, in any status.</param>
 /// <param name="RidersCompletingDeliveries">Distinct riders who completed at least one delivery during the day.</param>
 /// <param name="RidersAssignedDeliveries">Distinct riders assigned at least one delivery during the day.</param>
+/// <param name="Revenue">Charges of deliveries completed during the day, one entry per currency.</param>
 public sealed record OperationsDailyPointResponse(
     DateOnly Date,
     int CompletedDeliveries,
     int ScheduledDeliveries,
     int RidersCompletingDeliveries,
-    int RidersAssignedDeliveries);
+    int RidersAssignedDeliveries,
+    IReadOnlyList<RevenueAmountResponse> Revenue);

@@ -3,12 +3,14 @@ namespace BLVK.Pickly.Logistics.Application.Operations.Features.GetOperationsSna
 /// <param name="AsOfUtc">
 /// Moment the state counts describe: the end of <paramref name="Date"/>, or now when the day is still in progress.
 /// </param>
+/// <param name="Revenue">Charges of deliveries completed during the day, one entry per currency.</param>
 public sealed record OperationsSnapshotResponse(
     DateOnly Date,
     DateTimeOffset AsOfUtc,
     bool IsDayComplete,
     RiderCountsResponse Riders,
-    DeliveryCountsResponse Deliveries);
+    DeliveryCountsResponse Deliveries,
+    IReadOnlyList<RevenueAmountResponse> Revenue);
 
 /// <param name="Available">Availability enabled and no active delivery.</param>
 /// <param name="Busy">Holding an assigned, picked-up or in-transit delivery.</param>

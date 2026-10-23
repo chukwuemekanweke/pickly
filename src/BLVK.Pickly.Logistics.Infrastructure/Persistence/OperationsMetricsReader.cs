@@ -120,6 +120,34 @@ public sealed class OperationsMetricsReader(AppReadDbContext dbContext) : IOpera
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<DeliveryRevenueDailyTotal>> GetCompletedDeliveryRevenueDailyTotalsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        CancellationToken cancellationToken)
+    {
+        var from = fromUtc.ToUniversalTime();
+        var to = toUtc.ToUniversalTime();
+        var delivered = (int)DeliveryStatus.Delivered;
+        // One row per delivery (its first completion in range) so a duplicated history entry cannot double-count.
+        var rows = await dbContext.Database.SqlQuery<RevenueRow>($"""
+            SELECT completed."Day", c."CurrencyCode", SUM(d."ChargeAmount") AS "Amount"
+            FROM (
+                SELECT DISTINCT ON (h."DeliveryId")
+                    h."DeliveryId", (h."OccurredAtUtc" AT TIME ZONE 'UTC')::date AS "Day"
+                FROM deliveries."DeliveryStatusHistory" h
+                WHERE h."IsDeleted" = FALSE
+                  AND h."OccurredAtUtc" >= {from}
+                  AND h."OccurredAtUtc" < {to}
+                  AND h."NewStatus" = {delivered}
+                ORDER BY h."DeliveryId", h."OccurredAtUtc", h."Id"
+            ) completed
+            JOIN deliveries."Deliveries" d ON d."Id" = completed."DeliveryId" AND d."IsDeleted" = FALSE
+            JOIN payments."Currencies" c ON c."Id" = d."CurrencyId"
+            GROUP BY completed."Day", c."CurrencyCode"
+            """).ToListAsync(cancellationToken);
+        return rows.Select(row => new DeliveryRevenueDailyTotal(row.Day, row.CurrencyCode, row.Amount)).ToArray();
+    }
+
     public async Task<IReadOnlyList<ScheduledPickupDailyCount>> GetScheduledPickupDailyCountsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
@@ -145,6 +173,8 @@ public sealed class OperationsMetricsReader(AppReadDbContext dbContext) : IOpera
     private sealed class RiderCountRow { public int AvailabilityStatus { get; init; } public bool HasActiveDelivery { get; init; } public int Count { get; init; } }
 
     private sealed class TransitionRow { public DateOnly Day { get; init; } public int Status { get; init; } public int DeliveryCount { get; init; } public int RiderCount { get; init; } }
+
+    private sealed class RevenueRow { public DateOnly Day { get; init; } public string CurrencyCode { get; init; } = string.Empty; public decimal Amount { get; init; } }
 
     private sealed class DayCountRow { public DateOnly Day { get; init; } public int Count { get; init; } }
 }

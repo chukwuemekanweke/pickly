@@ -1,7 +1,7 @@
 ---
 type: domain
 title: Operations Metrics and Dashboard
-description: Public point-in-time and daily time-series counts of riders and deliveries, reconstructed from append-only history, plus the static operations dashboard page
+description: Public point-in-time and daily time-series counts of riders and deliveries plus completed-delivery revenue per currency, reconstructed from append-only history, and the static operations dashboard page
 resource: okf://knowledge/domains/operations-metrics
 tags:
     - constraint
@@ -10,6 +10,7 @@ tags:
     - metrics
     - deliveries
     - riders
+    - revenue
     - webapi
 governance: constraint
 code_refs:
@@ -39,7 +40,8 @@ Two read-only vertical slices under `Application/Operations/Features/`: `GetOper
 `GetOperationsTimeSeries` (inclusive UTC day range, default last 14 days, max 366). Both depend on the narrow read port
 `Domain/Operations/ReadModels/IOperationsMetricsReader`, implemented by `OperationsMetricsReader` on
 `AppReadDbContext` with set-based raw SQL. The reader returns factual counts only (deliveries by status at an instant,
-riders by availability × has-active-delivery, transitions per day, scheduled pickups per day); the handlers own the
+riders by availability × has-active-delivery, transitions per day, scheduled pickups per day, completed-delivery
+revenue per day and currency); the handlers own the
 grouping into operational categories and all date/boundary decisions using injected `TimeProvider`.
 
 `OperationsMetricsController` exposes `GET api/v1/operations/metrics/snapshot?date=` and
@@ -69,6 +71,11 @@ page calls the two endpoints same-origin and renders hand-built SVG charts; it m
   Rows exist only from the history migration onward; earlier availability is approximated by that fallback.
 - Time-series rider counts are distinct `Delivery.RiderId` among deliveries that entered `Delivered` (or
   `RiderAssigned`) that day; scheduled counts are `Scheduled` deliveries by `ScheduledPickupAtUtc` day in any status.
+- Revenue (snapshot day and each time-series day) = sum of `Delivery.ChargeAmount` for distinct deliveries whose first
+  `Delivered` transition falls on the UTC day, grouped by `payments.Currencies.CurrencyCode` and returned as a
+  `RevenueAmountResponse` list ordered by code (empty when nothing completed). `Complete` requires the full charge to
+  be paid, so completion is the recognition point; cancelled/refunded prepaid deliveries never count. Amounts in
+  different currencies are never summed, and the dashboard draws one line per currency.
 
 ## Availability history capture (constraint)
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pickly Operations</title>
+<title>Pikly Operations</title>
 <style>
   :root {
     color-scheme: light;
@@ -92,6 +92,7 @@
   .charts { display: grid; grid-template-columns: 1fr; gap: 16px; }
   @media (min-width: 900px) { .charts { grid-template-columns: 1fr 1fr; } }
   .charts section.card { margin-bottom: 0; }
+  .charts .wide { grid-column: 1 / -1; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; padding: 0; list-style: none; color: var(--text-secondary); font-size: 13px; }
   .legend li { display: flex; align-items: center; gap: 6px; }
   .key { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
@@ -132,8 +133,8 @@
 <body>
 <main>
   <header>
-    <h1>Pickly operations</h1>
-    <span class="muted">All days are UTC. Counts only; no personal data.</span>
+    <h1>Pikly operations</h1>
+    <span class="muted">All days are UTC. Aggregates only; no personal data.</span>
   </header>
 
   <div class="filters" role="group" aria-label="Filters">
@@ -163,6 +164,10 @@
       <div class="group-title">Deliveries</div>
       <div class="tiles" id="delivery-tiles"></div>
     </div>
+    <div class="group">
+      <div class="group-title">Revenue</div>
+      <div class="tiles" id="revenue-tiles"></div>
+    </div>
     <p class="error" id="snapshot-error" hidden></p>
   </section>
 
@@ -180,6 +185,12 @@
       <ul class="legend" id="riders-legend"></ul>
       <div class="chart" id="riders-chart"></div>
     </section>
+    <section class="card wide">
+      <h2>Revenue per day</h2>
+      <p class="muted" style="margin:0 0 8px">Charges of deliveries completed during the day, per currency</p>
+      <ul class="legend" id="revenue-legend"></ul>
+      <div class="chart" id="revenue-chart"></div>
+    </section>
   </div>
 
   <section class="card" style="margin-top:16px">
@@ -195,6 +206,7 @@
               <th scope="col">Scheduled</th>
               <th scope="col">Riders completing</th>
               <th scope="col">Riders assigned</th>
+              <th scope="col">Revenue</th>
             </tr>
           </thead>
           <tbody id="series-table"></tbody>
@@ -215,6 +227,7 @@
     { key: "completedDeliveries", label: "Completed", color: "--series-1" },
     { key: "scheduledDeliveries", label: "Scheduled", color: "--series-2" }
   ];
+  const REVENUE_COLORS = ["--series-1", "--series-2"];
   const RIDER_SERIES = [
     { key: "ridersCompletingDeliveries", label: "Completed a delivery", color: "--series-1" },
     { key: "ridersAssignedDeliveries", label: "Assigned a delivery", color: "--series-2" }
@@ -230,6 +243,7 @@
     snapshotAsOf: document.getElementById("snapshot-asof"),
     riderTiles: document.getElementById("rider-tiles"),
     deliveryTiles: document.getElementById("delivery-tiles"),
+    revenueTiles: document.getElementById("revenue-tiles"),
     snapshotError: document.getElementById("snapshot-error"),
     charts: document.getElementById("charts"),
     seriesError: document.getElementById("series-error"),
@@ -252,6 +266,17 @@
     if (text !== undefined) node.textContent = text;
     return node;
   };
+  const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
+  const formatMoney = (amount, code) => {
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency: code }).format(amount);
+    } catch {
+      return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
+    }
+  };
+  const formatRevenue = revenue => revenue.length
+    ? revenue.map(r => formatMoney(r.amount, r.currencyCode)).join(" · ")
+    : "0";
   const svg = (tag, attrs) => {
     const node = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
@@ -279,7 +304,8 @@
   function renderTiles(container, tiles) {
     container.replaceChildren(...tiles.map(t => {
       const tile = el("div", "tile");
-      tile.append(el("div", "value", t.value.toLocaleString()), el("div", "label", t.label));
+      const value = typeof t.value === "number" ? t.value.toLocaleString() : t.value;
+      tile.append(el("div", "value", value), el("div", "label", t.label));
       if (t.hint) tile.append(el("div", "hint", t.hint));
       return tile;
     }));
@@ -308,6 +334,9 @@
         { label: "Cancelled", value: s.deliveries.cancelled, hint: "During the day" },
         { label: "Failed", value: s.deliveries.failed, hint: "During the day" }
       ]);
+      renderTiles(els.revenueTiles, s.revenue.length
+        ? s.revenue.map(r => ({ label: r.currencyCode, value: formatMoney(r.amount, r.currencyCode), hint: "Completed during the day" }))
+        : [{ label: "Revenue", value: 0, hint: "No completed deliveries" }]);
       showError(els.snapshotError, "");
     } catch (error) {
       showError(els.snapshotError, `Could not load point-in-time counts: ${error.message}`);
@@ -335,6 +364,18 @@
     if (!series) return;
     lineChart(document.getElementById("orders-chart"), document.getElementById("orders-legend"), series.days, ORDERS_SERIES);
     lineChart(document.getElementById("riders-chart"), document.getElementById("riders-legend"), series.days, RIDER_SERIES);
+    // One line per currency; amounts in different currencies are never summed together.
+    const currencies = [...new Set(series.days.flatMap(d => d.revenue.map(r => r.currencyCode)))].sort();
+    const revenueDays = series.days.map(d => {
+      const point = { date: d.date };
+      currencies.forEach(code => { point[code] = d.revenue.find(r => r.currencyCode === code)?.amount ?? 0; });
+      return point;
+    });
+    const revenueSeries = currencies.length
+      ? currencies.map((code, i) => ({ key: code, label: code, color: REVENUE_COLORS[i % REVENUE_COLORS.length], format: v => formatMoney(v, code) }))
+      : [{ key: "none", label: "Revenue", color: REVENUE_COLORS[0] }];
+    if (!currencies.length) revenueDays.forEach(p => { p.none = 0; });
+    lineChart(document.getElementById("revenue-chart"), document.getElementById("revenue-legend"), revenueDays, revenueSeries);
     els.table.replaceChildren(...series.days.slice().reverse().map(d => {
       const row = el("tr");
       row.tabIndex = 0;
@@ -343,7 +384,8 @@
         el("td", null, String(d.completedDeliveries)),
         el("td", null, String(d.scheduledDeliveries)),
         el("td", null, String(d.ridersCompletingDeliveries)),
-        el("td", null, String(d.ridersAssignedDeliveries)));
+        el("td", null, String(d.ridersAssignedDeliveries)),
+        el("td", null, formatRevenue(d.revenue)));
       const select = () => selectDay(d.date);
       row.addEventListener("click", select);
       row.addEventListener("keydown", e => { if (e.key === "Enter") select(); });
@@ -357,7 +399,7 @@
     loadSnapshot();
   }
 
-  // Counts are whole numbers: four gridline steps of 1, 2, 3, 5 × 10^n.
+  // Four gridline steps of 1, 2, 3, 5 × 10^n (whole numbers for counts and amounts alike).
   function niceMax(value) {
     const raw = Math.max(1, value / 4);
     const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -377,7 +419,8 @@
     const width = Math.max(container.clientWidth, 280);
     const height = 260;
     const directLabels = width >= 460;
-    const m = { top: 12, right: directLabels ? 140 : 16, bottom: 28, left: 36 };
+    const m = { top: 12, right: directLabels ? 140 : 16, bottom: 28, left: 44 };
+    const fmt = def => def.format || (v => String(v));
     const innerW = width - m.left - m.right;
     const innerH = height - m.top - m.bottom;
     const max = niceMax(Math.max(1, ...days.flatMap(d => defs.map(def => d[def.key]))));
@@ -394,7 +437,7 @@
       const yy = y(value);
       axis.append(svg("line", { class: t === 0 ? "baseline" : "gridline", x1: m.left, x2: m.left + innerW, y1: yy, y2: yy }));
       const label = svg("text", { x: m.left - 8, y: yy + 4, "text-anchor": "end" });
-      label.textContent = value.toLocaleString();
+      label.textContent = compact.format(value);
       axis.append(label);
     }
     const labelEvery = Math.max(1, Math.ceil(days.length / Math.max(2, Math.floor(innerW / 70))));
@@ -422,7 +465,7 @@
       }
       ends.forEach(end => {
         const label = svg("text", { class: "end-label", x: x(last) + 8, y: end.y + 4 });
-        label.textContent = `${days[last][end.def.key]} ${end.def.label}`;
+        label.textContent = `${fmt(end.def)(days[last][end.def.key])} ${end.def.label}`;
         root.append(label);
       });
     }
@@ -459,7 +502,7 @@
         const row = el("div", "t-row");
         const key = el("span", "key");
         key.style.background = `var(${def.color})`;
-        row.append(key, el("strong", null, String(d[def.key])), el("span", null, def.label));
+        row.append(key, el("strong", null, fmt(def)(d[def.key])), el("span", null, def.label));
         return row;
       });
       tooltip.replaceChildren(el("div", "t-date", formatDay(d.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })), ...rows);

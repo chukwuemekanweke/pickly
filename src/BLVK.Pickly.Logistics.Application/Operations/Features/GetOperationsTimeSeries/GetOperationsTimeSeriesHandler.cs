@@ -33,9 +33,11 @@ public sealed class GetOperationsTimeSeriesHandler(
             TrackedTransitions,
             cancellationToken);
         var scheduled = await reader.GetScheduledPickupDailyCountsAsync(fromUtc, toUtc, cancellationToken);
+        var revenue = await reader.GetCompletedDeliveryRevenueDailyTotalsAsync(fromUtc, toUtc, cancellationToken);
 
         var transitionsByDay = transitions.ToLookup(row => (row.Day, row.Status));
         var scheduledByDay = scheduled.ToDictionary(row => row.Day, row => row.Count);
+        var revenueByDay = revenue.ToLookup(row => row.Day);
         var days = Enumerable.Range(0, dayCount)
             .Select(offset =>
             {
@@ -47,7 +49,11 @@ public sealed class GetOperationsTimeSeriesHandler(
                     completed?.DeliveryCount ?? 0,
                     scheduledByDay.GetValueOrDefault(day),
                     completed?.RiderCount ?? 0,
-                    assigned?.RiderCount ?? 0);
+                    assigned?.RiderCount ?? 0,
+                    revenueByDay[day]
+                        .OrderBy(total => total.CurrencyCode, StringComparer.Ordinal)
+                        .Select(total => new RevenueAmountResponse(total.CurrencyCode, total.Amount))
+                        .ToArray());
             })
             .ToArray();
 
