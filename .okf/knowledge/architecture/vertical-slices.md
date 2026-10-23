@@ -86,7 +86,8 @@ Command/query reference (copy these, not a new shape):
 - Feature-specific helper classes live in the same feature folder when only that feature uses them.
 - WebAPI controllers are organized by feature folder and use resource-oriented routes.
 - Prefer controller-based endpoints over minimal APIs.
-- Existing top-level feature groupings: `Authentication`, `Stakeholders`, `Payments`, `Notifications`, `Providers`, `ReferenceData`, `Deliveries`, `Locations`, `Riders` — place new features under the matching domain, or propose a new
+- Existing top-level feature groupings: `Authentication`, `Stakeholders`, `Payments`, `Notifications`, `Providers`, `ReferenceData`, `Deliveries`, `Locations`, `Riders`,
+  `Operations` (cross-domain operational read metrics) — place new features under the matching domain, or propose a new
   top-level domain folder only when the feature genuinely doesn't belong to an existing one.
 
 See [[dto-records]] for the DTO/record shape used inside feature folders, [[unit-testing]] and [[integration-testing]] for how tests mirror this same layout.

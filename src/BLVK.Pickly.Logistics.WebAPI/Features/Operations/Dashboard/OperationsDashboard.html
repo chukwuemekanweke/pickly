@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pickly Operations</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f4f2;
+    --surface-1: #fcfcfb;
+    --border: #e2e1dc;
+    --grid: #ebeae6;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #77766f;
+    --accent: #2a78d6;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --critical: #c62f2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #111110;
+      --surface-1: #1a1a19;
+      --border: #2e2e2c;
+      --grid: #262624;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #96958c;
+      --accent: #3987e5;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --critical: #e66767;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #111110;
+    --surface-1: #1a1a19;
+    --border: #2e2e2c;
+    --grid: #262624;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #96958c;
+    --accent: #3987e5;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --critical: #e66767;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+  .subtle { color: var(--text-secondary); }
+  .muted { color: var(--text-muted); font-size: 12px; }
+
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 20px 0 16px; }
+  .filters label { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+  input[type="date"], select, button {
+    font: inherit; color: var(--text-primary); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--text-muted); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  section.card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px; transition: opacity .15s;
+  }
+  .loading { opacity: .55; }
+  .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; margin-bottom: 12px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .group-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 4px 0 8px; }
+  .group + .group { margin-top: 16px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .tile .value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .tile .label { color: var(--text-secondary); }
+  .tile .hint { color: var(--text-muted); font-size: 12px; }
+
+  .charts { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 900px) { .charts { grid-template-columns: 1fr 1fr; } }
+  .charts section.card { margin-bottom: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; padding: 0; list-style: none; color: var(--text-secondary); font-size: 13px; }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+  .key { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 260px; overflow: visible; }
+  .chart .axis text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .chart .gridline { stroke: var(--grid); stroke-width: 1; }
+  .chart .baseline { stroke: var(--border); stroke-width: 1; }
+  .chart .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart .series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .dot { stroke: var(--surface-1); stroke-width: 2; }
+  .chart .end-label { font-size: 11px; fill: var(--text-secondary); }
+  .tooltip {
+    position: absolute; pointer-events: none; min-width: 150px;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 16px rgb(0 0 0 / .12); padding: 8px 10px; font-size: 12px; display: none; z-index: 2;
+  }
+  .tooltip .t-date { color: var(--text-muted); margin-bottom: 4px; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 8px; }
+  .tooltip .t-row strong { font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+  .tooltip .t-row span:last-child { color: var(--text-secondary); }
+  .chart-hint { margin-top: 4px; }
+
+  details { margin-top: 16px; }
+  summary { cursor: pointer; color: var(--text-secondary); }
+  .table-wrap { overflow-x: auto; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--grid); }
+
+  .error { color: var(--critical); margin: 8px 0 0; }
+  .error::before { content: "⚠ "; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pickly operations</h1>
+    <span class="muted">All days are UTC. Counts only; no personal data.</span>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filters">
+    <label>Day <input type="date" id="snapshot-date"></label>
+    <button type="button" id="today-btn">Today</button>
+    <label>Trend range
+      <select id="range-select">
+        <option value="7">Last 7 days</option>
+        <option value="14" selected>Last 14 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </label>
+    <button type="button" id="refresh-btn">Refresh</button>
+  </div>
+
+  <section class="card" id="snapshot-card" aria-live="polite">
+    <div class="card-head">
+      <h2 id="snapshot-title">Point in time</h2>
+      <span class="muted" id="snapshot-asof"></span>
+    </div>
+    <div class="group">
+      <div class="group-title">Riders</div>
+      <div class="tiles" id="rider-tiles"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">Deliveries</div>
+      <div class="tiles" id="delivery-tiles"></div>
+    </div>
+    <p class="error" id="snapshot-error" hidden></p>
+  </section>
+
+  <div class="charts" id="charts">
+    <section class="card">
+      <h2>Deliveries per day</h2>
+      <p class="muted" style="margin:0 0 8px">Completed during the day · scheduled by pickup day</p>
+      <ul class="legend" id="orders-legend"></ul>
+      <div class="chart" id="orders-chart"></div>
+      <p class="muted chart-hint">Select a day on a chart to load its point-in-time counts.</p>
+    </section>
+    <section class="card">
+      <h2>Riders processing deliveries</h2>
+      <p class="muted" style="margin:0 0 8px">Distinct riders per day</p>
+      <ul class="legend" id="riders-legend"></ul>
+      <div class="chart" id="riders-chart"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <p class="error" id="series-error" hidden></p>
+    <details>
+      <summary>Table view</summary>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col">Completed</th>
+              <th scope="col">Scheduled</th>
+              <th scope="col">Riders completing</th>
+              <th scope="col">Riders assigned</th>
+            </tr>
+          </thead>
+          <tbody id="series-table"></tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const API = "/api/v1/operations/metrics";
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  const ORDERS_SERIES = [
+    { key: "completedDeliveries", label: "Completed", color: "--series-1" },
+    { key: "scheduledDeliveries", label: "Scheduled", color: "--series-2" }
+  ];
+  const RIDER_SERIES = [
+    { key: "ridersCompletingDeliveries", label: "Completed a delivery", color: "--series-1" },
+    { key: "ridersAssignedDeliveries", label: "Assigned a delivery", color: "--series-2" }
+  ];
+
+  const els = {
+    date: document.getElementById("snapshot-date"),
+    today: document.getElementById("today-btn"),
+    range: document.getElementById("range-select"),
+    refresh: document.getElementById("refresh-btn"),
+    snapshotCard: document.getElementById("snapshot-card"),
+    snapshotTitle: document.getElementById("snapshot-title"),
+    snapshotAsOf: document.getElementById("snapshot-asof"),
+    riderTiles: document.getElementById("rider-tiles"),
+    deliveryTiles: document.getElementById("delivery-tiles"),
+    snapshotError: document.getElementById("snapshot-error"),
+    charts: document.getElementById("charts"),
+    seriesError: document.getElementById("series-error"),
+    table: document.getElementById("series-table")
+  };
+
+  let series = null;
+
+  const utcToday = () => new Date().toISOString().slice(0, 10);
+  const addDays = (iso, n) => {
+    const d = new Date(iso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const formatDay = (iso, opts) =>
+    new Date(iso + "T00:00:00Z").toLocaleDateString(undefined, { timeZone: "UTC", ...opts });
+  const el = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const svg = (tag, attrs) => {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+    return node;
+  };
+
+  async function getJson(url) {
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      let detail = `${response.status} ${response.statusText}`;
+      try {
+        const problem = await response.json();
+        detail = problem.detail || problem.title || detail;
+      } catch { /* non-JSON error body */ }
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  function showError(node, message) {
+    node.hidden = !message;
+    node.textContent = message || "";
+  }
+
+  function renderTiles(container, tiles) {
+    container.replaceChildren(...tiles.map(t => {
+      const tile = el("div", "tile");
+      tile.append(el("div", "value", t.value.toLocaleString()), el("div", "label", t.label));
+      if (t.hint) tile.append(el("div", "hint", t.hint));
+      return tile;
+    }));
+  }
+
+  async function loadSnapshot() {
+    const date = els.date.value || utcToday();
+    els.snapshotCard.classList.add("loading");
+    try {
+      const s = await getJson(`${API}/snapshot?date=${encodeURIComponent(date)}`);
+      els.snapshotTitle.textContent = `Point in time · ${formatDay(s.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
+      els.snapshotAsOf.textContent = s.isDayComplete
+        ? "State at end of day (UTC)"
+        : `Live state as of ${new Date(s.asOfUtc).toISOString().slice(11, 16)} UTC`;
+      renderTiles(els.riderTiles, [
+        { label: "Available", value: s.riders.available, hint: "Online, no active job" },
+        { label: "Busy", value: s.riders.busy, hint: "Holding an active delivery" },
+        { label: "Unavailable", value: s.riders.unavailable, hint: "Offline or paused" },
+        { label: "Total riders", value: s.riders.total }
+      ]);
+      renderTiles(els.deliveryTiles, [
+        { label: "Pending", value: s.deliveries.pending, hint: "Awaiting dispatch / rider" },
+        { label: "In progress", value: s.deliveries.inProgress, hint: "Assigned → in transit" },
+        { label: "Awaiting payment", value: s.deliveries.awaitingPayment, hint: "Prepayment outstanding" },
+        { label: "Completed", value: s.deliveries.completed, hint: "During the day" },
+        { label: "Cancelled", value: s.deliveries.cancelled, hint: "During the day" },
+        { label: "Failed", value: s.deliveries.failed, hint: "During the day" }
+      ]);
+      showError(els.snapshotError, "");
+    } catch (error) {
+      showError(els.snapshotError, `Could not load point-in-time counts: ${error.message}`);
+    } finally {
+      els.snapshotCard.classList.remove("loading");
+    }
+  }
+
+  async function loadSeries() {
+    const to = utcToday();
+    const from = addDays(to, -(Number(els.range.value) - 1));
+    els.charts.classList.add("loading");
+    try {
+      series = await getJson(`${API}/time-series?from=${from}&to=${to}`);
+      renderSeries();
+      showError(els.seriesError, "");
+    } catch (error) {
+      showError(els.seriesError, `Could not load time series: ${error.message}`);
+    } finally {
+      els.charts.classList.remove("loading");
+    }
+  }
+
+  function renderSeries() {
+    if (!series) return;
+    lineChart(document.getElementById("orders-chart"), document.getElementById("orders-legend"), series.days, ORDERS_SERIES);
+    lineChart(document.getElementById("riders-chart"), document.getElementById("riders-legend"), series.days, RIDER_SERIES);
+    els.table.replaceChildren(...series.days.slice().reverse().map(d => {
+      const row = el("tr");
+      row.tabIndex = 0;
+      row.append(
+        el("td", null, formatDay(d.date, { weekday: "short", day: "numeric", month: "short" })),
+        el("td", null, String(d.completedDeliveries)),
+        el("td", null, String(d.scheduledDeliveries)),
+        el("td", null, String(d.ridersCompletingDeliveries)),
+        el("td", null, String(d.ridersAssignedDeliveries)));
+      const select = () => selectDay(d.date);
+      row.addEventListener("click", select);
+      row.addEventListener("keydown", e => { if (e.key === "Enter") select(); });
+      return row;
+    }));
+  }
+
+  function selectDay(iso) {
+    if (iso > utcToday()) return;
+    els.date.value = iso;
+    loadSnapshot();
+  }
+
+  // Counts are whole numbers: four gridline steps of 1, 2, 3, 5 × 10^n.
+  function niceMax(value) {
+    const raw = Math.max(1, value / 4);
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 3, 5, 10].map(f => f * magnitude).find(s => s >= raw);
+    return step * 4;
+  }
+
+  function lineChart(container, legend, days, defs) {
+    legend.replaceChildren(...defs.map(def => {
+      const item = el("li");
+      const key = el("span", "key");
+      key.style.background = `var(${def.color})`;
+      item.append(key, document.createTextNode(def.label));
+      return item;
+    }));
+
+    const width = Math.max(container.clientWidth, 280);
+    const height = 260;
+    const directLabels = width >= 460;
+    const m = { top: 12, right: directLabels ? 140 : 16, bottom: 28, left: 36 };
+    const innerW = width - m.left - m.right;
+    const innerH = height - m.top - m.bottom;
+    const max = niceMax(Math.max(1, ...days.flatMap(d => defs.map(def => d[def.key]))));
+    const x = i => m.left + (days.length === 1 ? innerW / 2 : (i / (days.length - 1)) * innerW);
+    const y = v => m.top + innerH - (v / max) * innerH;
+
+    const root = svg("svg", { viewBox: `0 0 ${width} ${height}`, role: "img",
+      "aria-label": `${defs.map(d => d.label).join(" and ")} per day; see table view for values` });
+
+    const axis = svg("g", { class: "axis" });
+    const ticks = 4;
+    for (let t = 0; t <= ticks; t++) {
+      const value = (max / ticks) * t;
+      const yy = y(value);
+      axis.append(svg("line", { class: t === 0 ? "baseline" : "gridline", x1: m.left, x2: m.left + innerW, y1: yy, y2: yy }));
+      const label = svg("text", { x: m.left - 8, y: yy + 4, "text-anchor": "end" });
+      label.textContent = value.toLocaleString();
+      axis.append(label);
+    }
+    const labelEvery = Math.max(1, Math.ceil(days.length / Math.max(2, Math.floor(innerW / 70))));
+    days.forEach((d, i) => {
+      if (i % labelEvery !== 0 && i !== days.length - 1) return;
+      if (i !== days.length - 1 && days.length - 1 - i < labelEvery) return;
+      const label = svg("text", { x: x(i), y: height - 8, "text-anchor": "middle" });
+      label.textContent = formatDay(d.date, { day: "numeric", month: "short" });
+      axis.append(label);
+    });
+    root.append(axis);
+
+    defs.forEach(def => {
+      const color = `var(${def.color})`;
+      const path = days.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d[def.key]).toFixed(1)}`).join("");
+      root.append(svg("path", { class: "series-line", d: path, style: `stroke:${color}` }));
+    });
+
+    // Direct labels at line ends (wide layouts only), nudged apart when they would collide.
+    if (directLabels) {
+      const last = days.length - 1;
+      const ends = defs.map(def => ({ def, y: y(days[last][def.key]) })).sort((a, b) => a.y - b.y);
+      for (let i = 1; i < ends.length; i++) {
+        if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
+      }
+      ends.forEach(end => {
+        const label = svg("text", { class: "end-label", x: x(last) + 8, y: end.y + 4 });
+        label.textContent = `${days[last][end.def.key]} ${end.def.label}`;
+        root.append(label);
+      });
+    }
+
+    const crosshair = svg("line", { class: "crosshair", y1: m.top, y2: m.top + innerH, visibility: "hidden" });
+    root.append(crosshair);
+    const dots = defs.map(def => {
+      const dot = svg("circle", { class: "dot", r: 4, visibility: "hidden", style: `fill:var(${def.color})` });
+      root.append(dot);
+      return dot;
+    });
+
+    const hit = svg("rect", { x: m.left - 8, y: 0, width: innerW + 16, height: height, fill: "transparent", tabindex: 0,
+      style: "cursor:pointer; outline:none" });
+    root.append(hit);
+
+    const tooltip = el("div", "tooltip");
+    container.replaceChildren(root, tooltip);
+
+    let active = -1;
+    const show = i => {
+      active = i;
+      const d = days[i];
+      const xx = x(i);
+      crosshair.setAttribute("x1", xx);
+      crosshair.setAttribute("x2", xx);
+      crosshair.setAttribute("visibility", "visible");
+      defs.forEach((def, k) => {
+        dots[k].setAttribute("cx", xx);
+        dots[k].setAttribute("cy", y(d[def.key]));
+        dots[k].setAttribute("visibility", "visible");
+      });
+      const rows = defs.map(def => {
+        const row = el("div", "t-row");
+        const key = el("span", "key");
+        key.style.background = `var(${def.color})`;
+        row.append(key, el("strong", null, String(d[def.key])), el("span", null, def.label));
+        return row;
+      });
+      tooltip.replaceChildren(el("div", "t-date", formatDay(d.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })), ...rows);
+      tooltip.style.display = "block";
+      const scale = container.clientWidth / width;
+      const px = xx * scale;
+      const left = px + 12 + tooltip.offsetWidth > container.clientWidth ? px - 12 - tooltip.offsetWidth : px + 12;
+      tooltip.style.left = `${Math.max(0, left)}px`;
+      tooltip.style.top = `${m.top}px`;
+    };
+    const hide = () => {
+      active = -1;
+      crosshair.setAttribute("visibility", "hidden");
+      dots.forEach(dot => dot.setAttribute("visibility", "hidden"));
+      tooltip.style.display = "none";
+    };
+    const indexAt = clientX => {
+      const rect = root.getBoundingClientRect();
+      const px = (clientX - rect.left) * (width / rect.width);
+      if (days.length === 1) return 0;
+      return Math.min(days.length - 1, Math.max(0, Math.round(((px - m.left) / innerW) * (days.length - 1))));
+    };
+
+    hit.addEventListener("pointermove", e => show(indexAt(e.clientX)));
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("click", e => selectDay(days[indexAt(e.clientX)].date));
+    hit.addEventListener("focus", () => show(days.length - 1));
+    hit.addEventListener("blur", hide);
+    hit.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") { show(Math.max(0, active - 1)); e.preventDefault(); }
+      if (e.key === "ArrowRight") { show(Math.min(days.length - 1, active + 1)); e.preventDefault(); }
+      if (e.key === "Enter" && active >= 0) selectDay(days[active].date);
+    });
+  }
+
+  els.date.max = utcToday();
+  els.date.value = utcToday();
+  els.date.addEventListener("change", () => { if (els.date.value) loadSnapshot(); });
+  els.today.addEventListener("click", () => selectDay(utcToday()));
+  els.range.addEventListener("change", loadSeries);
+  els.refresh.addEventListener("click", () => { loadSnapshot(); loadSeries(); });
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderSeries, 150);
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderSeries);
+
+  loadSnapshot();
+  loadSeries();
+})();
+</script>
+</body>
+</html>

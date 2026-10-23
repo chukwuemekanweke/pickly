@@ -48,6 +48,8 @@ using BLVK.Pickly.Logistics.Application.Locations.Features.ResolveLocation;
 using BLVK.Pickly.Logistics.Application.Locations.Features.SearchLocations;
 using BLVK.Pickly.Logistics.Application.Locations.Features.SelectLocationCandidate;
 using BLVK.Pickly.Logistics.Application.Notifications.Features.ProcessMailtrapDeliveryWebhook;
+using BLVK.Pickly.Logistics.Application.Operations.Features.GetOperationsSnapshot;
+using BLVK.Pickly.Logistics.Application.Operations.Features.GetOperationsTimeSeries;
 using BLVK.Pickly.Logistics.Application.Payments.Features.ActivatePaymentProvider;
 using BLVK.Pickly.Logistics.Application.Payments.Features.GetStakeholderWalletTopUpTransactionDetail;
 using BLVK.Pickly.Logistics.Application.Payments.Features.GetStakeholderWalletTransactions;
@@ -162,6 +164,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UpdateRiderLocationHandler>();
         services.AddScoped<SetRiderAvailabilityHandler>();
         services.AddScoped<GetRiderStatusHandler>();
+        services.AddScoped<GetOperationsSnapshotHandler>();
+        services.AddScoped<GetOperationsTimeSeriesHandler>();
         services.AddScoped<ListRiderOffersHandler>();
         services.AddScoped<AcceptRiderOfferHandler>();
         services.AddScoped<RejectRiderOfferHandler>();

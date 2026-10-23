@@ -13,6 +13,7 @@ using BLVK.Pickly.Logistics.Infrastructure.Payments;
 using BLVK.Pickly.Logistics.Infrastructure.Persistence;
 using BLVK.Pickly.Logistics.Infrastructure.Storage;
 using BLVK.Pickly.Logistics.WebAPI.Features.Authentication.Registrations;
+using BLVK.Pickly.Logistics.WebAPI.Features.Operations.Dashboard;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.ApiDocumentation;
 using BLVK.Pickly.Logistics.WebAPI.Infrastructure.Cors;
@@ -94,6 +95,7 @@ app.MapGet("/", () => TypedResults.Ok(new
     Status = "Healthy"
 }))
 .ExcludeFromDescription();
+app.MapOperationsDashboard();
 
 if (app.Configuration.GetValue<bool>("Database:InitializeOnStartup"))
 {

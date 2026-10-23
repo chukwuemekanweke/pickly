@@ -6,6 +6,7 @@ using BLVK.Pickly.Logistics.Domain.Deliveries.Persistence;
 using BLVK.Pickly.Logistics.Domain.Deliveries.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Locations.Persistence;
 using BLVK.Pickly.Logistics.Domain.Locations.ReadModels;
+using BLVK.Pickly.Logistics.Domain.Operations.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Payments.ReadModels;
 using BLVK.Pickly.Logistics.Domain.Riders;
 using BLVK.Pickly.Logistics.Domain.Riders.Persistence;
@@ -25,6 +26,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<ICurrentActorAccessor, CurrentActorAccessor>();
         services.AddScoped<ICurrentActor>(serviceProvider => serviceProvider.GetRequiredService<ICurrentActorAccessor>());
+        services.AddScoped<RiderAvailabilityHistoryInterceptor>();
         services.AddScoped<AuditAndSoftDeleteInterceptor>();
         services.AddScoped<ObservabilityCommandInterceptor>();
 
@@ -33,6 +35,8 @@ public static class ServiceCollectionExtensions
                     GetRequiredConnectionString(configuration, "PostgresWrite"),
                     npgsql => npgsql.UseNetTopologySuite())
                 .AddInterceptors(
+                    // Runs before auditing so the appended history rows receive audit fields.
+                    serviceProvider.GetRequiredService<RiderAvailabilityHistoryInterceptor>(),
                     serviceProvider.GetRequiredService<AuditAndSoftDeleteInterceptor>(),
                     serviceProvider.GetRequiredService<ObservabilityCommandInterceptor>()));
 
@@ -80,6 +84,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocationReadModelRepository, LocationReadModelRepository>();
         services.AddScoped<IDeliveryZoneReadModelRepository, DeliveryZoneReadModelRepository>();
         services.AddScoped<IDeliveryPaymentAttemptReadModelRepository, DeliveryPaymentAttemptReadModelRepository>();
+        services.AddScoped<IOperationsMetricsReader, OperationsMetricsReader>();
 
         return services;
     }

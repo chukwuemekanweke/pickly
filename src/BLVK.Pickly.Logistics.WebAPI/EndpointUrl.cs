@@ -149,6 +149,14 @@ public static class EndpointUrl
         }
     }
 
+    public static class OperationsMetrics
+    {
+        public const string Route = $"api/{Versions.V1Route}/operations/metrics";
+        public static readonly string V1 = ToV1(Route);
+        public static readonly string SnapshotV1 = $"{V1}/snapshot";
+        public static readonly string TimeSeriesV1 = $"{V1}/time-series";
+    }
+
     public static class EmailNotificationWebhooks
     {
         public static class Mailtrap

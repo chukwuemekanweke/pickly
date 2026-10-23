@@ -65,6 +65,7 @@ public abstract class AppDbContextBase<TContext>(DbContextOptions<TContext> opti
     public DbSet<LocationResolutionKey> LocationResolutionKeys => Set<LocationResolutionKey>();
     public DbSet<LocationResolutionLeaseRecord> LocationResolutionLeases => Set<LocationResolutionLeaseRecord>();
     public DbSet<RiderProfile> RiderProfiles => Set<RiderProfile>();
+    public DbSet<RiderAvailabilityHistory> RiderAvailabilityHistory => Set<RiderAvailabilityHistory>();
     public DbSet<RiderCurrentLocation> RiderCurrentLocations => Set<RiderCurrentLocation>();
     public DbSet<RiderServiceZone> RiderServiceZones => Set<RiderServiceZone>();
     public DbSet<DeliveryMatchingSession> DeliveryMatchingSessions => Set<DeliveryMatchingSession>();

@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Features\Operations\Dashboard\OperationsDashboard.html" LogicalName="OperationsDashboard.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\\BLVK.Pickly.Logistics.Application\\BLVK.Pickly.Logistics.Application.csproj" />
     <ProjectReference Include="..\\BLVK.Pickly.Logistics.Infrastructure\\BLVK.Pickly.Logistics.Infrastructure.csproj" />
   </ItemGroup>
