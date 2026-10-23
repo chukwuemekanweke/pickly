@@ -64,8 +64,8 @@ rather than fails on anything it cannot apply. Its rows are tagged `system:test-
 0007 and running `Diagnostics/remove-test-rider-accounts.sql`. Fixture scripts never create payments or rider GPS
 presence.
 
-0009 creates a demo customer, five completed Pay On Delivery jobs per approved test rider over the preceding two
-weeks, and four assigned jobs for active-delivery UI testing. Stable tracking IDs make it rerunnable without moving
+0009 creates a demo customer, five completed Pay On Delivery jobs per approved test rider plus 20 additional completed
+jobs over the preceding two weeks, and four assigned jobs for active-delivery UI testing. Stable tracking IDs make it rerunnable without moving
 or duplicating the historical rows. On its first successful execution, it completes non-fixture deliveries in
 RiderAssigned, PickedUp or InTransit and appends the missing lifecycle history. Durable
 `system:delivery-history-fixture` provenance then makes every later invocation a no-op with no persistent data changes.

@@ -2,7 +2,8 @@
     Believable two-week delivery history for the MVP rider roster.
 
     The fixture represents a small pilot operation, not a mature high-volume fleet:
-      - five completed Pay On Delivery jobs per approved test rider (normally 85 rows), spread over 14 days;
+      - five completed Pay On Delivery jobs per approved test rider plus 20 additional completed jobs
+        (normally 105 rows), spread over 14 days;
       - four recently assigned jobs, one each for four riders, so active-delivery screens remain useful;
       - one demo business sender owning the fixture quotes and deliveries.
 
@@ -232,6 +233,21 @@ completed_rows AS (
     FROM delivery_fixture_riders r
     CROSS JOIN generate_series(1, 5) AS series(delivery_no)
 ),
+additional_completed_rows AS (
+    SELECT
+        r.rider_no,
+        r.rider_id,
+        r.vehicle_category_id,
+        r.vehicle_category_code,
+        r.vehicle_category_name,
+        100 + series.extra_no AS delivery_no,
+        (SELECT count(*)::integer * 5 FROM delivery_fixture_riders) + series.extra_no AS sequence_no,
+        7 AS final_status,
+        format('PKL-DEMO-EXTRA-%s', lpad(series.extra_no::text, 2, '0')) AS tracking_id
+    FROM generate_series(1, 20) AS series(extra_no)
+    JOIN delivery_fixture_riders r
+      ON r.rider_no = 1 + ((series.extra_no - 1) % (SELECT count(*)::integer FROM delivery_fixture_riders))
+),
 assigned_rows AS (
     SELECT
         r.rider_no,
@@ -250,6 +266,8 @@ assigned_rows AS (
 all_rows AS (
     SELECT * FROM completed_rows
     UNION ALL
+    SELECT * FROM additional_completed_rows
+    UNION ALL
     SELECT * FROM assigned_rows
 ),
 timed_rows AS (
@@ -257,7 +275,7 @@ timed_rows AS (
         a.*,
         CASE
             WHEN a.final_status = 7
-                THEN NOW() - INTERVAL '14 days' + a.sequence_no * INTERVAL '3 hours 45 minutes'
+                THEN NOW() - INTERVAL '14 days' + a.sequence_no * INTERVAL '3 hours'
             ELSE NOW() - (a.sequence_no - 999) * INTERVAL '45 minutes'
         END AS created_at_utc
     FROM all_rows a
