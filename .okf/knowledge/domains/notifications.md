@@ -43,8 +43,8 @@ status: stable
   recipient addresses, message bodies, API tokens or other email content to transport spans.
 - Delivery lifecycle notifications reuse `SendNotificationCommand` and the transactional outbox; application and
   consumer handlers only compose template data and never call the email provider directly. Stable message identities
-  are derived from the business transition, notification type, and recipient so operation replay does not create a
-  distinct notification.
+  are deterministic UUIDv7 values derived from the business transition, notification type, and recipient, so operation
+  replay does not create a distinct notification and the RabbitMQ publisher's UUIDv7 requirement remains satisfied.
 - The delivery set contains localized English/French templates for order creation, actionable payment instructions,
   confirmed payment failure, applied payment success, sender-facing rider assignment, and rider-facing fulfillment
   instructions. Dynamic body replacements are HTML-encoded, sensitive instruction/contact fields are obfuscated in
