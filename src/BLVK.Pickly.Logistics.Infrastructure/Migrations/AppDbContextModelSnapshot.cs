@@ -2960,6 +2960,55 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.ToTable("DeliveryMatchingSessions", "riders");
                 });
 
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Riders.Entities.RiderAvailabilityHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("NewStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PreviousStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RiderProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RiderProfileId", "OccurredAtUtc", "Id");
+
+                    b.ToTable("RiderAvailabilityHistory", "riders");
+                });
+
             modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Riders.Entities.RiderCurrentLocation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4210,6 +4259,15 @@ namespace BLVK.Pickly.Logistics.Infrastructure.Migrations
                     b.HasOne("BLVK.Pickly.Logistics.Domain.Deliveries.Entities.Delivery", null)
                         .WithMany()
                         .HasForeignKey("DeliveryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BLVK.Pickly.Logistics.Domain.Riders.Entities.RiderAvailabilityHistory", b =>
+                {
+                    b.HasOne("BLVK.Pickly.Logistics.Domain.Riders.Entities.RiderProfile", null)
+                        .WithMany()
+                        .HasForeignKey("RiderProfileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

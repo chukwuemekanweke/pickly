@@ -62,7 +62,10 @@ public sealed class CurrentActorMiddleware(RequestDelegate next)
             || path.StartsWithSegments("/scalar")
             || path == "/"
             || path.StartsWithSegments("/api/v1/payments/webhooks")
-            || path.StartsWithSegments("/api/v1/email-notifications/webhooks");
+            || path.StartsWithSegments("/api/v1/email-notifications/webhooks")
+            // Public, cross-tenant aggregate counts and the operations dashboard page that renders them.
+            || path.StartsWithSegments("/api/v1/operations/metrics")
+            || path == "/operations";
 }
 
     private static async Task<string> ResolveActorIdAsync(

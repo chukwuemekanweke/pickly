@@ -64,7 +64,9 @@ The persisted availability value expresses rider intent (`Offline`, `Available`,
 an authoritative active Delivery in `RiderAssigned`, `PickedUp`, or `InTransit`; clients cannot set it. Enabling
 availability requires approval, a fresh current position, and no active assignment. Disabling availability revokes a
 pending offer but never unassigns an accepted Delivery. Changing vehicle category forces the profile offline; callers
-must reject a change while an incompatible active assignment exists.
+must reject a change while an incompatible active assignment exists. Every persisted availability change (and profile
+creation) is captured automatically in `riders.RiderAvailabilityHistory` by a write-context SaveChanges interceptor for
+point-in-time reporting; handlers do not record it (see [[operations-metrics]]).
 
 ## Current position and geographic eligibility
 
