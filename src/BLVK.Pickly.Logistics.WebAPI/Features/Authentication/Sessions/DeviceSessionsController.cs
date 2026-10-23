@@ -13,6 +13,7 @@ namespace BLVK.Pickly.Logistics.WebAPI.Features.Authentication.Sessions;
 
 [ApiController]
 [ApiVersion("1.0")]
+[Tags("Sessions")]
 [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
 [Route($"{EndpointUrl.Sessions.Route}/device")]
 public sealed class DeviceSessionsController(
